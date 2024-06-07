@@ -1,0 +1,31 @@
+* {
+    margin: 0;
+}
+body {
+    display: flex;
+    justify-content: center;
+}
+.tab.landing {
+    display: flex;
+    flex-flow: column nowrap;
+    gap: 10px;
+}
+
+#code-input {
+    text-transform: uppercase;
+}
+
+
+#drawpad #color-select {
+	display: flex;
+	flex-flow: row nowrap;
+}
+
+#drawpad .color-select-button {
+	
+	flex: 1;
+	aspect-ratio: 1;
+	
+	border: none;
+	
+}
