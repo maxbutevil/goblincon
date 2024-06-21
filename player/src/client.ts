@@ -11,29 +11,26 @@ export enum Connection {
 	CLOSED
 }
 
-export enum Phase {
-	NONE,
-	LOBBY,
-	START,
-	DRAW,
-	VOTE,
-	SCORE,
-	//IDLE
-}
 
 //const ADDR = "ws://localhost:5050";
 
 class Client {
 	
 	state = new State(Connection.CLOSED);
-	opened = this.state.transitionTo(Connection.OPEN);
-	closed = this.state.transitionFrom(Connection.OPEN);
+	pending = this.state.transitionTo(Connection.PENDING);
+	connected = this.state.transitionTo(Connection.OPEN);
+	disconnected = this.state.transitionFrom(Connection.OPEN);
 	connectionFailed = this.state.transition(Connection.PENDING, Connection.CLOSED);
 	//error = new Signal<void>();
 	
-	phase = new State(Phase.NONE);
+	//phase = new State(Phase.NONE);
 	
 	inc = new ReceiveIndex({
+		
+		statusUpdate: { kind: Extract.choice("error"), message: Extract.STRING },
+		
+		lobbyJoined: { promoted: Extract.BOOL },
+		promoted: Extract.NONE,
 		
 		gameStarted: Extract.NONE,
 		gameTerminated: Extract.NONE,
@@ -47,11 +44,12 @@ class Client {
 		
 		startGame: Extract.NONE,
 		drawingSubmission: { drawing: Extract.STRING },
-		voteSubmission: { forId: Extract.NUMBER },
+		//voteSubmission: { forId: Extract.NUMBER },
+		voteSubmission: { forName: Extract.STRING },
 		
 	}, (data: string) => this.ws?.send(data));
 	
-	voteChoices: Array<string> = [];
+	//voteChoices: Array<string> = [];
 	
 	private ws: WebSocket | undefined;
 	
@@ -60,24 +58,10 @@ class Client {
 	
 	constructor() {
 		
-		this.inc.listen("gameStarted", () => {
-			this.phase.set(Phase.START);
-		});
-		this.inc.listen("drawingStarted", () => {
-			this.phase.set(Phase.DRAW);
-		});
-		this.inc.listen("votingStarted", ({ choices }: { choices: Array<string> }) => {
-			this.voteChoices = choices;
-			this.phase.set(Phase.VOTE);
-		});
-		this.inc.listen("scoringStarted", () => {
-			this.phase.set(Phase.SCORE);
-		})
-		this.inc.listen("gameTerminated", () => {
-			//this.state.set(Connection.CLOSED);
-			//this.ws.
-			this.phase.set(Phase.NONE);
-		});
+		/*this.inc.listen("promoted", () => {
+			this.promoted.emit();
+		});*/
+		
 		
 	}
 	connect(addr: string) {
@@ -88,7 +72,7 @@ class Client {
 		this.ws.onopen = () => {
 			console.log("WebSocket connection opened!");
 			this.state.set(Connection.OPEN);
-			this.phase.set(Phase.LOBBY);
+			//this.phase.set(Phase.LOBBY);
 		};
 		this.ws.onclose = () => {
 			console.warn("WebSocket connection closed.");

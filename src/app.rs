@@ -40,7 +40,7 @@ fn serialize(value: &impl Serialize) -> Result<String, ()> {
 	match serde_json::to_string(value) {
 		Ok(string) => Ok(string),
 		Err(err) =>	{
-			log::error!("Serialization error: {err}");
+			log::error!("serialization error: {err}");
 			Err(())
 		}
 	}
@@ -49,7 +49,7 @@ fn deserialize<'a, T: Deserialize<'a>>(str: &'a str) -> Result<T, ()> {
 	match serde_json::from_str::<T>(str) {
 		Ok(value) => Ok(value),
 		Err(err) => {
-			log::error!("Deserialization error: {err}");
+			log::error!("deserialization error: {err}");
 			Err(())
 		}
 	}
@@ -64,11 +64,11 @@ async fn next_string(receiver: &mut WebSocketReceiver) -> Option<String> {
 				return None;
 			},
 			Ok(message) => {
-				log::warn!("Invalid WebSocket message: {message:?}");
+				log::warn!("invalid websocket message: {message:?}");
 				//break None;
 			}
 			Err(err) => {
-				log::error!("WebSocket receive: {err}");
+				log::error!("websocket receive: {err}");
 				return None;
 			},
 		}
@@ -86,6 +86,9 @@ async fn send(sender: &mut WebSocketSender, message: Message) -> Result<(), ()> 
 		}
 	}
 }
+async fn serialize_send(sender: &mut WebSocketSender, message: impl Serialize) -> Result<(), ()> {
+	send(sender, Message::Text(serialize(&message)?)).await
+}
 
 /*fn forward(receiver: WebSocketReceiver, ) {
 	
@@ -102,6 +105,34 @@ fn deserialize_option<'a, T: Deserialize<'a>>(str: Option<&'a str>) -> Option<T>
 //
 
 
+/*struct Presence {
+	sender: WebSocketSender,
+	handle: JoinHandle<()>,
+	//message: std::marker::PhantomData<M>
+}
+impl Presence {
+	
+	fn new(sender: WebSocketSender, handle: JoinHandle<()>) -> Self {
+		Self { sender, handle, } //message: std::marker::PhantomData }
+	}
+	
+	/*async fn send<M: Serialize>(&mut self, message: &M) -> Result<(), ()> {
+		serialize_send(&mut self.sender, message).await
+	}*/
+	
+}
+
+struct Host {
+	presence: Presence,
+}
+struct Player {
+	presence: Presence,
+	name: String,
+}
+impl Host {
+	
+}*/
+
 struct HostPresence {
 	sender: WebSocketSender,
 	handle: JoinHandle<()>,
@@ -113,12 +144,13 @@ struct PlayerPresence {
 }
 impl HostPresence {
 	async fn send(presence: &mut HostPresence, message: &HostMessageOut<'_>) -> Result<(), ()> {
-		send(&mut presence.sender, Message::Text(serialize(message)?)).await
+		serialize_send(&mut presence.sender, message).await
 	}
 }
 impl PlayerPresence {
+	
 	async fn send(presence: &mut PlayerPresence, message: &PlayerMessageOut<'_>) -> Result<(), ()> {
-		send(&mut presence.sender, Message::Text(serialize(message)?)).await
+		serialize_send(&mut presence.sender, message).await
 	}
 	async fn send_all<'a, I>(presences: I, message: &PlayerMessageOut<'_>) -> Result<(), ()>
 	where I: Iterator<Item=(usize, &'a mut PlayerPresence)>
@@ -138,6 +170,12 @@ impl PlayerPresence {
 		
 		Ok(())
 	}
+	
+	/*fn as_remote() -> RemotePlayer {
+		RemotePlayer {
+			id: self.id,
+		}
+	}*/
 	
 }
 
@@ -170,6 +208,7 @@ struct Room {
 	id: RoomId,
 	handle: RoomHandle,
 	receiver: mpsc::Receiver<RoomEvent>,
+	timeout: Option<tokio::task::JoinHandle<()>>,
 	
 	host: HostPresence,
 	players: Slab<PlayerPresence>,
@@ -177,9 +216,6 @@ struct Room {
 	round: usize,
 	state: RoomState,
 	names: Vec<&'static str>,
-	
-	timeout: Option<tokio::task::JoinHandle<()>>
-	
 }
 impl Room {
 	
@@ -190,25 +226,24 @@ impl Room {
 		unsafe { std::str::from_utf8_unchecked(id) }
 	}
 	
-	/*fn vip_id(&self) -> Option<PlayerId> {
-		for (id, _) in self.players.iter() {
-			return Some(id as u8);
-		}
-		None
-	}*/
-	fn set_vip_id() {
-		
-	}
-	fn get_player<'a>(&'a self, id: PlayerId) -> Option<&PlayerPresence> {
+	/*fn player<'a>(&'a self, id: PlayerId) -> Option<&PlayerPresence> {
 		self.players.get(id as usize)
+	}
+	fn player_as_remote<'a>(&'a self, id: PlayerId) -> Option<RemotePlayer> {
+		self.players.get(id as usize).map(|presence| RemotePlayer {
+			id,
+			name: &presence.name
+		})
+	}*/
+	
+	fn is_lobby(&self) -> bool {
+		return matches!(self.state, RoomState::Lobby { vip_id: _ });
 	}
 	
 	async fn listen(mut self) {
 		
 		let join_code = &Self::id_str(&self.id).to_owned();
 		let _result = self.send_host(&HostMessageOut::LobbyCreated { join_code }).await;
-		//if let Err()
-		
 		
 		while let Some(event) = self.receiver.recv().await {
 			
@@ -222,7 +257,6 @@ impl Room {
 			}
 			
 			if let RoomState::Terminated = self.state {
-				
 				let _ = self.send_all(
 					&HostMessageOut::GameTerminated,
 					&PlayerMessageOut::GameTerminated
@@ -233,7 +267,6 @@ impl Room {
 					player.handle.abort();
 				}
 				break;
-				
 			}
 			
 		}
@@ -300,54 +333,73 @@ impl Room {
 	}
 	async fn handle_join(&mut self, socket: WebSocket, player_name: String) {
 		
-		if let RoomState::Lobby { ref mut vip_id } = self.state {
-			
-			if self.players.len() == self.players.capacity() {
-				return; // room is full
+		async fn reject(mut socket: WebSocket, message: &str) {
+			if let Ok(message) = serialize(&PlayerMessageOut::error(message)) {
+				let _ = socket.send(Message::Text(message)).await;
 			}
+		}
+		
+		let RoomState::Lobby { ref mut vip_id } = self.state else {
+			log::debug!("join rejected; game is active");
+			return reject(socket, "Game already started").await;
+		};
 			
-			let (sender, mut rx) = socket.split();
-			let player_id = self.players.vacant_key() as u8;
-			
-			let room_handle = self.handle.clone();
-			let player_handle = tokio::spawn(async move {
-				while let Some(content) = next_string(&mut rx).await {
-					if let Ok(message) = deserialize::<'_, PlayerMessageIn>(&content) {
-						let result = room_handle.send(RoomEvent::PlayerMessage { player_id, message }).await;
-						if let Err(_) = result { return; }
-					}
+		if self.players.len() == self.players.capacity() {
+			log::debug!("join rejected; game is full");
+			return reject(socket, "Game is full").await;
+		}
+		
+		let name_collision = self.players.iter().any(|(_, presence)| {
+			player_name == presence.name
+		});
+		if name_collision {
+			log::debug!("join rejected; name collision");
+			return reject(socket, "Name is taken").await;
+		}
+		
+		let (sender, mut rx) = socket.split();
+		let player_id = self.players.vacant_key() as u8;
+		let room_handle = self.handle.clone();
+		let player_handle = tokio::spawn(async move {
+			while let Some(content) = next_string(&mut rx).await {
+				if let Ok(message) = deserialize::<'_, PlayerMessageIn>(&content) {
+					let result = room_handle.send(RoomEvent::PlayerMessage { player_id, message }).await;
+					if let Err(_) = result { break; }
 				}
-				let _ = room_handle.send(RoomEvent::PlayerDrop { player_id }).await;
-			});
-			
-			self.players.insert(PlayerPresence {
-				sender,
-				handle: player_handle,
-				name: player_name.clone(),
-			});
-			
-			/* Make this player the VIP, if they're the first one in */
-			if self.players.len() == 1 {
-				*vip_id = player_id;
-				let _ = self.send_player(player_id, &PlayerMessageOut::Promoted).await;
 			}
-			
-			log::info!("[{}] Player Joined: {player_name}", Room::id_str(&self.id));
-			let _result = self.send_host(&HostMessageOut::PlayerJoined {
-				player_id,
-				player_name
-			}).await;
-			
-		} else {
-			
-		} // log or something?
+			let _ = room_handle.send(RoomEvent::PlayerDrop { player_id }).await;
+		});
 		
+		/* Make this player the VIP if they're the first one in */
+		let promoted = self.players.is_empty();
+		if promoted { *vip_id = player_id }
 		
+		self.players.insert(PlayerPresence {
+			sender,
+			handle: player_handle,
+			name: player_name.clone(),
+		});
+		
+		log::info!("[{}] Player Joined: {player_name}", Room::id_str(&self.id));
+		let _ = self.send_player(player_id, &PlayerMessageOut::LobbyJoined { promoted }).await;
+		let _result = self.send_host(&HostMessageOut::PlayerJoined {
+			player_id,
+			player_name
+		}).await;
 		
 	}
 	async fn handle_drop(&mut self, player_id: PlayerId) {
-		//self.players.contains(id) 
-		self.players.remove(player_id as usize);
+		
+		let presence = self.players.remove(player_id as usize);
+		presence.handle.abort();
+		
+		/* If no players remain and the game is running, just end it */
+		if !self.is_lobby() && self.players.is_empty() {
+			self.terminate();
+			return;
+		}
+		
+		let _result = self.send_host(&HostMessageOut::PlayerLeft { player_id }).await;
 		
 		/* Choose a new VIP, if necessary (and possible) */
 		if let RoomState::Lobby { ref mut vip_id } = self.state {
@@ -361,7 +413,7 @@ impl Room {
 					*vip_id = new_vip_id as u8;
 					let _ = self.send_player(
 						new_vip_id as u8,
-						&PlayerMessageOut::BecameVIP
+						&PlayerMessageOut::Promoted
 					).await;
 				}
 				
@@ -379,75 +431,101 @@ impl Room {
 			PlayerMessageIn::StartGame {} => {
 				if let RoomState::Lobby { vip_id } = self.state {
 					if player_id == vip_id {
-						self.start_game().await;
+						if self.players.len() >= MIN_PLAYER_COUNT {
+							self.start_game().await;
+						} else {
+							let _ = self.send_player(player_id, &PlayerMessageOut::error("Not enough players")).await;
+						}
 					}
 				}
 			},
 			PlayerMessageIn::DrawingSubmission { drawing } =>
 				self.handle_drawing_submission(player_id, &drawing).await,
-			PlayerMessageIn::VoteSubmission { for_id } =>
-				self.handle_vote_submission(player_id, for_id).await
+			PlayerMessageIn::VoteSubmission { for_name } =>
+				self.handle_vote_submission(player_id, for_name).await
 		}
 	}
 	
 	async fn handle_drawing_submission(&mut self, player_id: PlayerId, drawing: &str) {
 		
-		if let RoomState::Draw { mut submitted } = self.state {
-			if let Some(false) = submitted.get(player_id as usize) {
+		let RoomState::Draw { ref mut submitted } = self.state else {
+			log::debug!("received a drawing while not in drawing state [{player_id}]");
+			return;
+		};
+		let Some(false) = submitted.get(player_id as usize) else {
+			log::debug!("duplicate drawing received [{player_id}]");
+			return;
+		};
+		
+		submitted[player_id as usize] = true;
+		let all_submitted = self.players.iter().all(|(id, _)| {
+			matches!(submitted.get(id), Some(true))
+		});
+		
+		let result = self.send_host(&HostMessageOut::DrawingSubmitted {
+			player_id,
+			drawing
+		}).await;
+		match result {
+			Err(_) => {}, // handle somehow?
+			Ok(_) => {
 				
-				submitted[player_id as usize] = true;
-				let all_submitted = self.players.iter().all(|(id, _)| {
-					matches!(submitted.get(id), Some(true))
-				});
-				
-				let result = self.send_host(&HostMessageOut::DrawingSubmitted {
-					player_id,
-					drawing
-				}).await;
-				match result {
-					Err(_) => {},
-					Ok(_) => {
-						
-						if all_submitted {
-							self.start_voting().await;
-						} else {
-							// todo
-						}
-						
-					}
+				if all_submitted {
+					self.start_voting().await;
+				} else {
+					// todo
 				}
+				
 			}
-		} // log?
+		}
 		
 	}
-	async fn handle_vote_submission(&mut self, player_id: PlayerId, for_id: PlayerId) {
+	async fn handle_vote_submission(&mut self, player_id: PlayerId, for_name: String) {
+		
+		let Some(for_id) = self.players.iter().find_map(|(id, presence)| {
+			if presence.name == for_name {
+				Some(id as u8)
+			} else {
+				None
+			}
+		}) else {
+			log::warn!("couldn't find player with name for vote: [{player_id} -> {for_name}]");
+			return;
+		};
 		
 		if player_id == for_id {
-			log::warn!("[{}] Self Vote Attempted: {}", Self::id_str(&self.id), player_id);
+			log::warn!("self vote attempted [{player_id} -> {for_id}]"); //: {}", Self::id_str(&self.id), player_id);
+			return;
+		}
+		if !self.players.contains(for_id as usize) {
+			log::warn!("attempted to vote for player that is not present [{player_id} -> {for_id}]");
 			return;
 		}
 		
-		if let RoomState::Vote { mut votes } = self.state {
-			if let Some(None) = votes.get(player_id as usize) {
-				
-				votes[player_id as usize] = Some(for_id);
-				let all_submitted = self.players.iter().all(|(id, _)| {
-					matches!(votes.get(id), Some(Some(_)))
-				});
-				
-				let _result = self.send_host(&HostMessageOut::VoteSubmitted {
-					player_id,
-					for_id
-				}).await; // Error check?
-				
-				if all_submitted {
-					self.start_scoring().await;
-				} else {
-					// tell the client something?
-				}
-				
-			}
-		} // log?
+		let RoomState::Vote { ref mut votes } = self.state else {
+			log::warn!("received a vote while not in voting state [{player_id} -> {for_id}]");
+			return;
+		};
+		let Some(None) = votes.get(player_id as usize) else {
+			log::warn!("duplicate vote received [{player_id} -> {for_id}]");
+			return;
+		};
+		
+		votes[player_id as usize] = Some(for_id);
+		let all_submitted = self.players.iter().all(|(id, _)| {
+			matches!(votes.get(id), Some(Some(_)))
+		});
+		
+		let _result = self.send_host(&HostMessageOut::VoteSubmitted {
+			player_id,
+			for_id
+		}).await; // Error check?
+		
+		if all_submitted {
+			self.start_scoring().await;
+		} else {
+			// tell the client something?
+		}
 		
 	}
 	
@@ -485,10 +563,13 @@ impl Room {
 			self.round += 1;
 		}
 		
+		let Some(&goblin_name) = self.names.get(self.round) else {
+			self.start_finale().await; // last round just ended, we're done
+			return;
+		};
+		
 		self.state = RoomState::Draw { submitted: [false; MAX_PLAYER_COUNT] };
 		self.set_timeout(TimeoutKind::Draw, DRAW_DURATION);
-		
-		let goblin_name = self.names.get(self.round).unwrap_or(&"Defaultio");
 		let _result = self.send_all(
 			&HostMessageOut::DrawingStarted { goblin_name },
 			&PlayerMessageOut::DrawingStarted
@@ -498,19 +579,21 @@ impl Room {
 	async fn start_voting(&mut self) {
 		
 		let choices = &{
-			if let RoomState::Draw { submitted } = self.state {
-				self.players.iter().filter_map(|(id, presence)| {
-					if matches!(submitted.get(id), Some(true)) {
-						Some(presence.name.clone())
-					} else {
-						None
-					}
-				}).collect()
-			} else {
-				// this shouldn't happen
-				//panic!();
-				todo!();
-			}
+			
+			let RoomState::Draw { submitted } = self.state else {
+				log::error!("starting scoring from a state other than draw");
+				self.terminate();
+				return;
+			};
+			
+			self.players.iter().filter_map(|(id, presence)| {
+				if matches!(submitted.get(id), Some(true)) {
+					Some(presence.name.clone())
+				} else {
+					None
+				}
+			}).collect::<Vec<_>>()
+			
 		};
 		
 		self.state = RoomState::Vote { votes: [None; MAX_PLAYER_COUNT ] };
@@ -527,27 +610,33 @@ impl Room {
 	}
 	async fn start_scoring(&mut self) {
 		
-		let mut vote_counts = [0; MAX_PLAYER_COUNT];
-		if let RoomState::Vote { votes } = self.state {
-			for vote in votes {
-				if let Some(vote) = vote {
-					if let Some(vote_count) = vote_counts.get_mut(vote as usize) {
-						*vote_count += 1;
-					}
+		let RoomState::Vote { votes: _ } = self.state else {
+			log::error!("starting scoring from a state other than vote");
+			self.terminate();
+			return;
+		};
+		
+		/*let mut vote_counts = [0; MAX_PLAYER_COUNT];
+		for vote in votes {
+			if let Some(vote) = vote {
+				if let Some(vote_count) = vote_counts.get_mut(vote as usize) {
+					*vote_count += 1;
 				}
 			}
-		} else {
-			// this shouldn't happen
-			todo!();
-		}
+		}*/
 		
 		self.state = RoomState::Score;
 		self.set_timeout(TimeoutKind::Score, SCORE_DURATION);
-		let _ = self.send_all(
-			&HostMessageOut::ScoringStarted { vote_counts },
+		
+		//let votes = votes.map(|vote| vote.unwrap_or(PlayerId::MAX));
+		let _result = self.send_all(
+			&HostMessageOut::ScoringStarted,
 			&PlayerMessageOut::ScoringStarted
 		).await;
 		
+	}
+	async fn start_finale(&mut self) { // todo
+		self.terminate();
 	}
 	
 }
@@ -563,6 +652,21 @@ impl App {
 	pub fn new() -> Self {
 		Self { handles: Arc::new(DashMap::new()) }
 	}
+	pub fn parse_room_id(join_code: &str) -> Option<RoomId> {
+		
+		if join_code.len() != ROOM_ID_LEN {
+			//error!("Invalid game id: {join_code}");
+			return None;
+		}
+		
+		join_code
+			.as_bytes()
+			.first_chunk::<ROOM_ID_LEN>()
+			.map(|id| id.to_owned())
+			//.and_then(move |id| self.handles.get(id))
+		
+	}
+	
 	
 	fn generate_room_id(&self) -> Option<RoomId> {
 		
@@ -580,20 +684,6 @@ impl App {
 		
 		log::error!("Couldn't generate a valid room ID.");
 		None
-		
-	}
-	pub fn parse_room_id(join_code: &str) -> Option<RoomId> {
-		
-		if join_code.len() != ROOM_ID_LEN {
-			//error!("Invalid game id: {join_code}");
-			return None;
-		}
-		
-		join_code
-			.as_bytes()
-			.first_chunk::<ROOM_ID_LEN>()
-			.map(|id| id.to_owned())
-			//.and_then(move |id| self.handles.get(id))
 		
 	}
 	
@@ -624,9 +714,7 @@ impl App {
 				while let Some(content) = next_string(&mut host_rx).await {
 					if let Ok(message) = deserialize::<'_, HostMessageIn>(&content) {
 						let result = handle.send(RoomEvent::HostMessage { message }).await;
-						if result.is_err() {
-							break;
-						}
+						if result.is_err() { break; }
 					}
 				}
 				let _ = handle.send(RoomEvent::Terminate).await;
@@ -660,58 +748,6 @@ impl App {
 		}
 	}
 	
-	
 }
-
-
-/*struct ClientMap {
-	senders: DashMap<ClientId, WebSocketSender>,
-	//phantom: std::marker::PhantomData
-}
-impl ClientMap {
-	
-	fn new() -> Self {
-		Self {
-			senders: DashMap::new(),
-			//phantom: std::marker::PhantomData
-		}
-	}
-	
-	fn has(&self, id: &ClientId) -> bool {
-		self.senders.contains_key(id)
-	}
-	
-	fn add(&self, id: ClientId, sender: WebSocketSender) {
-		self.senders.insert(id, sender);
-	}
-	fn remove(&self, id: &ClientId) {
-		self.senders.remove(id);
-	}
-	
-	async fn send_string(&self, id: &ClientId, content: String) -> Result<(), ()> {
-		match self.senders.get_mut(id) {
-			None => {
-				warn!("Attempted to send to invalid client: {id}");
-				Err(())
-			},
-			Some(mut sender) => {
-				match sender.send(Message::Text(content)).await {
-					Err(_) => Err(()), // log?
-					Ok(_) => Ok(())
-				}
-			}
-		}
-	}
-	async fn send<M>(&self, id: &ClientId, message: &M) -> Result<(), ()>
-	where M: Send + Sync + Serialize
-	{
-		if let Ok(string) = serialize(message) {
-			self.send_string(id, string).await
-		} else {
-			Err(())
-		}
-	}
-	
-}*/
 
 

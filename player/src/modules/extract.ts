@@ -9,7 +9,7 @@ export type Extracted<T> = T extends Extractor<infer X> ? X : never;
 
 export default class Extract {
 	
-	static NONE: ExtractorMethod<any> = (value: any) => undefined;
+	static NONE: ExtractorMethod<void> = () => {};
 	static ANY: ExtractorMethod<any> = (value: any) => value;
 	static BOOL = Extract.simple<boolean>("boolean");
 	static NUMBER = Extract.simple<number>("number");
@@ -24,7 +24,7 @@ export default class Extract {
 			}
 		};
 	}
-	static optional<T>(extractor: Extractor<T>): Extractor<T | undefined> {
+	static optional<T>(extractor: Extractor<T>): ExtractorMethod<T | undefined> {
 		return (value: any) => {
 			if (value == undefined) {
 				return undefined;
@@ -33,7 +33,26 @@ export default class Extract {
 			}
 		};
 	}
-	static array<T>(extractor: Extractor<T>) {
+	static choice<T>(...choices: Array<T>): ExtractorMethod<T> {
+		return (value: any) => {
+			let i = choices.indexOf(value);
+			if (i === -1)
+				throw new Error(`Extractor choice error: ${value} not found in ${choices}`);
+			else
+				return choices[i];
+		};
+	}
+	/*static choice<T>(...extractors: Array<Extractor<T>>): Extractor<T> {
+		return (value: any) => {
+			for (const extractor of extractors) {
+				try {
+					return Extract.unsafe(extractor, value)
+				} catch(e) {}
+			}
+			throw new Error(`Extractor choice error: ${value} matches no paths.`);
+		};
+	}*/
+	static array<T>(extractor: ExtractorMethod<T>) {
 		return (value: any) => {
 			if (Array.isArray(value)) {
 				return value.map((value) => Extract.unsafe(extractor, value));
@@ -42,7 +61,7 @@ export default class Extract {
 			}
 		}
 	}
-	static validate<T>(extractor: Extractor<T>, validator: (value: T) => boolean, message: string = "[unspecified]") {
+	static validate<T>(extractor: Extractor<T>, validator: (value: T) => boolean, message: string = "[unspecified]"): ExtractorMethod<T> {
 		return (value: any) => {
 			let extracted = Extract.unsafe(extractor, value);
 			if (validator(extracted))
@@ -92,6 +111,7 @@ function encode<I extends Index>() {
 //type IncomingMessage<I, K extends keyof I, P> = { peer: P, data: Extracted<I[K]> };
 //type IncomingSignal<I, K extends keyof I, P> = Signal<IncomingMessage<, P>;
 type IncomingMessage<I, K extends keyof I, _> = Extracted<I[K]>;
+type ReceiveCallback<I, K extends keyof I, _> = ((value: IncomingMessage<I, K, _>) => any);
 
 type Index = { [key: string]: Extractor<any> }
 export class ReceiveIndex<I extends Index, P = never> {
@@ -105,11 +125,14 @@ export class ReceiveIndex<I extends Index, P = never> {
 	private signal<K extends keyof I>(key: K): Signal<IncomingMessage<I, K, P>> {
 		return this.signals[key] ??= new Signal();
 	}
-	listen<K extends keyof I>(key: K, callback: ((value: IncomingMessage<I, K, P>) => any)) {
+	listen<K extends keyof I>(key: K, callback: ReceiveCallback<I, K, P>) {
 		this.signal(key).listen(callback);
 	}
-	drop<K extends keyof I>(key: K, callback: ((value: IncomingMessage<I, K, P>) => any)) {
+	drop<K extends keyof I>(key: K, callback: ReceiveCallback<I, K, P>) {
 		this.signal(key).drop(callback);
+	}
+	subscribe<K extends keyof I>(key: K, callback: ReceiveCallback<I, K, P>): () => void {
+		return this.signal(key).subscribe(callback);
 	}
 	
 	handle(content: string) {
@@ -148,11 +171,13 @@ export class SendIndex<I extends Index> {
 	constructor(_: I, sender: (encoded: string) => any) {
 		this.sender = sender;
 	}
-	encode<K extends keyof I>(key: K, data: Extracted<I[K]>): string {
-		return JSON.stringify({ key, data });
+	encode<K extends keyof I>(type: K, data: Extracted<I[K]>): string {
+		return data == undefined ? 
+			JSON.stringify({ type }) :
+			JSON.stringify({ type, data });
 	}
-	send<K extends keyof I>(key: K, data: Extracted<I[K]>) {
-		this.sender(this.encode(key, data));
+	send<K extends keyof I>(type: K, data: Extracted<I[K]>) {
+		this.sender(this.encode(type, data));
 	}
 	
 }

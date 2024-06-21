@@ -16,7 +16,6 @@ pub mod goblin_names;
 pub mod app;
 
 use app::App;
-
 //use std::sync::Arc;
 use axum::{
 	http::StatusCode,
@@ -34,13 +33,8 @@ use serde::Deserialize;
 use crate::types::RoomId;
 
 
-#[derive(Deserialize)]
-struct JoinQueryFields {
-	code: String,
-	name: String
-}
-
-
+const PORT: &str = "5050";
+const IP: &str = "0.0.0.0";
 
 #[tokio::main]
 async fn main() {
@@ -52,6 +46,7 @@ async fn main() {
 		.format_timestamp(None)
 		.init();
 	
+	use tokio::net::TcpListener;
 	use axum::{
 		Router,
 		routing::get
@@ -63,17 +58,24 @@ async fn main() {
 		.nest_service("/", ServeDir::new("player/dist"))
 		.with_state(App::new());
 	
-	log::info!("Listening!");
-	let listener = tokio::net::TcpListener::bind("0.0.0.0:5050").await.unwrap();
-	axum::serve(listener, router).await.expect("Axum server error");
+	let listener = TcpListener::bind(format!("{IP}:{PORT}"))
+		.await
+		.expect("server error");
+	axum::serve(listener, router)
+		.await
+		.expect("axum error");
 	
 }
 
-
-
+#[derive(Deserialize)]
+struct JoinQueryFields {
+	code: String,
+	name: String
+}
 
 //#[debug_handler]
 async fn ws_upgrade_host(State(app): State<App>, ws: WebSocketUpgrade) -> Response {
+	
 	
 	async fn accept_host(app: App, ws: WebSocket) {
 		app.accept_host(ws).await;

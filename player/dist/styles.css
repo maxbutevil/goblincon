@@ -1,31 +1,99 @@
+
 * {
     margin: 0;
 }
 body {
+    
+    font-family: Arial;
+    
     display: flex;
     justify-content: center;
+    
+    background-color: #eeeee8;
+    
 }
-.tab.landing {
+input {
+    padding: 2px;
+}
+
+.tab {
+    justify-content: center;
     display: flex;
     flex-flow: column nowrap;
     gap: 10px;
+    margin-top: 20px;
 }
-
+.tab#landing {
+    
+}
+.tab#landing input {
+    margin-top: 2px;
+}
+.tab#landing button {
+    margin-top: 6px;
+}
+.tab#landing .join-message {
+    text-align: center;
+    font-weight: bold;
+}
+.tab#landing .join-message.error {
+    color: red;
+}
 #code-input {
     text-transform: uppercase;
 }
+.tab#lobby {
+    
+}
+.tab#draw {
+    
+}
 
-
+#drawpad {
+    width: 75vmin;
+    border: 3px solid black;
+    display: flex;
+    flex-flow: column nowrap;
+}
+#drawpad canvas {
+    aspect-ratio: 1;
+    width: 100%;
+    height: auto;
+    touch-action: none; /* lets player draw on mobile */
+    background-color: white;
+}
+#drawpad .button-row {
+    display: flex;
+    flex-flow: row nowrap;
+}
 #drawpad #color-select {
-	display: flex;
-	flex-flow: row nowrap;
+    border-bottom: 3px solid black;
+}
+#drawpad #draw-utils {
+    border-top: 3px solid black;
+}
+#drawpad button {
+    flex: 1;
+	aspect-ratio: 1;
+    border: none;
+    margin: none;
+}
+#drawpad #button-spacer {
+    
+}
+#drawpad #submit-button {
+    flex: 4;
+    aspect-ratio: 4 / 1;
+    background-color: green;
 }
 
-#drawpad .color-select-button {
-	
-	flex: 1;
-	aspect-ratio: 1;
-	
-	border: none;
-	
+
+.tab.vote {
+    
 }
+.tab.score {
+    
+}
+
+
+

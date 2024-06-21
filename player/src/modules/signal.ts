@@ -8,7 +8,7 @@ type Callback<T> = (() => any) | ((arg: T) => any);
 //type Cleanup = () =>
 //type Drop = () => void;
 
-export default class Signal<T> extends Set<Callback<T>> {
+export default class Signal<T = void> extends Set<Callback<T>> {
 	
 	public static group(...callbacks: Array<() => void>): () => void {
 		return () => {

@@ -11,17 +11,17 @@ func _init():
 
 func _ready():
 	#Client.
-	join_code_label.set_text(Client.get_join_code());
+	join_code_label.set_text(Client.join_code);
 	Client.player_joined.connect(
-		func(id: int, name: String):
+		func(id: int, player: Player):
 			var label = Label.new();
-			label.set_text(name);
+			label.set_text(player.name);
 			container.add_child(label);
 			labels[id] = label;
 	);
-	Client.player_left.connect(
-		func(id: int):
-			container.remove_child(labels[id]);
-			labels.erase(id);
-	);
+	#Client.player_left.connect(
+		#func(id: int):
+			#container.remove_child(labels[id]);
+			#labels.erase(id);
+	#);
 

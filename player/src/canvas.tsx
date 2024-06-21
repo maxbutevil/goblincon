@@ -8,6 +8,13 @@ export default class Canvas {
 	
 	ctx: CanvasRenderingContext2D;
 	
+	//ctxs: Array<CanvasRenderingContext2D>;
+	//layer: number = 0;
+	
+	
+	/*get ctx(): CanvasRenderingContext2D {
+		return this.ctxs[this.layer];
+	}*/
 	get element(): HTMLCanvasElement {
 		return this.ctx.canvas;
 	}
@@ -22,6 +29,13 @@ export default class Canvas {
 	}
 	get clientHeight() {
 		return this.element.clientHeight;
+	}
+	
+	static createElement(sourceWidth: number, sourceHeight: number): HTMLCanvasElement {
+		let canvasElement: HTMLCanvasElement = document.createElement("canvas");
+		canvasElement.width = sourceWidth;
+		canvasElement.height = sourceHeight;
+		return canvasElement;
 	}
 	
 	/*
@@ -85,11 +99,17 @@ export default class Canvas {
 		
 	}
 	
+	map(x: number, y: number): Point {
+		return [this.mapX(x), this.mapY(y)];
+	}
 	mapX(x: number): number {
 		return x * this.sourceWidth / this.clientWidth;
 	}
 	mapY(y: number): number {
 		return y * this.sourceHeight / this.clientHeight;
+	}
+	unmap(x: number, y: number): Point {
+		return [this.unmapX(x), this.unmapY(y)];
 	}
 	unmapX(x: number): number {
 		return x * this.clientWidth / this.sourceWidth;
@@ -134,6 +154,12 @@ export default class Canvas {
 	getStrokeStyle(): CanvasColorStyle {
 		return this.ctx.strokeStyle;
 	}
+	getLineWidth(): number {
+		return this.ctx.lineWidth;
+	}
+	getOperation(): GlobalCompositeOperation {
+		return this.ctx.globalCompositeOperation;
+	}
 	setFill(r: number, g: number, b: number, a = 1): void {
 		this.setFillStyle(Canvas.rgbaToStyle(r, g, b, a));
 	}
@@ -152,7 +178,12 @@ export default class Canvas {
 	setLineCap(cap: CanvasLineCap): void {
 		this.ctx.lineCap = cap;
 	}
-	
+	setLineJoin(join: CanvasLineJoin): void {
+		this.ctx.lineJoin = join;
+	}
+	setOperation(operation: GlobalCompositeOperation): void {
+		this.ctx.globalCompositeOperation = operation;
+	}
 	
 	/*protected withoutTransform<T>(callback: () => T): T {
 		
@@ -190,6 +221,7 @@ export default class Canvas {
 		//this.useFill();
 		this.ctx.fillRect(x, y, w, h);
 	}
+	/*
 	strokeRect(x: number, y: number, w: number, h: number): void {
 		//this.useStroke();
 		this.ctx.strokeRect(x, y, w, h);
@@ -200,10 +232,8 @@ export default class Canvas {
 	}
 	
 	private pathEllipse(x: number, y: number, w: number, h: number): void {
-		
 		this.ctx.beginPath();
 		this.ctx.ellipse(x, y, w, h, 0, 0, 6.3); // 6.3 = a bit over 2pi
-		
 	}
 	fillEllipse(x: number, y: number, w: number, h = w): void {
 		this.pathEllipse(x, y, w, h);
@@ -218,6 +248,7 @@ export default class Canvas {
 		this.ctx.fill();
 		this.ctx.stroke();
 	}
+	*/
 	
 	line(x1: number, y1: number, x2: number, y2: number): void {
 		this.ctx.beginPath();
@@ -225,5 +256,83 @@ export default class Canvas {
 		this.ctx.lineTo(x2, y2);
 		this.ctx.stroke();
 	}
+	path(path: Path) {
+		//this.setStrokeStyle(path.style);
+		//this.setLineWidth(path.lineWidth);
+		//this.ctx.lineJoin = "round";
+		/*for (const [[px, py], [x, y]] of path.segments()) {
+			this.line(px, py, x, y);
+		}*/
+		
+		this.ctx.beginPath();
+		this.ctx.moveTo(...path.start()!);
+		for (const [x, y] of path.points()) {
+			this.ctx.lineTo(x, y);
+			//this.ctx.stroke();
+			//this.ctx.begin
+			//this.ctx.moveTo(x, y);
+		}
+		this.ctx.stroke();
+	}
+	
+	getImageData(x = 0, y = 0, w = this.sourceWidth, h = this.sourceHeight): ImageData {
+		return this.ctx.getImageData(x, y, w, h);
+	}
+	putImageData(data: ImageData, x = 0, y = 0): void {
+		this.ctx.putImageData(data, x, y);
+	}
+	
+	
 	
 }
+
+export type Point = [number, number];
+
+export class Path {
+	
+	//style: CanvasColorStyle;
+	//lineWidth: number;
+	pointData: Array<number> = [];
+	
+	/*constructor(style: CanvasColorStyle, lineWidth: number) {
+		this.style = style;
+		this.lineWidth = lineWidth;
+		//this.pointData = start.slice();
+	}*/
+	*points(): Iterable<Point> {
+		for (let i = 0; i < this.pointData.length; i += 2)
+			yield [this.pointData[i], this.pointData[i + 1]];
+	}
+	*segments(): Iterable<[Point, Point]> {
+		let prev: Point | undefined;
+		for (const point of this.points())
+			if (prev == undefined)
+				prev = point;
+			else
+				yield [prev, prev = point];
+	}
+	
+	length(): number {
+		return Math.floor(this.pointData.length/2);
+	}
+	isEmpty(): boolean {
+		return this.pointData.length < 2;
+	}
+	
+	start(): Point | undefined {
+		if (this.isEmpty()) return;
+		return [this.pointData[0], this.pointData[1]];
+	}
+	end(): Point | undefined {
+		if (this.isEmpty()) return;
+		return [this.pointData.at(-2)!, this.pointData.at(-1)!];
+	}
+	
+	push(x: number, y: number) {
+		this.pointData.push(x);
+		this.pointData.push(y);
+	}
+	
+	
+}
+

@@ -10,7 +10,7 @@ func _init():
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	opened.connect(func(): name_label.set_text(Client.get_goblin_name()));
+	opened.connect(func(): name_label.set_text(Client.current_round.goblin_name));
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
