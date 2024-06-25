@@ -16,8 +16,17 @@ input {
     padding: 2px;
 }
 
+.status {
+    text-align: center;
+    font-weight: bold;
+}
+.status.error {
+    color: darkred;
+}
+
 .tab {
     justify-content: center;
+    align-content: center;
     display: flex;
     flex-flow: column nowrap;
     gap: 10px;
@@ -32,13 +41,7 @@ input {
 .tab#landing button {
     margin-top: 6px;
 }
-.tab#landing .join-message {
-    text-align: center;
-    font-weight: bold;
-}
-.tab#landing .join-message.error {
-    color: red;
-}
+
 #code-input {
     text-transform: uppercase;
 }
@@ -50,12 +53,13 @@ input {
 }
 
 #drawpad {
-    width: 75vmin;
+    
+    height: 90vmin;
     border: 3px solid black;
     display: flex;
     flex-flow: column nowrap;
 }
-#drawpad canvas {
+#drawpad #canvas {
     aspect-ratio: 1;
     width: 100%;
     height: auto;

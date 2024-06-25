@@ -4,10 +4,7 @@ extends Node2D
 @onready var sprite: Sprite2D = $Sprite;
 @onready var name_label: Label = $NameLabel;
 
-static func create(player: Player) -> PlayerIcon:
-	var icon = preload("res://Scenes/Instances/player_icon.tscn").instantiate();
-	icon.set_name(player.name);
-	return icon;
+
 
 func _ready():
 	_target_position = position;
@@ -65,7 +62,7 @@ func slide_to(new_target: Vector2, duration:= BASE_TRANSLATE_TIME):
 	position_tween.tween_property(target, "position", _target_position, duration);
 
 
-func _interpolate_to_color(color : Color, duration:= BASE_MODULATE_TIME):
+func _interpolate_to_color(color: Color, duration:= BASE_MODULATE_TIME):
 	color_tween = _replace_tween(color_tween);
 	color_tween.tween_property(target, "modulate", color, duration);
 func set_target_color(color:= Color.WHITE, duration:= BASE_MODULATE_TIME):
@@ -75,26 +72,26 @@ func set_target_color(color:= Color.WHITE, duration:= BASE_MODULATE_TIME):
 	else:
 		modulate = _target_color;
 		modulate.a = 0.0;
-func _sanitize_highlight_color(color : Color):
+func _sanitize_highlight_color(color: Color):
 	return Color(
 		color.r if color.r > 0.01 else 0.01,
 		color.g if color.g > 0.01 else 0.01,
 		color.b if color.g > 0.01 else 0.01,
 	);
-func highlight(color : Color, duration:= BASE_MODULATE_TIME):
+func highlight(color: Color, duration:= BASE_MODULATE_TIME):
 	set_target_color(_target_color * _sanitize_highlight_color(color), duration);
-func unhighlight(color : Color, duration:= BASE_MODULATE_TIME):
+func unhighlight(color: Color, duration:= BASE_MODULATE_TIME):
 	set_target_color(_target_color / _sanitize_highlight_color(color), duration);
-func highlight_from(initial_color : Color, target_color : Color, duration:= BASE_MODULATE_TIME):
-	var color : Color = _sanitize_highlight_color(target_color) / _sanitize_highlight_color(initial_color);
+func highlight_from(initial_color: Color, target_color: Color, duration:= BASE_MODULATE_TIME):
+	var color: Color = _sanitize_highlight_color(target_color) / _sanitize_highlight_color(initial_color);
 	set_target_color(_target_color * color, duration);
-func blink(color : Color, duration:= BASE_BLINK_TIME):
+func blink(color: Color, duration:= BASE_BLINK_TIME):
 	const BLINK_RAMP:= 0.3;
 	color_tween = _replace_tween(color_tween);
-	color_tween.tween_property(self, "modulate", color, duration * BLINK_RAMP);
+	color_tween.tween_property(target, "modulate", color, duration * BLINK_RAMP);
 	color_tween.tween_interval(duration * (1 - BLINK_RAMP * 2));
-	color_tween.tween_property(self, "modulate", _target_color, duration * BLINK_RAMP);
-func blink_positivity(positivity : int, duration:= BASE_BLINK_TIME):
+	color_tween.tween_property(target, "modulate", _target_color, duration * BLINK_RAMP);
+func blink_positivity(positivity: int, duration:= BASE_BLINK_TIME):
 	if positivity > 0:
 		blink(COLOR_POSITIVE, duration);
 	elif positivity < 0:
@@ -112,7 +109,7 @@ func fade_in(duration:= BASE_MODULATE_TIME):
 		show();
 		_interpolate_to_color(_target_color, duration);
 
-func shake(direction : Vector2, duration:= BASE_SHAKE_TIME, count:= 3, decay:= 0.7):
+func shake(direction: Vector2, duration:= BASE_SHAKE_TIME, count:= 3, decay:= 0.7):
 	
 	var initial_position:= get_position();
 	shake_tween = _replace_tween(shake_tween).set_ease(Tween.EASE_IN);
@@ -122,10 +119,10 @@ func shake(direction : Vector2, duration:= BASE_SHAKE_TIME, count:= 3, decay:= 0
 	
 	for i in count:
 		var delta:= direction * pow(-decay, i);
-		shake_tween.tween_property(self, "position", delta - last_delta, duration/count).as_relative();
+		shake_tween.tween_property(target, "position", delta - last_delta, duration/count).as_relative();
 		last_delta = delta;
 	
-	shake_tween.tween_property(self, "position", initial_position, duration/count);
+	shake_tween.tween_property(target, "position", initial_position, duration/count);
 func shake_right(intensity:= 5.0, duration:= BASE_SHAKE_TIME):
 	shake(Vector2.RIGHT * intensity, duration);
 func shake_left(intensity:= 5.0, duration:= BASE_SHAKE_TIME):
@@ -135,28 +132,28 @@ func shake_up(intensity:= 5.0, duration:= BASE_SHAKE_TIME):
 func shake_down(intensity:= 5.0, duration:= BASE_SHAKE_TIME):
 	shake(Vector2.DOWN * intensity, duration);
 
-func set_target_scale(new_scale : Vector2, duration:= BASE_SCALE_TIME):
+func set_target_scale(new_scale: Vector2, duration:= BASE_SCALE_TIME):
 	_target_scale = new_scale;
 	scale_tween = _replace_tween(scale_tween);
 	if _target_visible:
-		scale_tween.tween_property(self, "scale", _target_scale, duration);
+		scale_tween.tween_property(target, "scale", _target_scale, duration);
 	else:
 		scale = _target_scale;
-func scale_vector_multiply(factor : Vector2, duration:= BASE_SCALE_TIME):
+func scale_vector_multiply(factor: Vector2, duration:= BASE_SCALE_TIME):
 	set_target_scale(scale * factor, duration);
-func scale_vector_divide(factor : Vector2, duration:= BASE_SCALE_TIME):
+func scale_vector_divide(factor: Vector2, duration:= BASE_SCALE_TIME):
 	set_target_scale(scale / factor, duration);
-func scale_multiply(factor : float, duration:= BASE_SCALE_TIME):
+func scale_multiply(factor: float, duration:= BASE_SCALE_TIME):
 	scale_vector_multiply(Vector2(factor, factor), duration);
-func scale_divide(factor : float, duration:= BASE_SCALE_TIME):
+func scale_divide(factor: float, duration:= BASE_SCALE_TIME):
 	scale_vector_divide(Vector2(factor, factor), duration);
-func scale_vector_pulse(factor : Vector2, duration:= 0.2):
+func scale_vector_pulse(factor: Vector2, duration:= 0.2):
 	const PULSE_RAMP:= 0.4;
 	scale_tween = _replace_tween(scale_tween);
-	scale_tween.tween_property(self, "scale", _target_scale * factor, duration * PULSE_RAMP);
+	scale_tween.tween_property(target, "scale", _target_scale * factor, duration * PULSE_RAMP);
 	scale_tween.tween_interval(duration * (1.0 - PULSE_RAMP * 2));
-	scale_tween.tween_property(self, "scale", _target_scale, duration * PULSE_RAMP);
-func scale_pulse(factor : float, duration:= 0.2):
+	scale_tween.tween_property(target, "scale", _target_scale, duration * PULSE_RAMP);
+func scale_pulse(factor: float, duration:= 0.2):
 	scale_vector_pulse(Vector2(factor, factor), duration);
 
 

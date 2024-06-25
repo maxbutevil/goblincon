@@ -2,9 +2,19 @@ extends FleetingStage
 
 @onready var container = $Container;
 
+var choices: Dictionary = {};
 
+func get_choices() -> Array[VotingChoice]:
+	return choices.values();
 
 func _ready():
+	
+	Client.scoring_started.connect(
+		func():
+			for id in Client.get_player_ids():
+				var choice = choices[id] as VotingChoice;
+				choice.set_vote_count(Client.current_round.get_vote_count(id));
+	);
 	
 	const VOTING_CHOICE:= preload("res://Scenes/Instances/voting_choice.tscn");
 	
@@ -14,6 +24,7 @@ func _ready():
 		var choice = VOTING_CHOICE.instantiate();
 		choice.initialize(drawing, name);
 		container.add_child(choice);
+		choices[id] = choice;
 
 
 

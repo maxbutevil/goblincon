@@ -38,6 +38,14 @@ func has_player(id: int) -> bool:
 	return players.has(id);
 func get_player(id: int) -> Player:
 	return players[id];
+func get_players() -> Array[Player]:
+	var _players: Array[Player] = [];
+	_players.assign(players.values());
+	return _players;
+func get_player_ids() -> Array[int]:
+	var ids: Array[int] = [];
+	ids.assign(players.keys());
+	return ids;
 
 func set_state(new_state: Connection):
 	if state != new_state:
@@ -122,8 +130,10 @@ func handle(raw: String):
 			drawing_received.emit(id);
 		"voteSubmitted":
 			var id: int = data["playerId"];
-			current_round.votes[id] = data["forId"];
-			vote_received.emit(id, data["forId"]);
+			var for_id: int = data["forId"];
+			current_round.votes[id] = for_id;
+			current_round.vote_counts[for_id] = 1 + current_round.vote_counts.get(for_id, 0);
+			vote_received.emit(id, for_id);
 		_:
 			print("Unhandled message: ", raw);
 

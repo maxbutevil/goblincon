@@ -1,10 +1,12 @@
+class_name VotingChoice
 extends Drawing
 
 var caption: String;
 
 func initialize(drawing: ImageTexture, _caption: String):
 	set_texture(drawing);
-	caption = _caption;
-
-func _ready():
-	$Caption.set_text(caption);
+	if !is_inside_tree():
+		await tree_entered;
+	$NameLabel.set_text(name);
+func set_vote_count(count: int):
+	$VoteLabel.set_text("%s votes" % count);

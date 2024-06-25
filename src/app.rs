@@ -183,6 +183,7 @@ impl PlayerPresence {
 enum TimeoutKind {
 	Start,
 	Draw,
+	DrawAutoSubmit,
 	Vote,
 	Score
 }
@@ -324,7 +325,8 @@ impl Room {
 		
 		match (kind, &self.state) {
 			(TimeoutKind::Start, RoomState::Start) => self.start_drawing().await,
-			(TimeoutKind::Draw, RoomState::Draw { submitted: _ }) => self.start_voting().await,
+			(TimeoutKind::Draw, RoomState::Draw { submitted: _ }) => self.start_drawing_autosubmit().await,
+			(TimeoutKind::DrawAutoSubmit, RoomState::Draw { submitted: _ }) => self.start_voting().await,
 			(TimeoutKind::Vote, RoomState::Vote { votes: _ }) => self.start_scoring().await,
 			(TimeoutKind::Score, RoomState::Score) => self.start_drawing().await,
 			_ => {}
@@ -573,6 +575,21 @@ impl Room {
 		let _result = self.send_all(
 			&HostMessageOut::DrawingStarted { goblin_name },
 			&PlayerMessageOut::DrawingStarted
+		).await;
+		
+	}
+	async fn start_drawing_autosubmit(&mut self) {
+		
+		if !matches!(self.state, RoomState::Draw { submitted: _ }) {
+			log::error!("started drawing autosubmit from a state other than draw");
+			self.terminate();
+			return;
+		}
+		
+		self.set_timeout(TimeoutKind::DrawAutoSubmit, DRAW_AUTOSUBMIT_DURATION);
+		let _result = self.send_all(
+			&HostMessageOut::DrawingTimeout,
+			&PlayerMessageOut::DrawingTimeout
 		).await;
 		
 	}

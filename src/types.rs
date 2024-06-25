@@ -17,7 +17,8 @@ pub const MIN_PLAYER_COUNT: usize = 2;
 pub const MAX_PLAYER_COUNT: usize = 8;
 
 pub const START_DURATION: Duration = Duration::from_secs(1);
-pub const DRAW_DURATION: Duration = Duration::from_secs(60);
+pub const DRAW_DURATION: Duration = Duration::from_secs(5);
+pub const DRAW_AUTOSUBMIT_DURATION: Duration = Duration::from_secs(4);
 pub const VOTE_DURATION: Duration = Duration::from_secs(20);
 pub const SCORE_DURATION: Duration = Duration::from_secs(10);
 
@@ -58,6 +59,7 @@ pub enum HostMessageOut<'a> {
 	GameTerminated,
 	
 	DrawingStarted { goblin_name: &'a str },
+	DrawingTimeout,
 	VotingStarted,
 	ScoringStarted,/// { votes: [u8; MAX_PLAYER_COUNT] },
 	
@@ -93,6 +95,7 @@ pub enum PlayerMessageOut<'a> {
 	GameTerminated,
 	
 	DrawingStarted,
+	DrawingTimeout,
 	VotingStarted { choices: &'a Vec<String> }, //{ choices: &'a Vec<RemotePlayer<'a>> },
 	ScoringStarted,
 	

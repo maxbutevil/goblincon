@@ -27,7 +27,7 @@ class Client {
 	
 	inc = new ReceiveIndex({
 		
-		statusUpdate: { kind: Extract.choice("error"), message: Extract.STRING },
+		statusUpdate: { kind: Extract.choice<"info" | "error">("info", "error"), message: Extract.STRING },
 		
 		lobbyJoined: { promoted: Extract.BOOL },
 		promoted: Extract.NONE,
@@ -36,6 +36,7 @@ class Client {
 		gameTerminated: Extract.NONE,
 		
 		drawingStarted: Extract.NONE,
+		drawingTimeout: Extract.NONE,
 		votingStarted: { choices: Extract.array(Extract.STRING) },
 		scoringStarted: Extract.NONE,
 		

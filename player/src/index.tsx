@@ -1,12 +1,13 @@
 
 
 
-import React, { useState } from "react";
+import React from "react";
 import client, { Connection } from "./client"
 import Signal from "./modules/signal"
 //import State from "./modules/state"
 import { Variant } from "./modules/variant"
 import Canvas, { Path } from "./canvas"
+
 
 
 let joinCode = new URLSearchParams(window.location.search).get("code") ?? "";
@@ -21,6 +22,38 @@ let votingChoices: Array<string> = [];
 		Variant<"color", { size: "small" | "big", color: string }>
 	| Variant<"erasing">;*/
 
+const statusUpdate = new Signal<StatusUpdate>();
+
+type StatusUpdate =
+	Variant<"none"> |
+	Variant<"error", { message: string }> |
+	Variant<"info", { message: string}>;
+
+function statusNone() {
+	statusUpdate.emit({ key: "none" });
+}
+function statusInfo(message: string) {
+	statusUpdate.emit({ key: "info", message });
+}
+function statusError(message: string) {
+	statusUpdate.emit({ key: "error", message });
+}
+function StatusMessage() {
+	
+	let [status, setStatus] = React.useState<StatusUpdate>({ key: "none" });
+	React.useEffect(() => {
+		return statusUpdate.subscribe((update) => {
+			setStatus(update);
+		});
+	}, []);
+	
+	if (status.key === "none" || status.message === undefined)
+		return undefined;
+	
+	let className = status.key === "error" ? "status error" : "status info";
+	return <div className={className}>{status.message}</div>;
+	
+}
 function Landing() {
 	
 	const CODE_LENGTH = 5;
@@ -33,33 +66,24 @@ function Landing() {
 			return;
 		
 		if (code.length != CODE_LENGTH)
-			return setMessage([MessageType.ERROR, "Invalid code"]);
+			return statusError("Invalid code");
 		if (name.length < MIN_NAME_LEN)
-			return setMessage([MessageType.ERROR, "Name too short"]);
+			return statusError("Name too short");
 		if (name.length > MAX_NAME_LEN)
-			return setMessage([MessageType.ERROR, "Name too long"]);
+			return statusError("Name too long");
 		
 		client.connect(`ws://127.0.0.1:5050/play/ws?code=${code.toUpperCase()}&name=${name}`);
 		
 	}
 	
-	enum MessageType {
-		NONE,
-		LOADING,
-		ERROR
-	}
 	
-	let [[messageType, messageContent], setMessage] = React.useState([MessageType.NONE, ""]);
 	React.useEffect(() => Signal.group(
 		client.pending.subscribe(() => {
-			setMessage([MessageType.LOADING, "Connecting..."]);
+			statusInfo("Connecting...");
 		}),
 		client.connectionFailed.subscribe(() => {
-			setMessage([MessageType.ERROR, "Join failed; check your code"]);
-		}),
-		client.inc.subscribe("statusUpdate", ({ kind, message }: { kind: string, message: string }) => {
-			setMessage([MessageType.ERROR, message]);
-		}),
+			statusError("Join failed; check your code");
+		})
 	), []);
 	
 	const setCode = (newCode: string) => joinCode = newCode;
@@ -84,8 +108,7 @@ function Landing() {
 					<input id="code-input" defaultValue={joinCode} onChange={ev => setCode(ev.target.value)}></input>
 				</div>
 				<button id="join-button" onClick={ev => joinGame(joinCode, playerName)}>Join!</button>
-				{messageType == MessageType.LOADING && <div className="join-message loading">{messageContent}</div>}
-				{messageType == MessageType.ERROR && <div className="join-message error">{messageContent}</div>}
+				<StatusMessage />
 			</div>
 		</div>
 	);
@@ -107,6 +130,7 @@ function Lobby() {
 		<div className="tab" id="lobby">
 			<h1>Lobby!!</h1>
 			{showStart && <button id="start-game-button" onClick={startGame}>Start Game</button>}
+			<StatusMessage />
 		</div>
 	);
 	
@@ -401,6 +425,9 @@ function DrawPad() {
 	}
 	
 	function submit() {
+		
+		if (!enabled)
+			return false;
 		if (canvasElementRef.current === null)
 			return console.error("Couldn't get canvas data");
 		
@@ -411,7 +438,14 @@ function DrawPad() {
 			.replace("data:image/png;base64,", "");
 		client.out.send("drawingSubmission", { drawing });
 		enabled = false; // Don't want to rerender here, will reset the canvas
+		
 	}
+	
+	React.useEffect(() => {
+		return client.inc.subscribe("drawingTimeout", () => {
+			submit();
+		});
+	}, [canvasElementRef]);
 	
 	React.useEffect(() => {
 		
@@ -533,11 +567,14 @@ const Tabs = {
 
 function App() {
 	
-	const [tab, setTab] = React.useState<keyof typeof Tabs>("Landing");//"Draw");//"Landing");
+	const [tab, setTab] = React.useState<keyof typeof Tabs>("Draw");//"Draw");//"Landing");
 	const Tab = Tabs[tab];
 	
 	React.useEffect(() => Signal.group(
 		
+		client.inc.subscribe("statusUpdate", ({ kind, message } : { kind: "info" | "error", message: string }) => {
+			statusUpdate.emit({ key: kind, message });
+		}),
 		//client.connected.subscribe(() => setTab("Lobby")),
 		client.inc.subscribe("lobbyJoined", ({ promoted }: { promoted: boolean }) => {
 			canStartGame = promoted;
