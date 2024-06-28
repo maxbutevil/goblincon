@@ -257,21 +257,18 @@ export default class Canvas {
 		this.ctx.stroke();
 	}
 	path(path: Path) {
-		//this.setStrokeStyle(path.style);
-		//this.setLineWidth(path.lineWidth);
-		//this.ctx.lineJoin = "round";
-		/*for (const [[px, py], [x, y]] of path.segments()) {
-			this.line(px, py, x, y);
-		}*/
+		
+		if (path.isEmpty())
+			return;
 		
 		this.ctx.beginPath();
-		this.ctx.moveTo(...path.start()!);
-		for (const [x, y] of path.points()) {
+		let [sx, sy] = path.start()!;
+		
+		// shitty hack because some browsers won't draw anything if the start and end are identical
+		this.ctx.moveTo(sx + 0.01, sy + 0.01);
+		for (const [x, y] of path.points())
 			this.ctx.lineTo(x, y);
-			//this.ctx.stroke();
-			//this.ctx.begin
-			//this.ctx.moveTo(x, y);
-		}
+		
 		this.ctx.stroke();
 	}
 	

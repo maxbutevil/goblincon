@@ -13,7 +13,8 @@ func _ready():
 	#Client.
 	join_code_label.set_text(Client.join_code);
 	Client.player_joined.connect(
-		func(id: int, player: Player):
+		func(id: int):
+			var player: Player = Client.get_player(id);
 			var label = Label.new();
 			label.set_text(player.name);
 			container.add_child(label);

@@ -29,16 +29,16 @@ class Client {
 		
 		statusUpdate: { kind: Extract.choice<"info" | "error">("info", "error"), message: Extract.STRING },
 		
+		//gameStarted: Extract.NONE,
+		gameTerminated: Extract.NONE,
 		lobbyJoined: { promoted: Extract.BOOL },
 		promoted: Extract.NONE,
 		
-		gameStarted: Extract.NONE,
-		gameTerminated: Extract.NONE,
-		
-		drawingStarted: Extract.NONE,
+		idle: { kind: Extract.choice<"start" | "draw" | "vote" | "score">("start", "draw", "vote", "score") },
+		drawing: { goblinName: Extract.STRING, secsLeft: Extract.NUMBER },
 		drawingTimeout: Extract.NONE,
-		votingStarted: { choices: Extract.array(Extract.STRING) },
-		scoringStarted: Extract.NONE,
+		voting: { choices: Extract.array(Extract.STRING) },
+		//scoringStarted: Extract.NONE,
 		
 	});
 	out = new SendIndex({

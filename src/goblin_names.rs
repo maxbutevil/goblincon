@@ -12,16 +12,19 @@ const SUFFIXES: &[&str] = &[
 const NAMES: &[&str] = &[
 	
 	/* Goblinsonas */
-	"Mobi",
+	"Axmay",
 	"Gatthew",
 	"Jobnis",
 	"Glarsom",
 	
-	/* Misc */
+	/* Bicons */
+	"Mobi",
 	"Clungo",
 	"Quirko",
 	"Wackine",
 	"Milburt",
+	"Chrysanthorp",
+	"Graggle",
 	
 	"Wonk",
 	"Thimbel",
@@ -58,6 +61,41 @@ const NAMES: &[&str] = &[
 	"Bruce",
 	"Milko",
 	"Mingus",
+	"Kilter",
+	"Kilbert",
+	"Dimples",
+	"Devio",
+	"Joe",
+	"Biden",
+	"Donald",
+	//"Trump",
+	"Kreibert",
+	"Grebe",
+	"Screeble",
+	"Comedius",
+	"Fink",
+	"Hamper",
+	"Trundle",
+	"Wrinkle",
+	"Crease",
+	"Splinky",
+	"Jingle",
+	"Steamroller Victim",
+	"Chip",
+	"Bucky",
+	"Cootie",
+	"Quag",
+	"Munch",
+	"Nom",
+	"Lactoid",
+	"Toothless",
+	"Oculus",
+	"Chunk",
+	"Swinkle",
+	"Spew",
+	"Flaps",
+	"Homuncules",
+	"Glug",
 	
 	/* Carson's Contributions */
 	//"Jorm",
@@ -117,6 +155,8 @@ const NAMES: &[&str] = &[
 	"Schplorples",
 	"Geeblesmorp",
 	"Bringlesnop",
+	"Pongel",
+	"Greegle",
 	
 ];
 

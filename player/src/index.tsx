@@ -8,7 +8,11 @@ import Signal from "./modules/signal"
 import { Variant } from "./modules/variant"
 import Canvas, { Path } from "./canvas"
 
+//const windowLoadedOrResized
+//const windowResized = Signal.forwardEvent(window, "resized");
 
+const drawingSubmitted = new Signal();
+const voteSubmitted = new Signal();
 
 let joinCode = new URLSearchParams(window.location.search).get("code") ?? "";
 let playerName = localStorage.getItem("playerName") ?? "";
@@ -72,7 +76,7 @@ function Landing() {
 		if (name.length > MAX_NAME_LEN)
 			return statusError("Name too long");
 		
-		client.connect(`ws://127.0.0.1:5050/play/ws?code=${code.toUpperCase()}&name=${name}`);
+		client.connect(`ws://${window.location.host}/play/ws?code=${code.toUpperCase()}&name=${name}`);
 		
 	}
 	
@@ -174,7 +178,7 @@ let redoStack: Array<DrawOperation> = [];
 let backup: ImageData | undefined;
 let backupIndex = 0;
 let drawMode: DrawMode = { key: "draw", style: "#000000", weight: "thin" };
-//const drawingSubmitted = new Signal();
+//
 function DrawPad() {
 	
 	//const [enabled, setEnabled] = React.useState(true);
@@ -188,7 +192,9 @@ function DrawPad() {
 	
 	let enabled = true;
 	
-	const canvasElementRef = React.useRef<HTMLCanvasElement>(null);
+	//const canvasRef = React.useRef<HTMLCanvasElement>(null);
+	//const drawpadRef = React.useRef<HTMLDivElement>(null);
+	const canvasRef = React.useRef<HTMLCanvasElement>(null);
 	
 	let canvas: Canvas | undefined;
 	let drawing = false;
@@ -374,22 +380,27 @@ function DrawPad() {
 		
 	}
 	
-	function draw(ev: React.MouseEvent) {
+	/* ok note to self, we have to like check shit somehow to make it so that you stop drawing if you go outside of the canvas */
+	function draw(ev: React.PointerEvent) {
 		
-		if (!enabled || !drawing || !canvas)
+		if (!ev.isPrimary || !enabled || !drawing || !canvas)
 			return;
 		
-		let op = undoStack.at(-1)!;
 		let [x, y] = canvas.map(ev.nativeEvent.offsetX, ev.nativeEvent.offsetY);
-		let [px, py] = op.path.end() ?? [x, y]; // if this is the first point, just draw a dot at x, y
+		
+		if (x < 0 || y < 0 || x > canvas.clientWidth || y > canvas.clientHeight)
+			return endDraw(ev);
+		
+		let op = undoStack.at(-1)!;
+		let [px, py] = op.path.end() ?? [x + 0.01, y + 0.01]; // if this is the first point, just draw a dot at x, y
 		canvas.line(px, py, x, y);
 		op.path.push(x, y);
 		//let startX = canvas.mapX(ev.nativeEvent.offsetX - ev.movementX);
 		//let startY = canvas.mapY(ev.nativeEvent.offsetY - ev.movementY);
 		
 	}
-	function startDraw(ev: React.MouseEvent) {
-		if (drawing || !canvas)
+	function startDraw(ev: React.PointerEvent) {
+		if (!ev.isPrimary || drawing || !canvas)
 			return;
 		
 		redoStack = [];
@@ -401,9 +412,9 @@ function DrawPad() {
 		drawing = true;
 		draw(ev);
 	}
-	function endDraw(ev: React.MouseEvent) {
+	function endDraw(ev: React.PointerEvent) {
 		
-		if (!drawing)
+		if (!ev.isPrimary || !drawing)
 			return;
 		
 		draw(ev);
@@ -428,28 +439,27 @@ function DrawPad() {
 		
 		if (!enabled)
 			return false;
-		if (canvasElementRef.current === null)
+		if (canvasRef.current === null)
 			return console.error("Couldn't get canvas data");
 		
-		//canvasElementRef.current.getContext("2d")?.getImageData
+		//canvasRef.current.getContext("2d")?.getImageData
 		
-		let drawing = canvasElementRef.current
+		let drawing = canvasRef.current
 			.toDataURL("image/png")
 			.replace("data:image/png;base64,", "");
 		client.out.send("drawingSubmission", { drawing });
-		enabled = false; // Don't want to rerender here, will reset the canvas
+		//enabled = false; // Don't want to rerender here, will reset the canvas
+		
+		drawingSubmitted.emit();
 		
 	}
 	
-	React.useEffect(() => {
-		return client.inc.subscribe("drawingTimeout", () => {
-			submit();
-		});
-	}, [canvasElementRef]);
-	
+	React.useEffect(() => client.inc.subscribe("drawingTimeout", () => {
+		submit();
+	}), []);
 	React.useEffect(() => {
 		
-		let ctx = canvasElementRef.current?.getContext("2d");
+		let ctx = canvasRef.current?.getContext("2d");
 		
 		if (!ctx)
 			throw new Error("Couldn't get canvas context.");
@@ -470,7 +480,9 @@ function DrawPad() {
 			drawMode = { key: "draw", style: "#000000", weight: "thin" };
 		};
 		
-	}, [canvasElementRef.current]);
+	}, []);
+	
+	
 	
 	return (
 		<div id="drawpad">
@@ -479,17 +491,17 @@ function DrawPad() {
 				id="canvas"
 				key="canvas"
 				width="360px" height="360px"
-				ref={canvasElementRef}
-				onMouseDown= {startDraw}
-				onMouseUp=   {endDraw}
-				onMouseLeave={endDraw}
-				onMouseMove= {draw}
+				ref={canvasRef}
+				onPointerDown= {startDraw}
+				onPointerUp=   {endDraw}
+				onPointerLeave={endDraw}
+				onPointerMove= {draw}
 			>
 				You don't have canvas support!
 			</canvas>
 			<div id="draw-utils" className="button-row">
-				<button id="undo-button" className="button" onClick={undo}>Undo</button>
-				<button id="redo-button" className="button" onClick={redo} style={{backgroundColor:"grey"}}>Redo</button>
+				<button id="undo-button" className="button" onClick={undo}>&lt;</button>
+				<button id="redo-button" className="button" onClick={redo} style={{backgroundColor:"grey"}}>&gt;</button>
 				<button id="weight-button" className="button" onClick={toggleLineWidth}></button>
 				<button id="spacer-button" className="button" disabled={true}></button>
 				<button id="submit-button" className="button" onClick={submit}>Submit</button>
@@ -499,79 +511,84 @@ function DrawPad() {
 	
 }
 function Draw() {
-	
-	/*function submitDrawing() {
-		//client.out.send("drawingSubmission", { drawing: })
-		drawingSubmitted.emit();
-	}*/
-	
 	return (
 		<div className="tab" id="draw">
 			<DrawPad />
 		</div>
 	);
-	
 }
 
-function VoteButton({ name, submitVote }: { name: string, submitVote: (name: string) => void }) {
-	
-	return (
-		<button className="vote-button" onClick={() => submitVote(name)}>{name}</button>
-	);
-	
-}
 function Vote() {
 	
-	const [hasVoted, setHasVoted] = React.useState(false);
+	function VoteButton({ name, submitVote }: { name: string, submitVote: (name: string) => void }) {
+	
+		return (
+			<button className="vote-button" onClick={() => submitVote(name)}>{name}</button>
+		);
+		
+	}
 	
 	const submitVote = (forName: string) => {
 		client.out.send("voteSubmission", { forName });
-		setHasVoted(true);
+		voteSubmitted.emit();
 	};
 	
 	return (
 		<div className="tab" id="vote">
-			<h1>Voting time!!</h1>
-			{!hasVoted && (
+			<h1>Vote!!</h1>
+			{
 				votingChoices
 					.filter((name: string) => name != playerName) // can't vote for yourself
 					.map((name: string) => <VoteButton key={name} name={name} submitVote={submitVote}></VoteButton>)
-			)}
+			}
 		</div>
 	);
 }
-function Score() {
-	return (
-		<div className="tab" id="score">
-			<h1>Scoring time!!</h1>
-		</div>
-	);
-}
-function Idle() {
+function Idle({ header, subheader }: { header: string, subheader?: string }) {
 	return (
 		<div className="tab" id="idle">
-			<h1>Waiting...</h1>
+			<h1>{header}</h1>
+			{subheader && <h2>{subheader}</h2>}
 		</div>
 	);
 }
+function DrawingSubmitted() {
+	return <Idle header="You've Submitted!" subheader="Waiting for other players to finish drawing..." />;
+}
+function VoteSubmitted() {
+	return <Idle header="You've Voted!" subheader="Waiting for other players to vote..." />;
+}
+function Score() {
+	return <Idle header="Results!" />
+}
+
 
 const Tabs = {
 	Landing,
 	Lobby,
 	Start,
 	Draw,
+	DrawingSubmitted,
 	Vote,
+	VoteSubmitted,
 	Score,
-	Idle,
 };
 
 function App() {
 	
-	const [tab, setTab] = React.useState<keyof typeof Tabs>("Draw");//"Draw");//"Landing");
+	const [tab, setTab] = React.useState<keyof typeof Tabs>("Landing");//"Draw");//"Landing");
 	const Tab = Tabs[tab];
 	
 	React.useEffect(() => Signal.group(
+		// needs to be separate, so that the "tab" reference updates
+		drawingSubmitted.subscribe(() => { if (tab === "Draw") setTab("DrawingSubmitted") }),
+		voteSubmitted.subscribe(() => { if (tab === "Vote") setTab("VoteSubmitted") })
+	));
+	React.useEffect(() => Signal.group(
 		
+		client.inc.subscribe("gameTerminated", () => {
+			setTab("Landing");
+		}),
 		client.inc.subscribe("statusUpdate", ({ kind, message } : { kind: "info" | "error", message: string }) => {
 			statusUpdate.emit({ key: kind, message });
 		}),
@@ -580,14 +597,18 @@ function App() {
 			canStartGame = promoted;
 			setTab("Lobby");
 		}),
-		client.inc.subscribe("gameStarted", () => setTab("Start")),
-		client.inc.subscribe("drawingStarted", () => setTab("Draw")),
-		client.inc.subscribe("scoringStarted", () => setTab("Score")),
-		
-		client.inc.subscribe("gameTerminated", () => {
-			setTab("Landing");
+		client.inc.subscribe("idle", ({ kind }: { kind: "start" | "draw" | "vote" | "score" }) => {
+			switch(kind) {
+				case "start": setTab("Start"); break;
+				case "draw": setTab("DrawingSubmitted"); break;
+				case "vote": setTab("VoteSubmitted"); break;
+				case "score": setTab("Score"); break;
+			}
 		}),
-		client.inc.subscribe("votingStarted", ({ choices }: { choices: Array<string> }) => {
+		client.inc.subscribe("drawing", () => setTab("Draw")),
+		
+		//client.inc.subscribe("scoring", () => setTab("Score")),
+		client.inc.subscribe("voting", ({ choices }: { choices: Array<string> }) => {
 			votingChoices = choices;
 			setTab("Vote");
 		}),
@@ -618,5 +639,3 @@ function App() {
 import { createRoot } from "react-dom/client";
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
-
-

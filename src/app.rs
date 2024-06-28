@@ -9,6 +9,7 @@
 //use log::{info, warn, error};
 
 use std::sync::Arc;
+use std::time::Instant;
 
 use slab::Slab;
 use dashmap::DashMap;
@@ -20,10 +21,12 @@ use futures_util::{
 	stream::{SplitSink, SplitStream}
 };
 
+
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use async_scoped::TokioScope;
 use serde::{Serialize, Deserialize};
+use std::net::SocketAddr;
 use axum::extract::ws::{Message, WebSocket};
 
 use crate::types::*;
@@ -105,35 +108,70 @@ fn deserialize_option<'a, T: Deserialize<'a>>(str: Option<&'a str>) -> Option<T>
 //
 
 
-/*struct Presence {
+struct Presence {
 	sender: WebSocketSender,
-	handle: JoinHandle<()>,
-	//message: std::marker::PhantomData<M>
+	handle: JoinHandle<()>
 }
-impl Presence {
-	
-	fn new(sender: WebSocketSender, handle: JoinHandle<()>) -> Self {
-		Self { sender, handle, } //message: std::marker::PhantomData }
-	}
-	
-	/*async fn send<M: Serialize>(&mut self, message: &M) -> Result<(), ()> {
-		serialize_send(&mut self.sender, message).await
-	}*/
-	
-}
-
 struct Host {
 	presence: Presence,
 }
 struct Player {
-	presence: Presence,
+	presence: Option<Presence>,
+	addr: SocketAddr,
 	name: String,
 }
-impl Host {
+impl Presence {
 	
-}*/
+	fn new(sender: WebSocketSender, handle: JoinHandle<()>) -> Self {
+		Self { sender, handle }
+	}
+	async fn send(&mut self, message: Message) -> Result<(), ()> {
+		send(&mut self.sender, message).await
+	}
+}
+impl Host {
+	async fn send(&mut self, message: &HostMessageOut<'_>) -> Result<(), ()> {
+		serialize_send(&mut self.presence.sender, message).await
+	}
+}
+impl Player {
+	
+	fn is_connected(&self) -> bool { self.presence.is_some() }
+	
+	async fn send_raw(&mut self, message: Message) -> Result<(), ()> {
+		if let Some(ref mut presence) = self.presence {
+			send(&mut presence.sender, message).await
+		} else {
+			Err(())
+		}
+	}
+	async fn send(&mut self, message: &PlayerMessageOut<'_>) -> Result<(), ()> {
+		self.send_raw(Message::Text(serialize(message)?)).await
+	}
+	async fn send_all<'a, I>(players: I, message: &PlayerMessageOut<'_>) -> Result<(), ()>
+	where I: Iterator<Item=(usize, &'a mut Player)>
+	{
+		let message = Message::Text(serialize(message)?);
+		let (_, results) = TokioScope::scope_and_block(|scope| {
+			for (_, player) in players {
+				scope.spawn(player.send_raw(message.clone()));
+			}
+		});
+		
+		for result in results {
+			if !matches!(result, Ok(_)) {
+				return Err(());
+			}
+		}
+		
+		Ok(())
+	}
+}
 
-struct HostPresence {
+
+
+
+/*struct HostPresence {
 	sender: WebSocketSender,
 	handle: JoinHandle<()>,
 }
@@ -177,7 +215,7 @@ impl PlayerPresence {
 		}
 	}*/
 	
-}
+}*/
 
 
 enum TimeoutKind {
@@ -191,8 +229,8 @@ enum RoomEvent {
 	Terminate,
 	Timeout { kind: TimeoutKind },
 	HostMessage { message: HostMessageIn },
-	PlayerJoin { socket: Box<WebSocket>, name: String },
-	PlayerDrop { player_id: PlayerId },
+	PlayerJoin { socket: Box<WebSocket>, addr: SocketAddr, name: String },
+	PlayerDisconnect { player_id: PlayerId },
 	PlayerMessage { player_id: PlayerId, message: PlayerMessageIn }
 }
 
@@ -200,19 +238,29 @@ enum RoomState {
 	Lobby { vip_id: u8 },
 	Start,
 	Draw { submitted: [bool; MAX_PLAYER_COUNT] },
-	Vote { votes: [Option<u8>; MAX_PLAYER_COUNT] },
+	Vote { eligible: [bool; MAX_PLAYER_COUNT], votes: [Option<u8>; MAX_PLAYER_COUNT] },
 	Score,
 	Terminated
 }
+enum PlayerState {
+	Idle,
+	Lobby { promoted: bool },
+	Drawing,
+	Voting,
+}
 
+struct RoomTimeout {
+	handle: tokio::task::JoinHandle<()>,
+	end: Instant
+}
 struct Room {
 	id: RoomId,
 	handle: RoomHandle,
 	receiver: mpsc::Receiver<RoomEvent>,
-	timeout: Option<tokio::task::JoinHandle<()>>,
+	timeout: Option<RoomTimeout>,
 	
-	host: HostPresence,
-	players: Slab<PlayerPresence>,
+	host: Host,
+	players: Slab<Player>,
 	
 	round: usize,
 	state: RoomState,
@@ -238,8 +286,9 @@ impl Room {
 	}*/
 	
 	fn is_lobby(&self) -> bool {
-		return matches!(self.state, RoomState::Lobby { vip_id: _ });
+		matches!(self.state, RoomState::Lobby { vip_id: _ })
 	}
+	//fn current_name(&self) -> &String
 	
 	async fn listen(mut self) {
 		
@@ -252,8 +301,8 @@ impl Room {
 				RoomEvent::Terminate => self.terminate(),
 				RoomEvent::Timeout { kind } => self.handle_timeout(kind).await,
 				RoomEvent::HostMessage { message } => self.handle_host_message(message).await,
-				RoomEvent::PlayerJoin { socket, name } => self.handle_join(*socket, name).await,
-				RoomEvent::PlayerDrop { player_id } => self.handle_drop(player_id).await,
+				RoomEvent::PlayerJoin { socket, addr, name } => self.handle_join(*socket, addr, name).await,
+				RoomEvent::PlayerDisconnect { player_id } => self.handle_disconnect(player_id).await,
 				RoomEvent::PlayerMessage { player_id, message } => self.handle_player_message(player_id, message).await
 			}
 			
@@ -263,10 +312,11 @@ impl Room {
 					&PlayerMessageOut::GameTerminated
 				).await;
 				
-				self.host.handle.abort();
-				for (_, player) in self.players {
-					player.handle.abort();
-				}
+				// Not sure this is necessary
+				/*self.host.presence.handle.abort();
+				for player in self.players {
+					player.presence.handle.abort();
+				}*/
 				break;
 			}
 			
@@ -278,11 +328,11 @@ impl Room {
 		self.state = RoomState::Terminated;
 	}
 	async fn send_host(&mut self, message: &HostMessageOut<'_>) -> Result<(), ()> {
-		HostPresence::send(&mut self.host, message).await
+		self.host.send(message).await
 	}
 	async fn send_player(&mut self, id: PlayerId, message: &PlayerMessageOut<'_>) -> Result<(), ()> {
 		if let Some(player) = self.players.get_mut(id as usize) {
-			PlayerPresence::send(player, message).await
+			player.send(message).await
 		} else {
 			Err(())
 		}
@@ -290,95 +340,145 @@ impl Room {
 	async fn send_all(&mut self, host_message: &HostMessageOut<'_>, player_message: &PlayerMessageOut<'_>) -> Result<(), ()> {
 		//let iter = self.players.iter_mut();
 		let results = tokio::join!(
-			HostPresence::send(&mut self.host, host_message),
-			PlayerPresence::send_all(self.players.iter_mut(), player_message)
+			self.host.send(host_message),
+			Player::send_all(self.players.iter_mut(), player_message)
 		);
-		match results {
-			(Ok(()), Ok(())) => Ok(()),
-			_ => Err(())
-		}
+		results.0.and(results.1)
 	}
 	async fn send_all_except(&mut self, except_id: PlayerId, host_message: &HostMessageOut<'_>, player_message: &PlayerMessageOut<'_>) -> Result<(), ()> {
 		let except_id = except_id as usize;
 		let iter = self.players.iter_mut().filter(|(id, _)| *id != except_id);
 		let results = tokio::join!(
-			HostPresence::send(&mut self.host, host_message),
-			PlayerPresence::send_all(iter, player_message)
+			self.host.send(host_message),
+			Player::send_all(iter, player_message)
 		);
-		match results {
-			(Ok(()), Ok(())) => Ok(()),
-			_ => Err(())
-		}
+		results.0.and(results.1)
 	}
 	async fn send_all_players(&mut self, message: &PlayerMessageOut<'_>) -> Result<(), ()> {
-		PlayerPresence::send_all(self.players.iter_mut(), message).await
+		Player::send_all(self.players.iter_mut(), message).await
 	}
 	async fn send_all_players_except(&mut self, except_id: PlayerId, message: &PlayerMessageOut<'_>) -> Result<(), ()> {
 		let except_id = except_id as usize;
 		let iter = self.players.iter_mut().filter(|(id, _)| *id != except_id);
-		PlayerPresence::send_all(iter, message).await
+		Player::send_all(iter, message).await
 	}
 	
 	async fn handle_timeout(&mut self, kind: TimeoutKind) {
-		
 		//log::info!("Timeout!");
-		
 		match (kind, &self.state) {
 			(TimeoutKind::Start, RoomState::Start) => self.start_drawing().await,
 			(TimeoutKind::Draw, RoomState::Draw { submitted: _ }) => self.start_drawing_autosubmit().await,
 			(TimeoutKind::DrawAutoSubmit, RoomState::Draw { submitted: _ }) => self.start_voting().await,
-			(TimeoutKind::Vote, RoomState::Vote { votes: _ }) => self.start_scoring().await,
+			(TimeoutKind::Vote, RoomState::Vote { eligible: _, votes: _ }) => self.start_scoring().await,
 			(TimeoutKind::Score, RoomState::Score) => self.start_drawing().await,
 			_ => {}
 		}
 		
 	}
-	async fn handle_join(&mut self, socket: WebSocket, player_name: String) {
+	async fn handle_join(&mut self, socket: WebSocket, addr: SocketAddr, player_name: String) {
 		
 		async fn reject(mut socket: WebSocket, message: &str) {
 			if let Ok(message) = serialize(&PlayerMessageOut::error(message)) {
 				let _ = socket.send(Message::Text(message)).await;
 			}
 		}
+		fn accept(socket: WebSocket, room_handle: RoomHandle, player_id: PlayerId) -> Presence {
 		
-		let RoomState::Lobby { ref mut vip_id } = self.state else {
-			log::debug!("join rejected; game is active");
-			return reject(socket, "Game already started").await;
-		};
+			let (sender, mut rx) = socket.split();
 			
-		if self.players.len() == self.players.capacity() {
+			//let player_id = self.players.vacant_key() as u8;
+			let handle = tokio::spawn(async move {
+				while let Some(content) = next_string(&mut rx).await {
+					if let Ok(message) = deserialize::<'_, PlayerMessageIn>(&content) {
+						let result = room_handle.send(RoomEvent::PlayerMessage { player_id, message }).await;
+						if let Err(_) = result { break; }
+					}
+				}
+				let _ = room_handle.send(RoomEvent::PlayerDisconnect { player_id }).await;
+			});
+			
+			Presence::new(sender, handle)
+			
+		}
+		
+		//let player = self.players.iter().find(|(_, player)| player.addr == addr);
+		let RoomState::Lobby { ref mut vip_id } = self.state else {
+			/* Game has already started; handle rejoin attempt */
+			let player_id = {
+				let player = self.players
+					.iter_mut()
+					//.find(|(_, player)| player.addr == addr)
+					.find(|(_, player)| player.name == player_name); // hmm
+				let Some((player_id, player)) = player else {
+					log::debug!("join rejected; game is active");
+					return reject(socket, "Game already started").await;
+				};
+				if player.presence.is_some() {
+					log::debug!("join rejected; player is already connected");
+					return reject(socket, "Already connected elsewhere").await;
+				}
+				
+				let player_id = player_id as PlayerId;
+				player.presence = Some(accept(socket, self.handle.clone(), player_id));
+				player_id
+			};
+			
+			/* Tell the rejoining player about the current game state */
+			let _ = match self.state {
+				RoomState::Lobby { vip_id: _ } => return,
+				RoomState::Terminated => return,
+				RoomState::Start =>
+					self.send_player(player_id, &PlayerMessageOut::Idle { kind: IdleKind::Start }).await,
+				RoomState::Score {} =>
+					self.send_player(player_id, &PlayerMessageOut::Idle { kind: IdleKind::Score }).await,
+				RoomState::Draw { submitted } => {
+					if let Some(false) = submitted.get(player_id as usize) {
+						let Some(goblin_name) = self.names.get(self.round) else {
+							log::error!("no goblin name for current round");
+							return;
+						};
+						self.send_player(player_id, &PlayerMessageOut::Drawing {
+							goblin_name,
+							secs_left: self.timeout_remaining().as_secs_f32()
+						}).await
+					} else { // already submitted
+						self.send_player(player_id, &PlayerMessageOut::Idle { kind: IdleKind::Draw }).await
+					}
+				},
+				RoomState::Vote { eligible, votes } => {
+					if let Some(None) = votes.get(player_id as usize) {
+						let choices = &self.vote_choices(&eligible);
+						self.send_player(player_id, &PlayerMessageOut::Voting {	choices }).await
+					} else { // already submitted
+						self.send_player(player_id, &PlayerMessageOut::Idle { kind: IdleKind::Vote }).await
+					}
+				}
+			};
+			return;
+		};
+		
+		/* Game has not started, handle lobby join attempt */
+		if self.players.len() >= MAX_PLAYER_COUNT {
 			log::debug!("join rejected; game is full");
 			return reject(socket, "Game is full").await;
 		}
 		
-		let name_collision = self.players.iter().any(|(_, presence)| {
-			player_name == presence.name
-		});
+		let name_collision = self.players.iter().any(|(_, player)| player.name == player_name);
 		if name_collision {
 			log::debug!("join rejected; name collision");
 			return reject(socket, "Name is taken").await;
 		}
 		
-		let (sender, mut rx) = socket.split();
-		let player_id = self.players.vacant_key() as u8;
-		let room_handle = self.handle.clone();
-		let player_handle = tokio::spawn(async move {
-			while let Some(content) = next_string(&mut rx).await {
-				if let Ok(message) = deserialize::<'_, PlayerMessageIn>(&content) {
-					let result = room_handle.send(RoomEvent::PlayerMessage { player_id, message }).await;
-					if let Err(_) = result { break; }
-				}
-			}
-			let _ = room_handle.send(RoomEvent::PlayerDrop { player_id }).await;
-		});
+		let player_id = self.players.vacant_key() as PlayerId;
+		let presence = Some(accept(socket, self.handle.clone(), player_id));
 		
 		/* Make this player the VIP if they're the first one in */
 		let promoted = self.players.is_empty();
 		if promoted { *vip_id = player_id }
 		
-		self.players.insert(PlayerPresence {
-			sender,
-			handle: player_handle,
+		self.players.insert(Player {
+			presence,
+			addr,
 			name: player_name.clone(),
 		});
 		
@@ -390,39 +490,44 @@ impl Room {
 		}).await;
 		
 	}
-	async fn handle_drop(&mut self, player_id: PlayerId) {
+	async fn handle_disconnect(&mut self, player_id: PlayerId) {
 		
-		let presence = self.players.remove(player_id as usize);
-		presence.handle.abort();
-		
-		/* If no players remain and the game is running, just end it */
-		if !self.is_lobby() && self.players.is_empty() {
-			self.terminate();
+		if !self.players.contains(player_id as usize) {
+			log::error!("handling disconnect for player that is not present");
 			return;
 		}
 		
-		let _result = self.send_host(&HostMessageOut::PlayerLeft { player_id }).await;
-		
-		/* Choose a new VIP, if necessary (and possible) */
-		if let RoomState::Lobby { ref mut vip_id } = self.state {
-			if *vip_id == player_id {
-				
-				let new_vip = self.players
-					.iter()
-					.next();
-				
-				if let Some((new_vip_id, _)) = new_vip {
-					*vip_id = new_vip_id as u8;
-					let _ = self.send_player(
-						new_vip_id as u8,
-						&PlayerMessageOut::Promoted
-					).await;
-				}
-				
+		if let RoomState::Lobby { vip_id } = self.state {
+			/* In lobby; drop player entirely */
+			drop(self.players.remove(player_id as usize));
+			let _result = self.send_host(&HostMessageOut::PlayerLeft { player_id }).await;
+			
+			/* Choose a new VIP, if necessary (and possible) */
+			if vip_id == player_id {
+				let new_vip = self.players.iter().next();
+				let Some((new_vip_id, _)) = new_vip else { return; };
+				let new_vip_id = new_vip_id as PlayerId;
+				self.state = RoomState::Lobby { vip_id: new_vip_id };
+				let _ = self.send_player(
+					new_vip_id,
+					&PlayerMessageOut::Promoted
+				).await;
 			}
+		} else {
+			/* Not in lobby - player may rejoin; don't remove them */
+			let Some(player) = self.players.get_mut(player_id as usize) else { unreachable!(); };
+			let Some(presence) = Option::take(&mut player.presence) else {
+				log::error!("handling disconnect for player that is already disconnected");
+				return;
+			};
+			presence.handle.abort();
+			//drop(presence);
 		}
 		
-		//self.send_host(&HostMessageOut::PlayerLeft);
+		/*if !self.is_lobby() && self.players.is_empty() {
+			self.terminate();
+			return;
+		}*/
 		
 	}
 	async fn handle_host_message(&mut self, _message: HostMessageIn) {
@@ -499,13 +604,18 @@ impl Room {
 			log::warn!("self vote attempted [{player_id} -> {for_id}]"); //: {}", Self::id_str(&self.id), player_id);
 			return;
 		}
+		//if !self.players.
 		if !self.players.contains(for_id as usize) {
 			log::warn!("attempted to vote for player that is not present [{player_id} -> {for_id}]");
 			return;
 		}
 		
-		let RoomState::Vote { ref mut votes } = self.state else {
+		let RoomState::Vote { eligible, ref mut votes } = self.state else {
 			log::warn!("received a vote while not in voting state [{player_id} -> {for_id}]");
+			return;
+		};
+		let Some(true) = eligible.get(player_id as usize) else {
+			log::warn!("voted for ineligible player [{player_id} -> {for_id}]");
 			return;
 		};
 		let Some(None) = votes.get(player_id as usize) else {
@@ -531,32 +641,51 @@ impl Room {
 		
 	}
 	
+	fn timeout_remaining(&self) -> Duration {
+		if let Some(timeout) = &self.timeout {
+			timeout.end - Instant::now()
+		} else {
+			Duration::ZERO
+		}
+	}
 	fn set_timeout(&mut self, kind: TimeoutKind, duration: Duration) {
-		
-		let handle = self.handle.clone();
-		let old_timeout = self.timeout.replace(tokio::spawn(async move {
-			tokio::time::sleep(duration).await;
-			let _result = handle.send(RoomEvent::Timeout { kind }).await;
-		}));
+		let room_handle = self.handle.clone();
+		let old_timeout = self.timeout.replace(RoomTimeout {
+			end: Instant::now() + duration,
+			handle: tokio::spawn(async move {
+				tokio::time::sleep(duration).await;
+				let _ = room_handle.send(RoomEvent::Timeout { kind }).await;
+			}),
+		});
 		
 		if let Some(old_timeout) = old_timeout {
-			old_timeout.abort();
+			old_timeout.handle.abort();
 		}
-		
+	}
+	fn vote_choices(&self, eligible: &[bool]) -> Vec<String> {
+		self.players
+			.iter()
+			.filter_map(|(id, presence)| {
+				if let Some(true) = eligible.get(id) {
+					Some(presence.name.clone())
+				} else {
+					None
+				}
+			})
+			.collect::<Vec<_>>()
 	}
 	async fn start_game(&mut self) {
 		self.state = RoomState::Start;
 		self.set_timeout(TimeoutKind::Start, START_DURATION);
-		let result = self.send_all(
+		let _ = self.send_all(
 			&HostMessageOut::GameStarted,
-			&PlayerMessageOut::GameStarted
+			&PlayerMessageOut::Idle { kind: IdleKind::Start }
 		).await;
 		
-		// If we've managed to already encounter an error, just terminate the game.
+		/*// If we've managed to already encounter an error, just terminate the game.
 		if result.is_err() {
 			self.terminate();
-		}
-		
+		}*/
 		
 	}
 	async fn start_drawing(&mut self) {
@@ -565,6 +694,8 @@ impl Room {
 			self.round += 1;
 		}
 		
+		
+		
 		let Some(&goblin_name) = self.names.get(self.round) else {
 			self.start_finale().await; // last round just ended, we're done
 			return;
@@ -572,9 +703,11 @@ impl Room {
 		
 		self.state = RoomState::Draw { submitted: [false; MAX_PLAYER_COUNT] };
 		self.set_timeout(TimeoutKind::Draw, DRAW_DURATION);
-		let _result = self.send_all(
-			&HostMessageOut::DrawingStarted { goblin_name },
-			&PlayerMessageOut::DrawingStarted
+		
+		let secs_left = DRAW_DURATION.as_secs_f32();
+		let _ = self.send_all(
+			&HostMessageOut::DrawingStarted { goblin_name /*, secs_left*/ },
+			&PlayerMessageOut::Drawing { goblin_name, secs_left }
 		).await;
 		
 	}
@@ -595,39 +728,31 @@ impl Room {
 	}
 	async fn start_voting(&mut self) {
 		
-		let choices = &{
-			
-			let RoomState::Draw { submitted } = self.state else {
-				log::error!("starting scoring from a state other than draw");
-				self.terminate();
-				return;
-			};
-			
-			self.players.iter().filter_map(|(id, presence)| {
-				if matches!(submitted.get(id), Some(true)) {
-					Some(presence.name.clone())
-				} else {
-					None
-				}
-			}).collect::<Vec<_>>()
-			
+		let RoomState::Draw { submitted } = self.state else {
+			log::error!("starting scoring from a state other than draw");
+			self.terminate();
+			return;
 		};
 		
-		self.state = RoomState::Vote { votes: [None; MAX_PLAYER_COUNT ] };
+		let choices = &self.vote_choices(&submitted);
+		self.state = RoomState::Vote { eligible: submitted, votes: [None; MAX_PLAYER_COUNT ] };
 		self.set_timeout(TimeoutKind::Vote, VOTE_DURATION);
+		let _result = self.send_all(
+			&HostMessageOut::VotingStarted {},
+			&PlayerMessageOut::Voting { choices }
+		).await;
+		
+		
 		
 		// todo: do something different if nobody submitted
 		//let choices = 
 		
 		
-		let _result = self.send_all(
-			&HostMessageOut::VotingStarted {},
-			&PlayerMessageOut::VotingStarted { choices }
-		).await;
+		
 	}
 	async fn start_scoring(&mut self) {
 		
-		let RoomState::Vote { votes: _ } = self.state else {
+		let RoomState::Vote { eligible: _, votes: _ } = self.state else {
 			log::error!("starting scoring from a state other than vote");
 			self.terminate();
 			return;
@@ -648,7 +773,7 @@ impl Room {
 		//let votes = votes.map(|vote| vote.unwrap_or(PlayerId::MAX));
 		let _result = self.send_all(
 			&HostMessageOut::ScoringStarted,
-			&PlayerMessageOut::ScoringStarted
+			&PlayerMessageOut::Idle { kind: IdleKind::Score },
 		).await;
 		
 	}
@@ -744,8 +869,9 @@ impl App {
 			id, // No idea why we can borrow this later. Maybe await is smarter than I think?
 			handle,
 			receiver,
-			host: HostPresence { sender: host_tx, handle: host_handle },
-			players: Slab::<PlayerPresence>::with_capacity(MAX_PLAYER_COUNT),
+			
+			host: Host { presence: Presence::new(host_tx, host_handle) },
+			players: Slab::<Player>::with_capacity(MAX_PLAYER_COUNT),
 			
 			state: RoomState::Lobby { vip_id: 0 },
 			round: 0,
@@ -758,10 +884,10 @@ impl App {
 		
 	}
 	
-	pub async fn accept_player(&self, socket: WebSocket, room_id: RoomId, name: String) {
+	pub async fn accept_player(&self, room_id: RoomId, socket: WebSocket, addr: SocketAddr, name: String) {
 		if let Some(handle) = self.handles.get(&room_id) {
 			let socket = Box::new(socket);
-			let _result = handle.send(RoomEvent::PlayerJoin { socket, name }).await;
+			let _result = handle.send(RoomEvent::PlayerJoin { socket, addr, name }).await;
 		}
 	}
 	

@@ -8,7 +8,7 @@ signal lobby_created(join_code: String);
 signal game_started();
 signal game_terminated();
 
-signal player_joined(id: int, player: Player);
+signal player_joined(player_id: int);
 #signal player_left(id: int);
 
 signal drawing_started(goblin_name: String);
@@ -110,7 +110,7 @@ func handle(raw: String):
 		"playerJoined":
 			var id: int = data["playerId"];
 			players[id] = Player.new(data["playerName"]);
-			player_joined.emit(id, players[id]);
+			player_joined.emit(id);
 		#"playerLeft":
 			#handle_player_left(data["playerId"]);
 		

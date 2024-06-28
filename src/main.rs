@@ -17,12 +17,14 @@ pub mod app;
 
 use app::App;
 //use std::sync::Arc;
+use std::net::SocketAddr;
 use axum::{
 	http::StatusCode,
 	response::Response,
 	extract::{
 		State,
 		Query,
+		ConnectInfo,
 		ws::{WebSocket, WebSocketUpgrade},
 	},
 };
@@ -56,7 +58,8 @@ async fn main() {
 		.route("/host/ws", get(ws_upgrade_host))
 		.route("/play/ws", get(ws_upgrade_player))
 		.nest_service("/", ServeDir::new("player/dist"))
-		.with_state(App::new());
+		.with_state(App::new())
+		.into_make_service_with_connect_info::<SocketAddr>();
 	
 	let listener = TcpListener::bind(format!("{IP}:{PORT}"))
 		.await
@@ -76,7 +79,6 @@ struct JoinQueryFields {
 //#[debug_handler]
 async fn ws_upgrade_host(State(app): State<App>, ws: WebSocketUpgrade) -> Response {
 	
-	
 	async fn accept_host(app: App, ws: WebSocket) {
 		app.accept_host(ws).await;
 	}
@@ -87,10 +89,16 @@ async fn ws_upgrade_host(State(app): State<App>, ws: WebSocketUpgrade) -> Respon
 
 
 
-async fn ws_upgrade_player(State(app): State<App>, ws: WebSocketUpgrade, Query(query): Query<JoinQueryFields>) -> Result<Response, StatusCode> {
+async fn ws_upgrade_player(
+	State(app): State<App>,
+	ws: WebSocketUpgrade,
+	ConnectInfo(addr): ConnectInfo<SocketAddr>,
+	Query(query): Query<JoinQueryFields>
+) -> Result<Response, StatusCode>
+{
 	
-	async fn accept_player(app: App, ws: WebSocket, room_id: RoomId, name: String) {
-		app.accept_player(ws, room_id, name).await;
+	async fn accept_player(app: App, room_id: RoomId, ws: WebSocket, addr: SocketAddr, name: String) {
+		app.accept_player(room_id, ws, addr, name).await;
 	}
 	
 	let (code, name) = (query.code, query.name);
@@ -99,7 +107,7 @@ async fn ws_upgrade_player(State(app): State<App>, ws: WebSocketUpgrade, Query(q
 	if let Some(room_id) = App::parse_room_id(&code) {
 		if app.has_handle(&room_id) {
 			return Ok(ws.on_upgrade(move |socket| {
-				accept_player(app, socket, room_id, name)
+				accept_player(app, room_id, socket, addr, name)
 			}));
 		}
 	}

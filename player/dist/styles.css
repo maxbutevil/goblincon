@@ -2,6 +2,9 @@
 * {
     margin: 0;
 }
+html, body, #root, #app {
+    height: 100%;
+}
 body {
     
     font-family: Arial;
@@ -10,7 +13,6 @@ body {
     justify-content: center;
     
     background-color: #eeeee8;
-    
 }
 input {
     padding: 2px;
@@ -25,10 +27,11 @@ input {
 }
 
 .tab {
-    justify-content: center;
-    align-content: center;
     display: flex;
     flex-flow: column nowrap;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
     gap: 10px;
     margin-top: 20px;
 }
@@ -49,32 +52,32 @@ input {
     
 }
 .tab#draw {
-    
+    height: 100%;
+    justify-content: center;
+    margin: auto;
 }
 
 #drawpad {
-    
-    height: 90vmin;
-    border: 3px solid black;
+    width: min(96vw, 78vh);
     display: flex;
     flex-flow: column nowrap;
+    border: 0.6vmin solid black;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none; /* lets player draw on mobile */
 }
 #drawpad #canvas {
     aspect-ratio: 1;
     width: 100%;
     height: auto;
-    touch-action: none; /* lets player draw on mobile */
     background-color: white;
+    border-top: 0.6vmin solid black;
+    border-bottom: 0.6vmin solid black;
 }
 #drawpad .button-row {
     display: flex;
     flex-flow: row nowrap;
-}
-#drawpad #color-select {
-    border-bottom: 3px solid black;
-}
-#drawpad #draw-utils {
-    border-top: 3px solid black;
 }
 #drawpad button {
     flex: 1;
@@ -82,8 +85,9 @@ input {
     border: none;
     margin: none;
 }
-#drawpad #button-spacer {
-    
+#drawpad #spacer-button {
+    flex: 2;
+    aspect-ratio: 2 / 1;
 }
 #drawpad #submit-button {
     flex: 4;

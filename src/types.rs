@@ -7,6 +7,7 @@ use serde::{Serialize, Deserialize};
 pub type RoomId = [u8; ROOM_ID_LEN];
 //pub type ClientId = ArcIntern<SocketAddr>;
 pub type PlayerId = u8;
+pub type PlayerToken = u32;
 
 pub use std::time::Duration;
 
@@ -17,7 +18,7 @@ pub const MIN_PLAYER_COUNT: usize = 2;
 pub const MAX_PLAYER_COUNT: usize = 8;
 
 pub const START_DURATION: Duration = Duration::from_secs(1);
-pub const DRAW_DURATION: Duration = Duration::from_secs(5);
+pub const DRAW_DURATION: Duration = Duration::from_secs(60);
 pub const DRAW_AUTOSUBMIT_DURATION: Duration = Duration::from_secs(4);
 pub const VOTE_DURATION: Duration = Duration::from_secs(20);
 pub const SCORE_DURATION: Duration = Duration::from_secs(10);
@@ -76,6 +77,15 @@ pub enum StatusKind {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub enum IdleKind {
+	Start,
+	Draw,
+	Vote,
+	Score,
+}
+
+#[derive(Serialize, Clone)]
 #[serde(tag = "type", content = "data")]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum PlayerMessageOut<'a> {
@@ -85,24 +95,14 @@ pub enum PlayerMessageOut<'a> {
 	
 	StatusUpdate { kind: StatusKind, message: &'a str },
 	
-	//Error { error_message: &'a str },
-	
+	GameTerminated,
 	LobbyJoined { promoted: bool },
-	//LobbyJoinError { error_message: &'a str },
 	Promoted,
 	
-	GameStarted,
-	GameTerminated,
-	
-	DrawingStarted,
+	Idle { kind: IdleKind },// { message: &'a str },
+	Drawing { goblin_name: &'a str, secs_left: f32 },
 	DrawingTimeout,
-	VotingStarted { choices: &'a Vec<String> }, //{ choices: &'a Vec<RemotePlayer<'a>> },
-	ScoringStarted,
-	
-	
-	//Placeholder(std::marker::PhantomData<&'a str>)
-	
-	//DrawingSubmitted { player_id: usize, drawing: &'a str },
+	Voting { choices: &'a Vec<String> }
 	
 }
 impl<'a> PlayerMessageOut<'a> {
