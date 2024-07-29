@@ -7,9 +7,14 @@ use serde::{Serialize, Deserialize};
 pub type RoomId = [u8; ROOM_ID_LEN];
 //pub type ClientId = ArcIntern<SocketAddr>;
 pub type PlayerId = u8;
-pub type PlayerToken = u32;
+pub type PlayerToken = u32; // can't use usize or javascript will throw a fit
 
-pub use std::time::Duration;
+pub enum ClientId {
+	Host,
+	Player(PlayerId)
+}
+
+pub use tokio::time::Duration;
 
 pub const ROUND_COUNT: usize = 3;
 pub const MIN_NAME_LEN: usize = 2;
@@ -17,14 +22,56 @@ pub const MAX_NAME_LEN: usize = 16;
 pub const MIN_PLAYER_COUNT: usize = 2;
 pub const MAX_PLAYER_COUNT: usize = 8;
 
-pub const START_DURATION: Duration = Duration::from_secs(1);
-pub const DRAW_DURATION: Duration = Duration::from_secs(60);
-pub const DRAW_AUTOSUBMIT_DURATION: Duration = Duration::from_secs(4);
-pub const VOTE_DURATION: Duration = Duration::from_secs(20);
-pub const SCORE_DURATION: Duration = Duration::from_secs(10);
-
 pub const ROOM_ID_LEN: usize = 5;
 pub const ROOM_ID_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+
+/*#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub enum StatusKind {
+	Ok,
+	Err
+}*/
+#[derive(Serialize, Clone)]
+#[serde(tag = "type", content = "data")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum GlobalPlayerMsgOut<'a> {
+	Terminated,
+	Error(&'a str),
+}
+
+#[derive(Serialize, Clone)]
+#[serde(tag = "type", content = "data")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum GlobalHostMsgOut<'a> {
+	Accepted { join_code: &'a str },
+	Terminated,
+	//Error(&'a str),
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type", content = "data")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+enum GlobalHostMsgIn {
+	Terminate
+}
+
+/*impl<'a> GlobalPlayerMsgOut<'a> {
+	fn ok(message: &'a str) -> Self {
+		Self::StatusUpdate { kind: StatusKind::Ok, message }
+	}
+	fn err(message: &'a str) -> Self {
+		Self::StatusUpdate { kind: StatusKind::Err, message }
+	}
+}*/
+
+
+
+
+/*pub enum GameType {
+	Drawblins,
+	Showdown
+}
 
 
 #[derive(Deserialize)]
@@ -50,7 +97,6 @@ pub enum PlayerMessageIn {
 #[serde(tag = "type", content = "data")]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum HostMessageOut<'a> {
-	
 	
 	LobbyCreated { join_code: &'a str },
 	PlayerJoined { player_id: PlayerId, player_name: String },
@@ -102,7 +148,7 @@ pub enum PlayerMessageOut<'a> {
 	Idle { kind: IdleKind },// { message: &'a str },
 	Drawing { goblin_name: &'a str, secs_left: f32 },
 	DrawingTimeout,
-	Voting { choices: &'a Vec<String> }
+	Voting { choices: &'a Vec<String>, secs_left: f32 }
 	
 }
 impl<'a> PlayerMessageOut<'a> {
@@ -110,16 +156,14 @@ impl<'a> PlayerMessageOut<'a> {
 	pub fn error(message: &'a str) -> PlayerMessageOut::<'a> {
 		Self::StatusUpdate { kind: StatusKind::Error, message }
 	}
-	
-	
-}
+}*/
 
-#[derive(Serialize)]
+/*#[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RemotePlayer<'a> {
 	pub id: u8,
 	pub name: &'a str
-}
+}*/
 
 
 

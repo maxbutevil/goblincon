@@ -26,6 +26,10 @@ input {
     color: darkred;
 }
 
+.countdown {
+    font-size: 2em;
+}
+
 .tab {
     display: flex;
     flex-flow: column nowrap;
@@ -52,20 +56,29 @@ input {
     
 }
 .tab#draw {
+    flex-flow: row wrap;
     height: 100%;
     justify-content: center;
     margin: auto;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none; /* lets player draw on mobile */
 }
-
+#goblin-name {
+    width: 200px;
+    text-align: center;
+    font-size: 1.6em;
+}
+.tab#draw .countdown {
+    width: 200px;
+    text-align: center;
+}
 #drawpad {
     width: min(96vw, 78vh);
     display: flex;
     flex-flow: column nowrap;
     border: 0.6vmin solid black;
-    -moz-user-select: none;
-    -webkit-user-select: none;
-    user-select: none;
-    touch-action: none; /* lets player draw on mobile */
 }
 #drawpad #canvas {
     aspect-ratio: 1;
@@ -84,6 +97,9 @@ input {
 	aspect-ratio: 1;
     border: none;
     margin: none;
+}
+#drawpad .color-select-button {
+    border: 0.6vmin solid;
 }
 #drawpad #spacer-button {
     flex: 2;

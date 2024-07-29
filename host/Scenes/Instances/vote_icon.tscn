@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://dbgsj3uripd2n"]
+
+[ext_resource type="Script" path="res://Scripts/Instances/vote_icon.gd" id="1_u7h82"]
+[ext_resource type="Texture2D" uid="uid://dgxxkcjn22gl5" path="res://icon.svg" id="2_me3gy"]
+
+[node name="VoteIcon" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_u7h82")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+scale = Vector2(0.24, 0.24)
+texture = ExtResource("2_me3gy")

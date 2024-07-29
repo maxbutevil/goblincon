@@ -1,9 +1,9 @@
 
 //import Client from "../modules/client"
-import Extract, { SendIndex, ReceiveIndex } from "./modules/extract"
+//import Extract, { SendIndex, ReceiveIndex } from "./modules/extract"
 import State from "./modules/state"
 import Signal from "./modules/signal"
-
+import { SendIndex, ReceiveIndex } from "./modules/extract"
 
 export enum Connection {
 	PENDING,
@@ -14,7 +14,12 @@ export enum Connection {
 
 //const ADDR = "ws://localhost:5050";
 
+type Message = { type: string, data: any };
 class Client {
+	
+	//incoming = new Signal<string>();
+	private incoming = new Signal<Message>();
+	//private paused?: Array<Message>;
 	
 	state = new State(Connection.CLOSED);
 	pending = this.state.transitionTo(Connection.PENDING);
@@ -24,31 +29,6 @@ class Client {
 	//error = new Signal<void>();
 	
 	//phase = new State(Phase.NONE);
-	
-	inc = new ReceiveIndex({
-		
-		statusUpdate: { kind: Extract.choice<"info" | "error">("info", "error"), message: Extract.STRING },
-		
-		//gameStarted: Extract.NONE,
-		gameTerminated: Extract.NONE,
-		lobbyJoined: { promoted: Extract.BOOL },
-		promoted: Extract.NONE,
-		
-		idle: { kind: Extract.choice<"start" | "draw" | "vote" | "score">("start", "draw", "vote", "score") },
-		drawing: { goblinName: Extract.STRING, secsLeft: Extract.NUMBER },
-		drawingTimeout: Extract.NONE,
-		voting: { choices: Extract.array(Extract.STRING) },
-		//scoringStarted: Extract.NONE,
-		
-	});
-	out = new SendIndex({
-		
-		startGame: Extract.NONE,
-		drawingSubmission: { drawing: Extract.STRING },
-		//voteSubmission: { forId: Extract.NUMBER },
-		voteSubmission: { forName: Extract.STRING },
-		
-	}, (data: string) => this.ws?.send(data));
 	
 	//voteChoices: Array<string> = [];
 	
@@ -73,24 +53,72 @@ class Client {
 		this.ws.onopen = () => {
 			console.log("WebSocket connection opened!");
 			this.state.set(Connection.OPEN);
-			//this.phase.set(Phase.LOBBY);
 		};
 		this.ws.onclose = () => {
 			console.warn("WebSocket connection closed.");
+			this.ws = undefined;
 			this.state.set(Connection.CLOSED);
 		};
 		this.ws.onerror = (ev) => {
 			console.error("WebSocket error: ", ev);
-			this.state.set(Connection.CLOSED);
 		};
 		this.ws.onmessage = (ev: MessageEvent<string>) => {
-			if (typeof ev.data == "string") {
-				this.inc.handle(ev.data);
-			} else {
+			if (typeof ev.data != "string") {
 				console.error(`Non-String message received: ${ev.data}`);
+			} else {
+				try {
+					let raw = ev.data;
+					let message = JSON.parse(raw);
+					if (typeof message.type !== "string")
+						return console.error(`Unrecognized message: ${raw}`);
+					
+					//if (this.paused === undefined)
+						this.handle(message);
+					//else
+					//	this.paused.push(message);
+					
+				} catch(err) {
+					console.error(err);
+				}
 			}
 		};
 		
+	}
+	private handle(message: Message) {
+		let handled = this.incoming.handle(message);
+		if (!handled)
+			console.warn(`Unhandled message: ${JSON.stringify(message)}`);
+	}
+	send(data: string) {
+		this.ws?.send(data);
+	}
+	/*pause() {
+		if (this.paused === undefined)
+			this.paused = [];
+	}
+	unpause() {
+		if (this.paused === undefined)
+			return;
+		
+		let messages = this.paused;
+		this.paused = undefined;
+		for (const message of messages) {
+			if (this.paused !== undefined)
+				break;
+			this.handle(message);
+		}
+	}*/
+	/*subscribe() {
+		this.unpause();
+		return () => this.pause();
+	}*/
+	use(inc: ReceiveIndex<any>, out: SendIndex<any>): () => void {
+		//this.unpause();
+		return Signal.group(
+			this.incoming.subscribe(({ type, data }) => inc.handle(type, data)),
+			out.outgoing.subscribe((data) => this.send(data)),
+			//() => this.pause()
+		);
 	}
 	
 }

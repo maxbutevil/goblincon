@@ -13,21 +13,32 @@ script = ExtResource("1_aairg")
 
 [node name="Container" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 8
+anchors_preset = 5
 anchor_left = 0.5
-anchor_top = 0.5
 anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -20.0
-offset_top = -20.0
-offset_right = 20.0
-offset_bottom = 20.0
+offset_left = -58.0
+offset_top = 16.0
+offset_right = 58.0
+offset_bottom = 163.0
 grow_horizontal = 2
-grow_vertical = 2
 
-[node name="JoinCodeLabel" type="Label" parent="Container"]
+[node name="JoinCodeHeader" type="Label" parent="Container"]
 layout_mode = 2
+theme_type_variation = &"HeaderSmall"
+text = "Join Code"
+horizontal_alignment = 1
 
-[node name="Label" type="Label" parent="Container"]
+[node name="JoinCode" type="Label" parent="Container"]
 layout_mode = 2
-text = "Players:"
+theme_type_variation = &"HeaderLarge"
+horizontal_alignment = 1
+
+[node name="NameHeader" type="Label" parent="Container"]
+layout_mode = 2
+theme_type_variation = &"HeaderSmall"
+text = "Players (X/Y)"
+horizontal_alignment = 1
+
+[node name="NameContainer" type="VBoxContainer" parent="Container"]
+layout_mode = 2
+alignment = 1

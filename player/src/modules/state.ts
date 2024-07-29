@@ -75,7 +75,6 @@ export default class State<T> {
 	get(): T {
 		return this.value;
 	}
-	
 }
 
 

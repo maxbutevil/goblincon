@@ -19,3 +19,8 @@ config/icon="res://icon.svg"
 
 Utils="*res://Scripts/Autoloads/utils.gd"
 Client="*res://Scripts/Autoloads/client.gd"
+Drawblins="*res://Scripts/Autoloads/drawblins.gd"
+
+[gui]
+
+theme/custom="res://Resources/theme.tres"

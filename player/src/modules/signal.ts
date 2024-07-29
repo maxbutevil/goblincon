@@ -11,6 +11,9 @@ type Callback<T> = (() => any) | ((arg: T) => any);
 
 export default class Signal<T = void> extends Set<Callback<T>> {
 	
+	static readonly UNHANDLED = false;
+	static readonly HANDLED = true;
+	
 	public static group(...callbacks: Array<() => void>): () => void {
 		return () => {
 			for (const callback of callbacks)
@@ -65,10 +68,14 @@ export default class Signal<T = void> extends Set<Callback<T>> {
 	}*/
 	
 	public emit(arg: T): void {
-		
 		for (const callback of this)
 			callback(arg);
-		
+	}
+	public handle(arg: T): boolean {
+		for (const callback of this)
+			if (callback(arg) == Signal.HANDLED)
+				return Signal.HANDLED;
+		return Signal.UNHANDLED;
 	}
 	
 }

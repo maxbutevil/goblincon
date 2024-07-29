@@ -26,11 +26,26 @@ export default class Extract {
 	}
 	static optional<T>(extractor: Extractor<T>): ExtractorMethod<T | undefined> {
 		return (value: any) => {
-			if (value == undefined) {
+			if (value == undefined)
 				return undefined;
-			} else {
+			else
 				return Extract.unsafe(extractor, value);
-			}
+		};
+	}
+	static fallback<T>(extractor: Extractor<T>, fallback: T): ExtractorMethod<T> {
+		return (value: any) => {
+			if (value == undefined)
+				return fallback;
+			else
+				return Extract.unsafe(extractor, value);
+		}
+	}
+	static required<T>(value: T): ExtractorMethod<T> {
+		return (_value: any) => {
+			if (_value == value)
+				return _value;
+			else
+				throw new Error(`Extractor required error: Invalid value ${_value} for required ${value}`);
 		};
 	}
 	static choice<T>(...choices: Array<T>): ExtractorMethod<T> {
@@ -42,6 +57,17 @@ export default class Extract {
 				return choices[i];
 		};
 	}
+	static branch<T>(...branches: Array<Extractor<T>>): ExtractorMethod<T> {
+		return (value: any) => {
+			for (const branch of branches) {
+				try {
+					return Extract.unsafe(branch, value);
+				} catch(e) {}
+			}
+			throw new Error(`Extractor branch error: ${value} did not match any branches.`);
+		}
+	}
+	
 	/*static choice<T>(...extractors: Array<Extractor<T>>): Extractor<T> {
 		return (value: any) => {
 			for (const extractor of extractors) {
@@ -52,7 +78,7 @@ export default class Extract {
 			throw new Error(`Extractor choice error: ${value} matches no paths.`);
 		};
 	}*/
-	static array<T>(extractor: ExtractorMethod<T>) {
+	static array<T>(extractor: ExtractorMethod<T>): ExtractorMethod<Array<T>> {
 		return (value: any) => {
 			if (Array.isArray(value)) {
 				return value.map((value) => Extract.unsafe(extractor, value));
@@ -76,6 +102,7 @@ export default class Extract {
 			Extract.unsafe(extractor, value);
 		} catch(e) {
 			console.error(e);
+			console.warn("Extraction failed on: ", value)
 			return undefined;
 		}
 	}
@@ -108,68 +135,87 @@ function encode<I extends Index>() {
 	
 }*/
 
-//type IncomingMessage<I, K extends keyof I, P> = { peer: P, data: Extracted<I[K]> };
-//type IncomingSignal<I, K extends keyof I, P> = Signal<IncomingMessage<, P>;
-type IncomingMessage<I, K extends keyof I, _> = Extracted<I[K]>;
-type ReceiveCallback<I, K extends keyof I, _> = ((value: IncomingMessage<I, K, _>) => any);
+//type IncomingMessage<I, K extends keyof I> = { peer: P, data: Extracted<I[K]> };
+//type IncomingSignal<I, K extends keyof I> = Signal<IncomingMessage<>;
+type IncomingMessage<I, K extends keyof I> = Extracted<I[K]>;
+type ReceiveCallback<I, K extends keyof I> = ((value: IncomingMessage<I, K>) => any);
 
 type Index = { [key: string]: Extractor<any> }
-export class ReceiveIndex<I extends Index, P = never> {
+export class ReceiveIndex<I extends Index> {
 	
 	private extractors: I;
-	private signals: { [K in keyof I]?: Signal<IncomingMessage<I, K, P>> } = {};
+	private signals: { [K in keyof I]?: Signal<IncomingMessage<I, K>> } = {};
 	constructor(extractors: I) {
 		this.extractors = extractors;
 	}
 	
-	private signal<K extends keyof I>(key: K): Signal<IncomingMessage<I, K, P>> {
+	private signal<K extends keyof I>(key: K): Signal<IncomingMessage<I, K>> {
 		return this.signals[key] ??= new Signal();
 	}
-	listen<K extends keyof I>(key: K, callback: ReceiveCallback<I, K, P>) {
+	listen<K extends keyof I>(key: K, callback: ReceiveCallback<I, K>) {
 		this.signal(key).listen(callback);
 	}
-	drop<K extends keyof I>(key: K, callback: ReceiveCallback<I, K, P>) {
+	drop<K extends keyof I>(key: K, callback: ReceiveCallback<I, K>) {
 		this.signal(key).drop(callback);
 	}
-	subscribe<K extends keyof I>(key: K, callback: ReceiveCallback<I, K, P>): () => void {
+	subscribe<K extends keyof I>(key: K, callback: ReceiveCallback<I, K>): () => void {
 		return this.signal(key).subscribe(callback);
 	}
 	
-	handle(content: string) {
+	/*handle(content: string) {
+		try {
+			this.handleRaw(content);
+		} catch(e) {
+			console.error(e);
+		}
+	}
+	handleQuiet(content: string) {
+		try {
+			this.handleRaw(content);
+		} catch(e) {
+			
+		}
+	}*/
+	
+	has(type: string) {
+		return type in this.extractors;
+	}
+	handle(type: keyof I, data: any): boolean {
+		//let type = message.type as keyof I;
+		//let data = message.data;
 		
-		let message = JSON.parse(content);
-		
-		if (typeof message.type != "string")
-			return console.error("Invalid message received: ", message);
-		
-		let type = message.type as keyof I;
-		let data = message.data;
-		
+		//if (!(type in this.extractors))
+		//	throw new Error(`Unrecognized message type: ${String(type)} | ${data}`);
 		if (!(type in this.extractors))
-			return console.error("Unrecognized message type: ", type, " | ", data);
-		if (!(type in this.signals))
-			return console.error("Unhandled message type: ", type, " | ", data);
+			return Signal.UNHANDLED;
+		if (!(type in this.signals)) {
+			console.error(`Unhandled message type: ${String(type)} | ${data}`);
+			return Signal.HANDLED;
+		}
 		
 		let extracted;
 		try {
 			extracted = Extract.unsafe(this.extractors[type], data);
 		} catch(err) {
-			return console.error("Invalid message data: ", type, " | ", data, " | ", err);
+			console.error(`Invalid message data: ${String(type)} | ${data} | ${err}`);
+			return Signal.HANDLED;
 		}
 		
-		console.log("Message received: ", message);
+		console.log(`Message received: ${String(type)} | ${JSON.stringify(data)}`);
 		this.signals[type]!.emit(extracted);
-		
+		return Signal.HANDLED;
 	}
 	
 }
+
 export class SendIndex<I extends Index> {
 	
 	//send = new Signal<string>();
+	outgoing = new Signal<string>();
 	
-	private sender: (encoded: string) => any;
-	constructor(_: I, sender: (encoded: string) => any) {
-		this.sender = sender;
+	//private sender: (encoded: string) => any;
+	constructor(_: I/*, sender: (encoded: string) => any*/) {
+		//this.sender = sender;
 	}
 	encode<K extends keyof I>(type: K, data: Extracted<I[K]>): string {
 		return data == undefined ? 
@@ -177,8 +223,13 @@ export class SendIndex<I extends Index> {
 			JSON.stringify({ type, data });
 	}
 	send<K extends keyof I>(type: K, data: Extracted<I[K]>) {
-		this.sender(this.encode(type, data));
+		//this.sender(this.encode(type, data));
+		this.outgoing.emit(this.encode(type, data));
+		//this.outgoing.emit(data);
 	}
+	/*sendUnit<K extends keyof I: Extracted<I[K]> extends undefined ? K : never) {
+		this.outgoing.emit(this.encode(type, undefined));
+	}*/
 	
 }
 

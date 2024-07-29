@@ -24,7 +24,7 @@ use axum::{
 	extract::{
 		State,
 		Query,
-		ConnectInfo,
+		//ConnectInfo,
 		ws::{WebSocket, WebSocketUpgrade},
 	},
 };
@@ -32,7 +32,7 @@ use tower_http::services::ServeDir;
 //use axum_macros::debug_handler;
 use serde::Deserialize;
 
-use crate::types::RoomId;
+use crate::types::*;
 
 
 const PORT: &str = "5050";
@@ -55,8 +55,9 @@ async fn main() {
 	};
 	
 	let router = Router::new()
-		.route("/host/ws", get(ws_upgrade_host))
-		.route("/play/ws", get(ws_upgrade_player))
+		.route("/host", get(ws_upgrade_host))
+		.route("/play/join", get(ws_upgrade_player_join))
+		.route("/play/rejoin", get(ws_upgrade_player_rejoin))
 		.nest_service("/", ServeDir::new("player/dist"))
 		.with_state(App::new())
 		.into_make_service_with_connect_info::<SocketAddr>();
@@ -70,11 +71,22 @@ async fn main() {
 	
 }
 
+
 #[derive(Deserialize)]
-struct JoinQueryFields {
+#[serde(rename_all = "camelCase")]
+struct JoinQuery {
 	code: String,
 	name: String
 }
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RejoinQuery {
+	code: String,
+	name: String,
+	id: PlayerId,
+	token: PlayerToken
+}
+
 
 //#[debug_handler]
 async fn ws_upgrade_host(State(app): State<App>, ws: WebSocketUpgrade) -> Response {
@@ -87,33 +99,49 @@ async fn ws_upgrade_host(State(app): State<App>, ws: WebSocketUpgrade) -> Respon
 	
 }
 
-
-
-async fn ws_upgrade_player(
+async fn ws_upgrade_player_join(
 	State(app): State<App>,
-	ws: WebSocketUpgrade,
-	ConnectInfo(addr): ConnectInfo<SocketAddr>,
-	Query(query): Query<JoinQueryFields>
+	Query(query): Query<JoinQuery>,
+	ws: WebSocketUpgrade
 ) -> Result<Response, StatusCode>
 {
-	
-	async fn accept_player(app: App, room_id: RoomId, ws: WebSocket, addr: SocketAddr, name: String) {
-		app.accept_player(room_id, ws, addr, name).await;
+	async fn accept(app: App, socket: WebSocket, room_id: RoomId, name: String) {
+		app.accept_player_join(socket, room_id, name).await;
 	}
 	
 	let (code, name) = (query.code, query.name);
-	//log::info!("Player connecting: {code} | {name}");
-	
 	if let Some(room_id) = App::parse_room_id(&code) {
-		if app.has_handle(&room_id) {
+		if app.has_room(&room_id) {
 			return Ok(ws.on_upgrade(move |socket| {
-				accept_player(app, room_id, socket, addr, name)
+				accept(app, socket, room_id, name)
 			}));
 		}
 	}
 	
 	log::warn!("Room Not Found [{code}]");
 	Err(StatusCode::BAD_REQUEST)
+}
+async fn ws_upgrade_player_rejoin(
+	State(app): State<App>,
+	Query(query): Query<RejoinQuery>,
+	ws: WebSocketUpgrade
+) -> Result<Response, StatusCode>
+{
+	async fn accept(app: App, socket: WebSocket, room_id: RoomId, name: String, player_id: PlayerId, token: PlayerToken) {
+		app.accept_player_rejoin(socket, room_id, name, player_id, token).await;
+	}
 	
+	let (code, name, player_id, token) = (query.code, query.name, query.id, query.token);
+	
+	if let Some(room_id) = App::parse_room_id(&code) {
+		if app.has_room(&room_id) {
+			return Ok(ws.on_upgrade(move |socket| {
+				accept(app, socket, room_id, name, player_id, token)
+			}));
+		}
+	}
+	
+	log::warn!("Room Not Found [{code}]");
+	Err(StatusCode::BAD_REQUEST)
 }
 

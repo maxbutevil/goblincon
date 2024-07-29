@@ -1,16 +1,16 @@
-extends Stage
+extends FleetingStage
 
 
-@onready var name_label: Label = $VBoxContainer/NameLabel;
+@onready var name_label: Label = $Container/GoblinName;
 
 
-func _init():
-	super();
-	set_fleeting(true);
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	opened.connect(func(): name_label.set_text(Client.current_round.goblin_name));
+	opened.connect(
+		func():
+			name_label.set_text(Drawblins.current_round.goblin_name);
+	);
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.

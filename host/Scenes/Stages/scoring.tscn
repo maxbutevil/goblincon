@@ -1,8 +1,22 @@
 [gd_scene load_steps=2 format=3 uid="uid://cs54qfmy08kwq"]
 
-[ext_resource type="Script" path="res://Scripts/Stages/voting.gd" id="1_5yxfk"]
+[ext_resource type="Script" path="res://Scripts/Stages/scoring.gd" id="1_su5nu"]
 
-[node name="Voting" type="Control"]
+[node name="Scoring" type="Control"]
 layout_mode = 3
-anchors_preset = 0
-script = ExtResource("1_5yxfk")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_su5nu")
+
+[node name="Container" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
