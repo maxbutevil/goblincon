@@ -1,38 +1,32 @@
 extends Node
 
 signal connecting();
+signal connection_failed();
 #signal connected();
 #signal disconnected();
 signal accepted();
-signal terminated();
+signal terminated(ok: bool);
+signal disconnected();
+#signal error();
+
+signal mode_changed(old: Mode, new: Mode);
 
 signal lobby_created(join_code: String);
+signal game_starting();
 signal game_started();
 signal incoming(type: String, data);
 
 signal player_joined(id: int);
 signal player_left(id: int);
 
-#
-#signal player_joined(id: int);
-#signal player_left(id: int);
-#
-#signal drawing_started(goblin_name: String);
-#signal voting_started();
-#signal scoring_started();
-#
-#signal drawing_received(player_id: int);
-#signal vote_received(player_id: int, for_id: int);
+const URL:= "ws://127.0.0.1:5050/host";
 
 
 enum Connection {
 	PENDING,
 	OPEN,
+	CLOSING,
 	CLOSED
-}
-
-enum Mode {
-	DRAWBLINS
 }
 
 var ws:= WebSocketPeer.new();
@@ -40,11 +34,14 @@ var state:= Connection.CLOSED;
 
 var join_code: String;
 var players: Dictionary; # int -> Player
-var current_game;
+var mode: Mode;
+#var settings: GameSettings;
 #var rounds: Array[Round];
 #var current_round: Round :
 	#get: return rounds.back();
 
+func get_mode() -> Mode:
+	return mode;
 func get_join_code() -> String:
 	return join_code;
 func set_join_code(new_code: String):
@@ -69,17 +66,45 @@ func set_state(new_state: Connection) -> void:
 		var old_state = state;
 		state = new_state;
 		
-		if old_state == Connection.OPEN:
-			terminated.emit();
-		elif new_state == Connection.OPEN:
+		if new_state == Connection.PENDING:
+			connecting.emit();
+		if old_state == Connection.PENDING and new_state == Connection.CLOSED:
+			connection_failed.emit();
+		
+		if new_state == Connection.OPEN:
 			accepted.emit();
+		if old_state == Connection.OPEN and new_state == Connection.CLOSING:
+			terminated.emit(true);
+		if old_state == Connection.OPEN and new_state == Connection.CLOSED:
+			terminated.emit(false);
+func set_mode(new_mode: Mode):
+	if mode != new_mode:
+		var old_mode = mode;
+		mode = new_mode;
+		
+		if old_mode != null:
+			old_mode.close();
+		if new_mode != null:
+			new_mode.open();
+		
+		mode_changed.emit(old_mode, new_mode);
 
+#func connect_to_url(url: String) -> void:
+	#ws.connect_to_url(url);
+func connect_to_server(_mode: Mode) -> void:
+	set_mode(_mode);
+	ws.connect_to_url(URL);
+func disconnect_from_server() -> void:
+	ws.close();
 
-func connect_to_url(url: String) -> void:
-	ws.connect_to_url(url);
-
-
-
+#func _ready():
+	#accepted.connect(send_settings);
+#func send_settings():
+	#if mode == Mode.NONE:
+		#printerr("No game chosen");
+	#else:
+		#send("updateSettings", settings.as_remote());
+	
 func _process(delta: float):
 	
 	ws.poll();
@@ -118,10 +143,13 @@ func handle(raw: String):
 			set_join_code(data["joinCode"]);
 			set_state(Connection.OPEN);
 		"terminated":
+			set_state(Connection.CLOSING);
 			ws.close();
-			set_state(Connection.CLOSED);
-		"lobbyCreated":
+		"inLobby":
 			lobby_created.emit();
+		"gameStarting":
+			send("startGame", mode.get_settings().as_remote());
+			game_starting.emit();
 		"gameStarted":
 			game_started.emit();
 		"playerJoined":

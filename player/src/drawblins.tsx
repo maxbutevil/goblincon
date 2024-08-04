@@ -33,7 +33,7 @@ const OUT = new SendIndex({
 	voteSubmission: { forName: Extract.STRING },
 });
 
-
+const drawingAutoSubmit = new Signal();
 const drawingSubmitted = new Signal();
 const voteSubmitted = new Signal();
 
@@ -80,14 +80,20 @@ function DrawPad() {
 	const THICK_LINE_WIDTH = 20;
 	const ERASER_WIDTH = 20;
 	
-	const enabled = true;
+	enum CanvasState {
+		BLANK,
+		IDLE,
+		DRAWING,
+		SUBMITTED
+	};
+	
+	const state = React.useRef(CanvasState.BLANK);
 	
 	//const canvasRef = React.useRef<HTMLCanvasElement>(null);
 	//const drawpadRef = React.useRef<HTMLDivElement>(null);
 	const canvasRef = React.useRef<HTMLCanvasElement>(null);
 	
 	let canvas: Canvas | undefined;
-	let drawing = false;
 	
 	//let drawing = false;
 	
@@ -189,7 +195,6 @@ function DrawPad() {
 		
 	}
 	
-	
 	function applyOperationRange(start: number, end = Infinity) {
 		end = Math.min(end, undoStack.length);
 		for (let i = start; i < end; i++)
@@ -248,33 +253,37 @@ function DrawPad() {
 	
 	function undo() {
 		
-		if (!enabled || !canvas)
+		if (state.current !== CanvasState.IDLE)
 			return;
-		if (undoStack.length === 0)
+		if (!canvas || undoStack.length === 0)
 			return;
 		
-		drawing = false;
 		redoStack.push(undoStack.pop()!);
 		rebuildCanvas();
 		
+		let isBlank = (backupIndex === 0 && undoStack.length === 0);
+		if (isBlank)
+			state.current = CanvasState.BLANK;
 	}
 	function redo() {
 		
-		if (!enabled || !canvas)
+		if (state.current === CanvasState.SUBMITTED || !canvas)
 			return;
 		if (redoStack.length === 0)
 			return;
 		
+		state.current = CanvasState.IDLE;
 		let op = redoStack.pop()!;
 		undoStack.push(op);
 		applyOperation(op); // don't really need to mess with the backup here
 		
 	}
 	
-	/* ok note to self, we have to like check shit somehow to make it so that you stop drawing if you go outside of the canvas */
 	function draw(ev: React.PointerEvent) {
 		
-		if (!ev.isPrimary || !enabled || !drawing || !canvas)
+		if (state.current !== CanvasState.DRAWING)
+			return;
+		if (!ev.isPrimary || !canvas)
 			return;
 		
 		let [x, y] = canvas.map(ev.nativeEvent.offsetX, ev.nativeEvent.offsetY);
@@ -289,7 +298,7 @@ function DrawPad() {
 		
 	}
 	function startDraw() {
-		drawing = true;
+		state.current = CanvasState.DRAWING;
 		redoStack = [];
 		undoStack.push({
 			path: new Path(),
@@ -297,54 +306,68 @@ function DrawPad() {
 		});
 	}
 	function endDraw() {
-		drawing = false;
+		state.current = CanvasState.IDLE;
 		rebuildCanvas();
 	}
 	function handleStartDraw(ev: React.PointerEvent) {
-		if (!ev.isPrimary || drawing || !canvas)
+		
+		if (!ev.isPrimary || !canvas)
 			return;
+		if (state.current === CanvasState.DRAWING)
+			return;
+		if (state.current === CanvasState.SUBMITTED)
+			return;
+		
 		startDraw();
 		draw(ev);
 	}
 	function handleEndDraw(ev: React.PointerEvent) {
-		if (!ev.isPrimary || !drawing)
+		if (state.current !== CanvasState.DRAWING)
+			return;
+		if (!ev.isPrimary)
 			return;
 		draw(ev);
 		endDraw();
 	}
 	
 	function toggleLineWidth() {
-		if (drawing || !canvas || !enabled)
+		
+		if (state.current === CanvasState.SUBMITTED)
+			return;
+		if (state.current === CanvasState.DRAWING)
+			return;
+		if (!canvas)
 			return;
 		
 		if (drawMode.key === "draw") {
-			drawMode.weight = drawMode.weight === "thin" ? "thick" : "thin";
+			drawMode.weight = (drawMode.weight === "thin" ? "thick" : "thin");
 			applyMode();
 		}
 	}
 	
 	function submit() {
 		
-		if (!enabled)
-			return false;
+		if (state.current === CanvasState.BLANK)
+			return;
+		if (state.current === CanvasState.SUBMITTED)
+			return;
 		if (canvasRef.current === null)
 			return console.error("Couldn't get canvas data");
 		
 		//canvasRef.current.getContext("2d")?.getImageData
-		
 		let drawing = canvasRef.current
 			.toDataURL("image/png")
 			.replace("data:image/png;base64,", "");
+		
+		state.current = CanvasState.SUBMITTED;
 		OUT.send("drawingSubmission", { drawing });
-		//enabled = false; // Don't want to rerender here, will reset the canvas
-		
 		drawingSubmitted.emit();
-		
 	}
 	
 	/*React.useEffect(() => INC.subscribe("drawingTimeout", () => {
 		submit();
 	}), []);*/
+	React.useEffect(() => drawingAutoSubmit.subscribe(submit), []);
 	React.useEffect(() => {
 		
 		let ctx = canvasRef.current?.getContext("2d");
@@ -369,12 +392,10 @@ function DrawPad() {
 		};
 	}, []);
 	
-	
-	
 	return (
 		<div id="drawpad">
 			<ColorSelect />
-			<canvas 
+			<canvas
 				id="canvas"
 				key="canvas"
 				width="360px" height="360px"
@@ -402,18 +423,16 @@ function Draw({ goblinName, endTime }: { goblinName: string, endTime: number }) 
 		<div className="tab" id="draw">
 			<div id="goblin-name">{goblinName}</div>
 			<DrawPad />
-			<Countdown endTime={endTime} />
+			<Countdown endTime={endTime} onFinish={() => drawingAutoSubmit.emit()} />
 		</div>
 	);
 }
 function Vote({ choices, endTime }: { choices: Array<string>, endTime: number }) {
 	
 	function VoteButton({ name, submitVote }: { name: string, submitVote: (name: string) => void }) {
-	
 		return (
 			<button className="vote-button" onClick={() => submitVote(name)}>{name}</button>
 		);
-		
 	}
 	
 	const submitVote = (forName: string) => {
@@ -492,7 +511,7 @@ export function state(): { state: State<Page>, cleanup: () => void } {
 			}
 		}),
 		INC.subscribe("drawing", ({ goblinName, secsLeft }: { goblinName: string, secsLeft: number }) => {
-			let endTime = Date.now() + 1000 * (secsLeft - 1);
+			let endTime = Date.now() + 1000 * (secsLeft - 5); // shave off some time to allow for automatic submission
 			state.set(Enum.variant("draw", { goblinName, endTime }));
 		}),
 		INC.subscribe("voting", ({ choices, secsLeft }) => {

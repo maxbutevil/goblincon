@@ -26,24 +26,32 @@ const NAMES: &[&str] = &[
 	"Chrysanthorp",
 	"Graggle",
 	
+	/* Epithets */
+	"Kills People",
+	"Boy Melter",
+	"Steamroller Victim",
+	"The Audiovisual Homunculus",
+	"#1 Fan",
+	
+	
+	
 	"Wonk",
 	"Thimbel",
 	"Smelmer",
 	"Torpeed",
 	"Walter",
 	"Jimmy",
-	"Gaylord",
-	"Gerson",
+	//"Gaylord",
+	//"Gerson",
 	"Bindle",
 	"Grim",
 	"Gnarlie",
+	"Pockets",
 	
-	"Orinboringor",
+	//"Orinboringor",
 	
 	"Romble Gomper",
 	"Gomp Rombler",
-	"Kills People",
-	"Boy Melter",
 	//"The Girl Reading This",
 	"Torso Joe",
 	"Nilbog",
@@ -51,7 +59,8 @@ const NAMES: &[&str] = &[
 	"Mingle",
 	"The Sniff",
 	"Londo Moneir",
-	"Dehydrus",
+	//"Dehydrus",
+	"Chin Steve",
 	
 	"Fangle",
 	"Wilford",
@@ -66,11 +75,9 @@ const NAMES: &[&str] = &[
 	"Dimples",
 	"Devio",
 	"Joe",
-	"Biden",
-	"Donald",
-	//"Trump",
+	"Donny",
 	"Kreibert",
-	"Grebe",
+	"Greeb",
 	"Screeble",
 	"Comedius",
 	"Fink",
@@ -80,7 +87,6 @@ const NAMES: &[&str] = &[
 	"Crease",
 	"Splinky",
 	"Jingle",
-	"Steamroller Victim",
 	"Chip",
 	"Bucky",
 	"Cootie",
@@ -96,6 +102,7 @@ const NAMES: &[&str] = &[
 	"Flaps",
 	"Homuncules",
 	"Glug",
+	"Lasanga",
 	
 	/* Carson's Contributions */
 	//"Jorm",
@@ -165,7 +172,7 @@ enum NameGen {
 }
 
 
-pub fn get_names(count: usize) -> Box<[&'static str]> {
+pub fn generate(count: usize) -> Box<[&'static str]> {
 	let mut rng = rand::thread_rng();
 	rand::seq::index::sample(&mut rng, NAMES.len(), count)
 		.iter()

@@ -1,6 +1,7 @@
 
 
 use serde::{Serialize, Deserialize};
+pub use tokio::time::Duration;
 
 //use std::net::SocketAddr;
 //use internment::ArcIntern;
@@ -14,17 +15,15 @@ pub enum ClientId {
 	Player(PlayerId)
 }
 
-pub use tokio::time::Duration;
-
-pub const ROUND_COUNT: usize = 3;
+pub const MIN_PLAYER_COUNT: usize = 2;
+pub const MAX_PLAYER_COUNT: usize = 12;
+//pub const ROUND_COUNT: usize = 3;
 pub const MIN_NAME_LEN: usize = 2;
 pub const MAX_NAME_LEN: usize = 16;
-pub const MIN_PLAYER_COUNT: usize = 2;
-pub const MAX_PLAYER_COUNT: usize = 8;
 
 pub const ROOM_ID_LEN: usize = 5;
-pub const ROOM_ID_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
+//pub const ROOM_ID_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+pub const ROOM_ID_CHARS: &[u8] = b"BCDFGHJKLMNPQRSTVWXZ";
 
 /*#[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]

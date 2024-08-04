@@ -27,6 +27,7 @@ const INC = new ReceiveIndex({
 const OUT = new SendIndex({
 	/* Lobby */
 	startGame: Extract.NONE
+	//requestStart: Extract.NONE
 });
 
 

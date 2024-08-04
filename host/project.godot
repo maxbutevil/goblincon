@@ -21,6 +21,11 @@ Utils="*res://Scripts/Autoloads/utils.gd"
 Client="*res://Scripts/Autoloads/client.gd"
 Drawblins="*res://Scripts/Autoloads/drawblins.gd"
 
+[display]
+
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep_height"
+
 [gui]
 
 theme/custom="res://Resources/theme.tres"

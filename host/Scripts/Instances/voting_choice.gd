@@ -14,11 +14,11 @@ const VOTE_COLORS: Array[Color] = [
 ];
 
 const VOTE_OFFSETS: Array[int] = [
-	-48,
-	-24,
+	-72,
+	-36,
 	0,
-	24,
-	48
+	36,
+	72
 ];
 
 var caption: String;

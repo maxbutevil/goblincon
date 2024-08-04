@@ -4,10 +4,6 @@
 
 
 
-
-//use internment::ArcIntern;
-//use log::{info, warn, error};
-
 use std::sync::Arc;
 
 use slab::Slab;
@@ -15,7 +11,6 @@ use dashmap::DashMap;
 
 
 use futures_util::{
-	//Future,
 	SinkExt, StreamExt,
 	stream::{SplitSink, SplitStream}
 };
@@ -30,6 +25,7 @@ use axum::extract::ws::{Message, WebSocket};
 
 use crate::types::*;
 use crate::goblin_names;
+use client_index::ClientIndex;
 
 //use tokio_tungstenite::WebSocketStream;
 //use tokio_tungstenite::tungstenite::Message;
@@ -67,13 +63,15 @@ async fn next_string(receiver: &mut WebSocketReceiver) -> Option<String> {
 			Ok(Message::Text(content)) => {
 				return Some(content);
 			},
+			Ok(Message::Ping(_)) => {
+				/* Ignore these, tungstenite handles them */
+			},
 			Ok(Message::Close(_)) => {
-				log::debug!("websocket connection closed.");
+				log::debug!("websocket connection closed");
 				return None;
 			},
-			Ok(Message::Ping(_)) => {},
 			Ok(message) => {
-				log::warn!("invalid websocket message: {message:?}")
+				log::warn!("invalid websocket message: {message:?}");
 			},
 			Err(err) => {
 				log::error!("websocket receive: {err}");
@@ -156,7 +154,70 @@ impl Player {
 	}
 }
 
-use client_index::ClientIndex;
+use std::pin::Pin;
+	use tokio::time::{sleep, Sleep, Duration};
+struct Timeout(pub Pin<Box<Sleep>>);
+impl Timeout {
+	fn new(duration: Duration) -> Self {
+		Self(Box::pin(sleep(duration)))
+	}
+	fn replace(&mut self, duration: Duration) {
+		self.0.set(sleep(duration));
+	}
+	fn scaled(duration: Duration, scale_setting: f32) -> Duration {
+		Duration::from_secs_f32(scale_setting * duration.as_secs_f32())
+	}
+	fn variable(duration: VariableDuration, scale_factor: usize) -> Duration {
+		Duration::from_millis(duration.millis(scale_factor))
+	}
+	fn variable_scaled(duration: VariableDuration, scale_factor: usize, scale_setting: f32) -> Duration {
+		let millis = (duration.millis(scale_factor) as f32) * scale_setting;
+		//log::debug!("{} | {}")
+		Duration::from_millis(millis as u64)
+	}
+	
+	fn remaining(&self) -> Duration {
+		self.0.deadline() - tokio::time::Instant::now()
+	}
+	fn remaining_secs(&self) -> f32 {
+		self.remaining().as_secs_f32()
+	}
+	fn future<'a>(&'a mut self) -> &'a mut Pin<Box<Sleep>> {
+		&mut self.0
+	}
+	
+}
+
+struct VariableDuration {
+	base_millis: u64,
+	scaled_millis: u64
+}
+impl VariableDuration {
+	const fn from_secs(base_secs: u64, scaled_secs: u64) -> Self {
+		Self::from_millis(base_secs * 1000, scaled_secs * 1000)
+	}
+	const fn from_millis(base_millis: u64, scaled_millis: u64) -> Self {
+		Self { base_millis, scaled_millis }
+	}
+	const fn secs(&self, scale_factor: usize) -> u64 {
+		self.millis(scale_factor).div_ceil(1000)
+	}
+	const fn millis(&self, scale_factor: usize) -> u64 {
+		self.base_millis + (scale_factor as u64) * self.scaled_millis
+	}
+	/*const fn duration(&self, scale_factor: usize) -> Duration {
+		Duration::from_millis(self.millis(scale_factor))
+	}
+	const fn duration_scaled(&self, scale_factor: usize, scale_setting: f32) {
+		
+	}*/
+	/*fn build_timeout(&self, scale_factor: u64, scale_setting: f32) -> Timeout {
+		let millis = (self.millis(scale_factor) as f32) * scale_setting
+		let duration = Duration::from_millis(self.millis(scale_factor) * scale_setting);
+		
+		//Timeout::from_secs(((self.secs(scale_factor) as f32) * scale_setting))
+	}*/
+}
 
 
 
@@ -393,165 +454,23 @@ mod lobby {
 	pub type Sender = mpsc::Sender<Event>;
 	type Receiver = mpsc::Receiver<Event>;
 	
-	pub enum Event {
-		PlayerJoin { socket: WebSocket, name: String }
-	}
-	
-	pub struct Lobby<'a> {
-		//id: RoomId,
-		//pub sender: mpsc::Sender<Event>,
-		pub receiver: mpsc::Receiver<Event>,
-		pub settings: game::Settings,
-		pub clients: &'a mut ClientIndex,
-		leader_id: PlayerId,
-		//host: super::Host,
-		//players: Slab<super::Player>
-	}
-	impl<'a> Lobby<'a> {
-		pub fn new(clients: &'a mut ClientIndex, settings: game::Settings) -> (Self, Sender) {
-			let (sender, receiver) = mpsc::channel(EVENT_QUEUE_SIZE); /* this is an arbitrary size */
-			let lobby = Self {
-				receiver,
-				settings,
-				clients,
-				leader_id: 0
-			};
-			(lobby, sender)
-		}
-		fn new_leader_id(&self) -> PlayerId {
-			if let Some((leader_id, _)) = self.clients.players.iter().next() {
-				leader_id as PlayerId
-			} else {
-				PlayerId::MAX
-			}
-		}
-		async fn open(&mut self) {
-			
-			let removed_ids = self.clients.remove_disconnected_players();
-			for player_id in removed_ids {
-				let _ = self.clients.send_host(&HostMsgOut::PlayerLeft { player_id }).await;
-			}
-			
-			if self.clients.players.is_empty() {
-				let _ = self.clients.send_host(&HostMsgOut::LobbyCreated).await;
-			} else {
-				self.leader_id = self.new_leader_id();
-				let _ = self.clients.send_player(
-					self.leader_id,
-					&PlayerMsgOut::InLobby { promoted: true }
-				).await;
-				let _ = self.clients.send_all_except(
-					self.leader_id,
-					&HostMsgOut::LobbyCreated,
-					&PlayerMsgOut::InLobby { promoted: false }
-				).await;
-			}
-		}
-		pub async fn run(mut self) -> Result<game::Settings, ()> {
-			
-			self.open().await;
-			
-			loop {
-				tokio::select! {
-					event = self.receiver.recv() => {
-						let Some(event) = event else { break Err(()); };
-						match event {
-							Event::PlayerJoin { socket, name } => {
-								let result = self.clients.connect_player(socket, name.clone()).await;
-								let Ok((player_id, token)) = result else { continue };
-								
-								/* If we don't have a leader, make this player the leader */
-								if !self.clients.players.contains(self.leader_id as usize) {
-									self.leader_id = player_id;
-								}
-								
-								let _ = self.clients.send_host(&HostMsgOut::PlayerJoined {
-									player_id,
-									player_name: name
-								}).await;
-								let _ = self.clients.send_player(player_id, &PlayerMsgOut::Accepted {
-									player_id,
-									token,
-									//promoted: self.leader_id == player_id
-								}).await;
-								let _ = self.clients.send_player(player_id, &PlayerMsgOut::InLobby {
-									promoted: self.leader_id == player_id
-								}).await;
-							}
-						}
-					},
-					event = self.clients.receiver.recv() => {
-						use client_index::Event;
-						let Some(event) = event else { break Err(()); };
-						match event {
-							Event::HostDisconnect => break Err(()),
-							Event::PlayerDisconnect(player_id) => {
-								self.clients.remove_player(player_id).await;
-								let _ = self.clients.send_host(&HostMsgOut::PlayerLeft { player_id }).await;
-								
-								/* If the leader left, promote someone else */
-								if player_id == self.leader_id && !self.clients.players.is_empty() {
-									self.leader_id = self.new_leader_id();
-									let _ = self.clients.send_player(self.leader_id, &PlayerMsgOut::InLobby {
-										promoted: true
-									}).await;
-								}
-							},
-							Event::HostMessage(message) => {
-								let Ok(message) = deserialize::<'_, HostMsgIn>(&message) else { continue };
-								match message {
-									HostMsgIn::Terminate => break Err(()),
-									HostMsgIn::UpdateSettings(settings) => {
-										self.settings = settings;
-									}
-								}
-							},
-							Event::PlayerMessage(player_id, message) => {
-								let Ok(message) = deserialize::<'_, PlayerMsgIn>(&message) else { continue };
-								match message {
-									PlayerMsgIn::StartGame => {
-										if player_id != self.leader_id {
-											log::warn!("non-leader player attempted to start game");
-											continue;
-										}
-										
-										if self.clients.players.len() < MIN_PLAYER_COUNT {
-											let message = GlobalPlayerMsgOut::Error(&"Not enough players");
-											let _ = self.clients.send_player(player_id, &message).await;
-											continue;
-										}
-										
-										/* Start the game */
-										/*let _ = self.clients.send_all(
-											&HostMsgOut::GameStarted,
-											&PlayerMsgOut::InGame
-										).await;*/
-										return Ok(self.settings);
-									}
-								}
-							},
-						}
-					}
-				}
-			}
-		}
-	}
-	
 	#[derive(Deserialize)]
 	#[serde(tag = "type", content = "data")]
 	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 	enum HostMsgIn {
 		Terminate,
-		UpdateSettings(game::Settings)
+		//UpdateSettings(game::Settings)
+		StartGame(game::Settings)
 	}
 	#[derive(Serialize)]
 	#[serde(tag = "type", content = "data")]
 	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 	enum HostMsgOut {
-		LobbyCreated,
+		InLobby,
+		//LobbyCreated,
 		PlayerJoined { player_id: PlayerId, player_name: String },
 		PlayerLeft { player_id: PlayerId },
-		//GameStarted
+		GameStarting,
 	}
 	
 	#[derive(Deserialize)]
@@ -570,8 +489,177 @@ mod lobby {
 		//InGame
 	}
 	
+	pub enum Event {
+		PlayerJoin { socket: WebSocket, name: String }
+	}
+	enum State {
+		//New,
+		Open { leader_id: PlayerId },
+		Starting
+	}
+	
+	pub struct Lobby<'a> {
+		//id: RoomId,
+		pub clients: &'a mut ClientIndex,
+		//pub settings: &'a mut game::Settings,
+		receiver: Receiver,
+		//timeout: Timeout,
+		state: State
+		//leader_id: PlayerId,
+	}
+	impl<'a> Lobby<'a> {
+		pub fn new(clients: &'a mut ClientIndex/*, settings: &'a mut game::Settings*/) -> (Self, Sender) {
+			let (sender, receiver) = mpsc::channel(EVENT_QUEUE_SIZE);
+			let lobby = Self {
+				receiver,
+				//settings,
+				clients,
+				state: State::Open { leader_id: 0 }
+				//leader_id: 0
+			};
+			(lobby, sender)
+		}
+		fn new_leader_id(&self) -> PlayerId {
+			if let Some((leader_id, _)) = self.clients.players.iter().next() {
+				leader_id as PlayerId
+			} else {
+				PlayerId::MAX
+			}
+		}
+		async fn open(&mut self) {
+			
+			let removed_ids = self.clients.remove_disconnected_players();
+			for player_id in removed_ids {
+				let _ = self.clients.send_host(&HostMsgOut::PlayerLeft { player_id }).await;
+			}
+			
+			if self.clients.players.is_empty() {
+				let _ = self.clients.send_host(&HostMsgOut::InLobby).await;
+			} else {
+				let leader_id = self.new_leader_id();
+				self.state = State::Open { leader_id };
+				let _ = self.clients.send_all_except(
+					leader_id,
+					&HostMsgOut::InLobby,
+					&PlayerMsgOut::InLobby { promoted: false }
+				).await;
+				let _ = self.clients.send_player(
+					leader_id,
+					&PlayerMsgOut::InLobby { promoted: true }
+				).await;
+			}
+		}
+		pub async fn run(mut self) -> Result<game::Settings, ()> {
+			
+			self.open().await;
+			
+			loop {
+				tokio::select! {
+					event = self.receiver.recv() => {
+						let Some(event) = event else { break Err(()); };
+						match event {
+							Event::PlayerJoin { socket, name } => {
+								
+								let State::Open { ref mut leader_id } = self.state else {
+									log::debug!("player attempted to join lobby while not open");
+									continue;
+								};
+								
+								let result = self.clients.connect_player(socket, name.clone()).await;
+								let Ok((player_id, token)) = result else { continue };
+								
+								/* If we don't have a leader, make this player the leader */
+								if !self.clients.players.contains(*leader_id as usize) {
+									*leader_id = player_id;
+								}
+								
+								let _ = self.clients.send_host(&HostMsgOut::PlayerJoined {
+									player_id,
+									player_name: name
+								}).await;
+								let _ = self.clients.send_player(player_id, &PlayerMsgOut::Accepted {
+									player_id,
+									token,
+									//promoted: self.leader_id == player_id
+								}).await;
+								let _ = self.clients.send_player(player_id, &PlayerMsgOut::InLobby {
+									promoted: *leader_id == player_id
+								}).await;
+							}
+						}
+					},
+					event = self.clients.receiver.recv() => {
+						use client_index::Event;
+						let Some(event) = event else { break Err(()); };
+						match event {
+							Event::HostDisconnect => break Err(()),
+							Event::PlayerDisconnect(player_id) => {
+								let State::Open { leader_id } = self.state else {
+									log::debug!("player disconnected from lobby while not open");
+									continue;
+								};
+								
+								self.clients.remove_player(player_id).await;
+								let _ = self.clients.send_host(&HostMsgOut::PlayerLeft { player_id }).await;
+								
+								/* If the leader left, promote someone else */
+								if player_id == leader_id && !self.clients.players.is_empty() {
+									let leader_id = self.new_leader_id();
+									self.state = State::Open { leader_id };
+									let _ = self.clients.send_player(leader_id, &PlayerMsgOut::InLobby {
+										promoted: true
+									}).await;
+								}
+							},
+							Event::HostMessage(message) => {
+								let Ok(message) = deserialize::<'_, HostMsgIn>(&message) else { continue };
+								match message {
+									HostMsgIn::Terminate => break Err(()),
+									HostMsgIn::StartGame(settings) => {
+										let State::Starting = self.state else {
+											log::warn!("host attempted to start game for lobby in invalid state");
+											continue;
+										};
+										
+										break Ok(settings);
+									}
+								}
+							},
+							Event::PlayerMessage(player_id, message) => {
+								let Ok(message) = deserialize::<'_, PlayerMsgIn>(&message) else { continue };
+								match message {
+									PlayerMsgIn::StartGame => {
+										let State::Open { leader_id } = self.state else {
+											log::debug!("attempted to start game for lobby in invalid state");
+											continue;
+										};
+										
+										if player_id != leader_id {
+											log::warn!("non-leader player attempted to start game");
+											continue;
+										}
+										
+										if self.clients.players.len() < MIN_PLAYER_COUNT {
+											let message = GlobalPlayerMsgOut::Error(&"Not enough players");
+											let _ = self.clients.send_player(player_id, &message).await;
+											continue;
+										}
+										
+										/* Start the game */
+										self.state = State::Starting;
+										let _ = self.clients.send_host(&HostMsgOut::GameStarting).await;
+										//return Ok(());
+									}
+								}
+							},
+						}
+					}
+				}
+			}
+		}
+	}
+	
 }
-
 mod game {
 	use super::*;
 	pub type Sender = mpsc::Sender<Event>;
@@ -584,61 +672,106 @@ mod game {
 	#[serde(tag = "game", content = "settings")]
 	#[serde(rename_all = "camelCase")]
 	pub enum Settings {
-		None,
+		//None,
 		Drawblins(drawblins::Settings)
-	}
-}
-
-mod timeout {
-	
-	use std::pin::Pin;
-	use tokio::time::{sleep, Sleep, Duration};
-	pub struct Timeout(pub Pin<Box<Sleep>>);
-	impl Timeout {
-		pub fn new(duration: Duration) -> Self {
-			Self(Box::pin(sleep(duration)))
-		}
-		pub fn future<'a>(&'a mut self) -> &'a mut Pin<Box<Sleep>> {
-			&mut self.0
-		}
-		pub fn remaining(&self) -> Duration {
-			self.0.deadline() - tokio::time::Instant::now()
-		}
-		pub fn remaining_secs(&self) -> f32 {
-			self.remaining().as_secs_f32()
-		}
 	}
 }
 
 mod drawblins {
 	
 	use super::*;
-	use timeout::Timeout;
-
-	const MAX_PLAYER_COUNT: usize = 8;
-	const ROUND_COUNT: usize = 1;
-	
-	const START_DURATION: Duration = Duration::from_secs(3);
-	const DRAW_DURATION: Duration = Duration::from_secs(120);
-	const DRAW_AUTOSUBMIT_DURATION: Duration = Duration::from_secs(4);
-	const VOTE_DURATION: Duration = Duration::from_secs(16);
-	const RESULTS_DURATION: Duration = Duration::from_secs(10);
-	const SCORE_DURATION: Duration = Duration::from_secs(10);
 	
 	const EVENT_QUEUE_SIZE: usize = 2;
+
+	const MAX_PLAYER_COUNT: usize = 12;
+	//const ROUND_COUNT: usize = 1;
+	const START_DURATION: Duration = Duration::from_secs(3);
+	const DRAW_DURATION: Duration = Duration::from_secs(150);
+	//const DRAW_DURATION: Duration = Duration::from_secs(120);
+	//const DRAW_AUTOSUBMIT_DURATION: Duration = Duration::from_secs(5);
+	//const VOTE_DURATION: Duration = Duration::from_secs(16);
+	const VOTE_DURATION: VariableDuration = VariableDuration::from_secs(12, 2);
+	const RESULTS_DURATION: VariableDuration = VariableDuration::from_secs(8, 1);
+	const SCORE_DURATION: Duration = Duration::from_secs(10);
+	
+	
+	#[derive(Serialize, Deserialize)]
+	#[serde(rename_all = "camelCase")]
+	pub struct Settings {
+		//pub max_player_count: usize,
+		// final round bonus?
+		pub round_count: usize,
+		pub draw_time_factor: f32,
+		pub vote_time_factor: f32,
+		//pub score_time_factor: f64
+	}
+	
+	#[derive(Deserialize)]
+	#[serde(tag = "type", content = "data")]
+	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+	enum HostMsgIn {
+		Terminate
+	}
+	#[derive(Serialize)]
+	#[serde(tag = "type", content = "data")]
+	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+	enum HostMsgOut<'a> {
+		//LobbyCreated { join_code: &'a str },
+		//PlayerDisconnected { player_id: PlayerId }
+		//PlayerRejoined { player_id: PlayerId, player_name: String },
+		GameStarted,
+		
+		Drawing { goblin_name: &'a str },
+		Voting,
+		Results,
+		Scoring,
+		
+		DrawingSubmitted { player_id: PlayerId, drawing: &'a str },
+		VoteSubmitted { player_id: PlayerId, for_id: PlayerId }
+	}
+	
+	#[derive(Deserialize)]
+	#[serde(tag = "type", content = "data")]
+	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+	enum PlayerMsgIn {
+		DrawingSubmission { drawing: String },
+		VoteSubmission { for_name: String } //for_id: PlayerId }
+	}
+	
+	#[derive(Serialize, Clone)]
+	#[serde(tag = "type", content = "data")]
+	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+	enum PlayerMsgOut<'a> {
+		InGame,
+		Waiting(WaitingKind),
+		Drawing { goblin_name: &'a str, secs_left: f32 },
+		Voting { choices: &'a [String], secs_left: f32 },
+	}
+	
+	#[derive(Serialize, Clone)]
+	#[serde(rename_all = "camelCase")]
+	enum WaitingKind {
+		Start,
+		Draw,
+		Vote,
+		Results,
+		Score
+	}
 	
 	enum State {
 		Start,
 		Draw { submitted: [bool; MAX_PLAYER_COUNT] },
-		Vote { eligible: [bool; MAX_PLAYER_COUNT], votes: [Option<PlayerId>; MAX_PLAYER_COUNT] },
+		Vote { eligible: [bool; MAX_PLAYER_COUNT], choices: Box<[String]>, votes: [Option<PlayerId>; MAX_PLAYER_COUNT] },
 		Results,
 		Score,
 		Terminated(Result<(), ()>)
 	}
 	pub struct Game<'a> {
-		receiver: game::Receiver,
+		
 		clients: &'a mut ClientIndex,
+		//settings: &'a mut Settings,
 		settings: Settings,
+		receiver: game::Receiver,
 		state: State,
 		round: usize,
 		names: Box<[&'static str]>,
@@ -648,13 +781,14 @@ mod drawblins {
 		
 		pub fn new(clients: &'a mut ClientIndex, settings: Settings) -> (Self, game::Sender) {
 			let (sender, receiver) = mpsc::channel(EVENT_QUEUE_SIZE);
+			let round_count = settings.round_count;
 			let game = Self {
 				receiver,
 				clients,
 				settings,
 				state: State::Start,
 				round: 0,
-				names: goblin_names::get_names(ROUND_COUNT),
+				names: goblin_names::generate(round_count),
 				timeout: Timeout::new(START_DURATION)
 			};
 			(game, sender)
@@ -672,7 +806,7 @@ mod drawblins {
 				}
 				
 				tokio::select! {
-					_ = &mut self.timeout.0 => {
+					_ = &mut self.timeout.future() => {
 						self.advance().await
 					},
 					event = self.receiver.recv() => {
@@ -739,16 +873,17 @@ mod drawblins {
 						}
 					}
 				},
-				State::Vote { eligible, votes } => {
+				State::Vote { eligible: _, ref choices, votes } => {
 					if let Some(None) = votes.get(player_id as usize) {
 						/* If the player hasn't voted, ask them to */
+						//let choices = &*choices;
 						let _ = self.clients.send_player(player_id, &PlayerMsgOut::Voting {
-							choices: self.vote_choices(eligible),
+							choices,
 							secs_left: self.timeout.remaining_secs()
 						}).await;
 						return;
 					} else {
-						/* If they have, just idle */
+						/* If they have, they should just wait */
 						PlayerMsgOut::Waiting(WaitingKind::Vote)
 					}
 				},
@@ -762,7 +897,7 @@ mod drawblins {
 			match self.state {
 				State::Start => self.start_draw().await,
 				State::Draw { submitted } => self.start_vote(submitted).await,
-				State::Vote { eligible: _, votes: _ } => self.start_results().await,
+				State::Vote { eligible: _, ref choices, votes: _ } => self.start_results(choices.len()).await,
 				State::Results => self.start_score().await,
 				State::Score => self.start_draw().await,
 				State::Terminated(_) => {
@@ -796,30 +931,31 @@ mod drawblins {
 			};
 			
 			self.state = State::Draw { submitted: [false; MAX_PLAYER_COUNT] };
-			self.timeout = Timeout::new(DRAW_DURATION);
+			self.timeout.replace(Timeout::scaled(DRAW_DURATION, self.settings.draw_time_factor));
 			
 			let _ = self.clients.send_all(
 				&HostMsgOut::Drawing { goblin_name /*, secs_left*/ },
 				&PlayerMsgOut::Drawing {
 					goblin_name,
-					secs_left: DRAW_DURATION.as_secs_f32()
+					secs_left: self.timeout.remaining_secs()
 				}
 			).await;
 		}
 		async fn start_vote(&mut self, eligible: [bool; MAX_PLAYER_COUNT]) {
-			self.state = State::Vote { eligible, votes: [None; MAX_PLAYER_COUNT] };
-			self.timeout = Timeout::new(VOTE_DURATION);
+			let choices = self.vote_choices(eligible);
+			self.timeout.replace(Timeout::variable_scaled(VOTE_DURATION, choices.len(), self.settings.vote_time_factor));
 			let _ = self.clients.send_all(
 				&HostMsgOut::Voting {},
 				&PlayerMsgOut::Voting {
-					choices: self.vote_choices(eligible),
-					secs_left: VOTE_DURATION.as_secs_f32()
+					choices: &choices,
+					secs_left: self.timeout.remaining_secs()
 				}
 			).await;
+			self.state = State::Vote { eligible, choices, votes: [None; MAX_PLAYER_COUNT] };
 		}
-		async fn start_results(&mut self) {
+		async fn start_results(&mut self, choice_count: usize) {
 			self.state = State::Results;
-			self.timeout = Timeout::new(RESULTS_DURATION);
+			self.timeout.replace(Timeout::variable(RESULTS_DURATION, choice_count));
 			//let _ = self.clients.send_host(&HostMsgOut::Results).await;
 			let _ = self.clients.send_all(
 				&HostMsgOut::Results,
@@ -878,7 +1014,7 @@ mod drawblins {
 			if !self.clients.players.contains(for_id as usize) {
 				return log::warn!("attempted to vote for player that is not present [{player_id} -> {for_id}]");
 			}
-			let State::Vote { eligible, ref mut votes } = self.state else {
+			let State::Vote { eligible, choices: _, ref mut votes } = self.state else {
 				return log::warn!("received a vote while not in voting state [{player_id} -> {for_id}]");
 			};
 			let Some(true) = eligible.get(player_id as usize) else {
@@ -905,73 +1041,16 @@ mod drawblins {
 		
 	}
 	
-	#[derive(Serialize, Deserialize)]
-	#[serde(rename_all = "camelCase")]
-	pub struct Settings {
-		//pub max_player_count: usize,
-		pub round_count: usize,
-	}
 	
-	#[derive(Deserialize)]
-	#[serde(tag = "type", content = "data")]
-	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-	enum HostMsgIn {
-		Terminate
-	}
-	#[derive(Serialize)]
-	#[serde(tag = "type", content = "data")]
-	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-	enum HostMsgOut<'a> {
-		//LobbyCreated { join_code: &'a str },
-		//PlayerDisconnected { player_id: PlayerId }
-		//PlayerRejoined { player_id: PlayerId, player_name: String },
-		GameStarted,
-		
-		Drawing { goblin_name: &'a str },
-		Voting,
-		Results,
-		Scoring,
-		
-		DrawingSubmitted { player_id: PlayerId, drawing: &'a str },
-		VoteSubmitted { player_id: PlayerId, for_id: PlayerId }
-	}
-	
-	#[derive(Deserialize)]
-	#[serde(tag = "type", content = "data")]
-	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-	enum PlayerMsgIn {
-		DrawingSubmission { drawing: String },
-		VoteSubmission { for_name: String } //for_id: PlayerId }
-	}
-	
-	#[derive(Serialize, Clone)]
-	#[serde(tag = "type", content = "data")]
-	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-	enum PlayerMsgOut<'a> {
-		InGame,
-		Waiting(WaitingKind),
-		Drawing { goblin_name: &'a str, secs_left: f32 },
-		Voting { choices: Box<[String]>, secs_left: f32 },
-	}
-	
-	#[derive(Serialize, Clone)]
-	#[serde(rename_all = "camelCase")]
-	enum WaitingKind {
-		Start,
-		Draw,
-		Vote,
-		Results,
-		Score
-	}
 }
 
 mod showdown {
 	
-	//use super::*;
+	use super::*;
 	//use timeout::Timeout;
 	
-	const MAX_PLAYER_COUNT: usize = 8;
-	const ROUND_COUNT: usize = 3;
+	//const MAX_PLAYER_COUNT: usize = 8;
+	//const ROUND_COUNT: usize = 3;
 	
 	enum State {
 		Start,
@@ -988,10 +1067,7 @@ enum RoomHandle {
 //type RoomHandle = mpsc::Sender<RoomEvent>;
 #[derive(Clone)]
 pub struct App {
-	//handles: Arc<DashMap<RoomId, RoomSender>>
 	rooms: Arc<DashMap<RoomId, RoomHandle>>
-	//lobbies: Arc<DashMap<RoomId, lobby::Sender>>,
-	//games: Arc<Dashmap<RoomId, lobby::GameId>>
 }
 impl App {
 	
@@ -1046,24 +1122,23 @@ impl App {
 	async fn init_room(&self, id: RoomId, host_socket: WebSocket) {
 		
 		let mut clients = ClientIndex::new(host_socket, MAX_PLAYER_COUNT as PlayerId);
+		//let mut settings = game::Settings::None;
 		let Ok(_) = clients.send_host(&GlobalHostMsgOut::Accepted {
 			join_code: &room_id_str(&id)
 		}).await else { return };
 		
 		loop {
-			let settings = game::Settings::Drawblins(drawblins::Settings { round_count: 0 });
-			let (lobby, handle) = lobby::Lobby::new(&mut clients, settings);//, game::Settings::None);
+			//let settings = game::Settings::Drawblins(drawblins::Settings { round_count: 0 });
+			let (lobby, handle) = lobby::Lobby::new(&mut clients); //, game::Settings::None);
 			self.rooms.insert(id, RoomHandle::Lobby(handle));
-			//self.cl
 			let Ok(settings) = lobby.run().await else { break };
 			
 			match settings {
-				game::Settings::None => break,
 				game::Settings::Drawblins(settings) => {
 					let (mut game, handle) = drawblins::Game::new(&mut clients, settings);
 					self.rooms.insert(id, RoomHandle::Game(handle));
 					let Ok(_) = game.run().await else { break };
-				}
+				},
 			};
 		}
 		
@@ -1083,13 +1158,13 @@ impl App {
 		let _ = handle.send(lobby::Event::PlayerJoin { socket, name }).await;
 	}
 	pub async fn accept_player_rejoin(&self, socket: WebSocket, room_id: RoomId, name: String, player_id: PlayerId, token: PlayerToken) {
-		let Some(mut handle) = self.rooms.get_mut(&room_id) else { return; };
+		let Some(handle) = self.rooms.get_mut(&room_id) else { return; };
 		
 		match *handle {
-			RoomHandle::Lobby(ref mut handle) => {
+			RoomHandle::Lobby(ref handle) => {
 				let _ = handle.send(lobby::Event::PlayerJoin { socket, name }).await;
 			}
-			RoomHandle::Game(ref mut handle) => {
+			RoomHandle::Game(ref handle) => {
 				let _ = handle.send(game::Event::PlayerRejoin { socket, player_id, token }).await;
 			},
 		}

@@ -1,4 +1,4 @@
-extends FleetingStage
+extends Control
 
 #func _ready():
 	#Client.incoming.connect(

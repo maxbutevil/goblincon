@@ -1,4 +1,4 @@
-extends Node # Drawblins
+extends Mode # Drawblins
 
 const DRAWING_WIDTH:= 300.0;
 const DRAWING_HEIGHT:= 300.0;
@@ -14,15 +14,24 @@ signal voting();
 signal results();
 signal scoring();
 
-var scores: Dictionary = {};
-var rounds: Array[Round] = [];
+var settings:= DrawblinsSettings.new();
+
+var scores: Dictionary;
+var rounds: Array[Round];
 var current_round: Round :
 	get: return rounds.back();
 
-func listen():
+# overrides
+func get_settings() -> GameSettings:
+	return settings;
+func open() -> void:
 	Client.incoming.connect(handle_incoming);
-func unlisten():
+func close() -> void:
+	scores = {};
+	rounds = [];
 	Client.incoming.disconnect(handle_incoming);
+func create_stage() -> Node:
+	return preload("res://Scenes/Stages/Drawblins/drawblins.tscn").instantiate();
 
 func get_score(player_id: int) -> int:
 	return scores.get(player_id, 0);
@@ -31,6 +40,8 @@ func add_score(player_id: int, points: int) -> void:
 
 func handle_incoming(type: String, data):
 	match type:
+		#"gameStarting":
+		#	Client.send("startGame", settings.as_remote());
 		"drawing":
 			rounds.push_back(Round.new(data["goblinName"]));
 			drawing.emit();

@@ -1,4 +1,4 @@
-extends FleetingStage
+extends Control
 
 @onready var container = $Container;
 

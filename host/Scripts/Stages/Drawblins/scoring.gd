@@ -1,17 +1,16 @@
-extends FleetingStage
+extends Control
+
+const SEPARATION:= 36.0;
 
 var entries:= {};
 
-# Called when the node enters the scene tree for the first time.
-
-const SEPARATION:= 36.0;
 
 func _ready():
 	
 	var ids: Array[int] = Client.get_player_ids();
 	ids.sort_custom(
 		func(one: int, two: int):
-			return Drawblins.get_score(one) < Drawblins.get_score(two);
+			return Drawblins.get_score(one) > Drawblins.get_score(two);
 	);
 	
 	for i in range(ids.size()):
@@ -21,6 +20,7 @@ func _ready():
 	
 func create_entry(name: String, score: int) -> Node:
 	var entry:= Label.new();
+	entry.set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
 	entry.set_text("%s %s" % [name, score]);
 	$Container.add_child(entry);
 	return entry;
