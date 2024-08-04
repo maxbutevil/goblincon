@@ -86,7 +86,7 @@ function Landing() {
 		
 		Globals.joinCode = code.toUpperCase();
 		Globals.setPlayerName(name);
-		client.connect(`ws://${window.location.host}/play/join?code=${Globals.joinCode}&name=${name}`);
+		client.connect(`wss://${window.location.host}/play/join?code=${Globals.joinCode}&name=${name}`);
 		
 	}
 	
@@ -240,7 +240,7 @@ function App() {
 			//statusUpdate.emit(Enum.variant("error", { message }));
 			statusError(message)
 		}),
-		page.changed.subscribe(([from, to]) => {
+		page.changed.subscribe(([from, _to]) => {
 			switch(from.key) {
 				case "drawblins": from.cleanup(); break;
 			}

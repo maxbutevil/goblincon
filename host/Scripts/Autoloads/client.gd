@@ -19,8 +19,8 @@ signal incoming(type: String, data);
 signal player_joined(id: int);
 signal player_left(id: int);
 
-const URL:= "ws://127.0.0.1:5050/host";
-
+#const URL:= "ws://127.0.0.1:5050/host";
+const URL:= "wss://goblincon-a10m.onrender.com/host";
 
 enum Connection {
 	PENDING,
