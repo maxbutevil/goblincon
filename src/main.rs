@@ -17,10 +17,13 @@ pub mod app;
 
 use app::App;
 //use std::sync::Arc;
-use std::net::SocketAddr;
+//use std::net::SocketAddr;
 use axum::{
 	http::StatusCode,
-	response::Response,
+	response::{
+		Response,
+		Redirect
+	},
 	extract::{
 		State,
 		Query,
@@ -28,7 +31,7 @@ use axum::{
 		ws::{WebSocket, WebSocketUpgrade},
 	},
 };
-use tower_http::services::ServeDir;
+use tower_http::services::{ServeFile, ServeDir};
 //use axum_macros::debug_handler;
 use serde::Deserialize;
 
@@ -41,12 +44,14 @@ const IP: &str = "0.0.0.0";
 #[tokio::main]
 async fn main() {
 	
-	env_logger::builder()
+	tracing_subscriber::fmt::init();
+	
+	/*env_logger::builder()
 		.filter_level(log::LevelFilter::Info)
 		//.filter_level(log::LevelFilter::Debug)
 		//.format_target(false)
 		.format_timestamp(None)
-		.init();
+		.init();*/
 	
 	use tokio::net::TcpListener;
 	use axum::{
@@ -54,13 +59,24 @@ async fn main() {
 		routing::get
 	};
 	
-	let router = Router::new()
+	let ws_router = Router::new()
 		.route("/host", get(ws_upgrade_host))
 		.route("/play/join", get(ws_upgrade_player_join))
-		.route("/play/rejoin", get(ws_upgrade_player_rejoin))
-		.nest_service("/", ServeDir::new("player/dist"))
-		.with_state(App::new())
-		.into_make_service_with_connect_info::<SocketAddr>();
+		.route("/play/rejoin", get(ws_upgrade_player_rejoin));
+	let page_router = Router::new()
+		// ServeDir handles index.html already (but not the others)
+		//.route_service("/", get(|| Redirect::permanent("/play")))
+		.route_service("/host", ServeFile::new("client/dist/host.html"))
+		.route_service("/play", ServeFile::new("client/dist/play.html"))
+		.fallback(|| async { "Page Not Found" });
+	let static_service = ServeDir::new("client/dist")
+		.fallback(page_router)
+		.append_index_html_on_directories(false);
+	let router = Router::new()
+		.nest("/ws", ws_router)
+		.nest_service("/", static_service)
+		.with_state(App::new());
+		//.into_make_service_with_connect_info::<SocketAddr>();
 	
 	let listener = TcpListener::bind(format!("{IP}:{PORT}"))
 		.await
@@ -110,7 +126,7 @@ async fn ws_upgrade_player_join(
 	}
 	
 	let (code, name) = (query.code, query.name);
-	if let Some(room_id) = App::parse_room_id(&code) {
+	if let Some(room_id) = RoomId::parse(&code) {
 		if app.has_room(&room_id) {
 			return Ok(ws.on_upgrade(move |socket| {
 				accept(app, socket, room_id, name)
@@ -133,7 +149,7 @@ async fn ws_upgrade_player_rejoin(
 	
 	let (code, name, player_id, token) = (query.code, query.name, query.id, query.token);
 	
-	if let Some(room_id) = App::parse_room_id(&code) {
+	if let Some(room_id) = RoomId::parse(&code) {
 		if app.has_room(&room_id) {
 			return Ok(ws.on_upgrade(move |socket| {
 				accept(app, socket, room_id, name, player_id, token)

@@ -9,12 +9,10 @@ use std::sync::Arc;
 use slab::Slab;
 use dashmap::DashMap;
 
-
 use futures_util::{
 	SinkExt, StreamExt,
 	stream::{SplitSink, SplitStream}
 };
-
 
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -36,9 +34,7 @@ pub type WebSocketReceiver = SplitStream<WebSocket>;
 
 
 
-fn room_id_str<'a>(id: &'a RoomId) -> &'a str {
-	unsafe { std::str::from_utf8_unchecked(id) }
-}
+
 fn serialize(value: &impl Serialize) -> Result<String, ()> {
 	match serde_json::to_string(value) {
 		Ok(string) => Ok(string),
@@ -98,9 +94,6 @@ async fn reject_socket(mut socket: WebSocket, message: &str) {
 	let _ = socket.send(Message::Text(message)).await;
 }
 
-
-
-
 struct Presence {
 	sender: WebSocketSender,
 	handle: JoinHandle<()>
@@ -129,7 +122,7 @@ impl Presence {
 	/*async fn send_raw(&mut self, message: Message) -> Result<(), ()> {
 		send_raw(&mut self.sender, message).await
 	}*/
-	async fn send<M: Serialize>(&mut self, message: &M) -> Result<(), ()> {
+	async fn send(&mut self, message: &impl Serialize) -> Result<(), ()> {
 		if self.is_connected() {
 			send(&mut self.sender, message).await
 		} else {
@@ -138,7 +131,7 @@ impl Presence {
 	}
 }
 impl Host {
-	async fn send<M: Serialize>(&mut self, message: &M) -> Result<(), ()> {
+	async fn send(&mut self, message: &impl Serialize) -> Result<(), ()> {
 		send(&mut self.presence.sender, message).await
 	}
 }
@@ -149,13 +142,13 @@ impl Player {
 	async fn send_raw(&mut self, message: Message) -> Result<(), ()> {
 		send_raw(&mut self.presence.sender, message).await
 	}
-	async fn send<M: Serialize>(&mut self, message: &M) -> Result<(), ()> {
+	async fn send(&mut self, message: &impl Serialize) -> Result<(), ()> {
 		send(&mut self.presence.sender, message).await
 	}
 }
 
 use std::pin::Pin;
-	use tokio::time::{sleep, Sleep, Duration};
+use tokio::time::{sleep, Sleep, Duration};
 struct Timeout(pub Pin<Box<Sleep>>);
 impl Timeout {
 	fn new(duration: Duration) -> Self {
@@ -188,6 +181,7 @@ impl Timeout {
 	
 }
 
+/* A duration that varies based on the number of players present */
 struct VariableDuration {
 	base_millis: u64,
 	scaled_millis: u64
@@ -218,9 +212,6 @@ impl VariableDuration {
 		//Timeout::from_secs(((self.secs(scale_factor) as f32) * scale_setting))
 	}*/
 }
-
-
-
 
 mod client_index {
 	
@@ -374,16 +365,10 @@ mod client_index {
 				player.presence.disconnect().await;
 			}
 		}
-		/*pub async fn terminate(mut self) {
-			self.host.presence.disconnect().await;
-			for (_, player) in self.players.iter_mut() {
-				player.presence.disconnect().await;
-			}
-		}*/
-		pub async fn send_host<M: Serialize>(&mut self, message: &M) -> Result<(), ()> {
+		pub async fn send_host(&mut self, message: &impl Serialize) -> Result<(), ()> {
 			self.host.send(message).await
 		}
-		pub async fn send_player<M: Serialize>(&mut self, id: PlayerId, message: &M) -> Result<(), ()> {
+		pub async fn send_player(&mut self, id: PlayerId, message: &impl Serialize) -> Result<(), ()> {
 			if let Some(player) = self.players.get_mut(id as usize) {
 				player.send(message).await
 			} else {
@@ -392,27 +377,27 @@ mod client_index {
 			}
 		}
 		//pub async fn send_host_and_player(&mut self, player_id: PlayerId)
-		pub async fn send_all<H: Serialize, P: Serialize>(&mut self, host_message: &H, player_message: &P) -> Result<(), ()> {
+		pub async fn send_all(&mut self, host_message: &impl Serialize, player_message: &impl Serialize) -> Result<(), ()> {
 			let results = tokio::join!(
 				self.host.send(host_message),
 				Self::send_players(self.players.iter_mut(), player_message)
 			);
 			results.0.and(results.1)
 		}
-		pub async fn send_all_except<H: Serialize, P: Serialize>(&mut self, except_id: PlayerId, host_message: &H, player_message: &P) -> Result<(), ()> {
+		pub async fn send_all_except(&mut self, except_id: PlayerId, host_message: &impl Serialize, player_message: &impl Serialize) -> Result<(), ()> {
 			let results = tokio::join!(
 				self.host.send(host_message),
 				Self::send_players_except(self.players.iter_mut(), except_id, player_message)
 			);
 			results.0.and(results.1)
 		}
-		pub async fn send_all_players<M: Serialize>(&mut self, message: &M) -> Result<(), ()> {
+		pub async fn send_all_players(&mut self, message: &impl Serialize) -> Result<(), ()> {
 			Self::send_players(self.players.iter_mut(), message).await
 		}
-		pub async fn send_all_players_except<M: Serialize>(&mut self, except_id: PlayerId, message: &M) -> Result<(), ()> {
+		pub async fn send_all_players_except(&mut self, except_id: PlayerId, message: &impl Serialize) -> Result<(), ()> {
 			Self::send_players_except(self.players.iter_mut(), except_id, message).await
 		}
-		async fn send_players<'a, I, M: Serialize>(players: I, message: &M) -> Result<(), ()>
+		async fn send_players<'a, I>(players: I, message: &impl Serialize) -> Result<(), ()>
 		where I: Iterator<Item=(usize, &'a mut Box<Player>)> {
 			let message = Message::Text(serialize(message)?);
 			let (_, results) = TokioScope::scope_and_block(|scope| {
@@ -429,19 +414,13 @@ mod client_index {
 			
 			Ok(())
 		}
-		async fn send_players_except<'a, I, M: Serialize>(players: I, except_id: PlayerId, message: &M) -> Result<(), ()>
+		async fn send_players_except<'a, I>(players: I, except_id: PlayerId, message: &impl Serialize) -> Result<(), ()>
 		where I: Iterator<Item=(usize, &'a mut Box<Player>)> {
 			let iter = players.enumerate()
 				.filter(|(id, _)| *id as PlayerId != except_id)
 				.map(|(_, player)| player);
 			Self::send_players(iter, message).await
 		}
-		
-		
-		/*async fn drop_player() {
-			
-		}*/
-		
 	}
 	
 }
@@ -588,7 +567,7 @@ mod lobby {
 							}
 						}
 					},
-					event = self.clients.receiver.recv() => {
+					event = self.clients.recv() => {
 						use client_index::Event;
 						let Some(event) = event else { break Err(()); };
 						match event {
@@ -755,7 +734,7 @@ mod drawblins {
 		Draw,
 		Vote,
 		Results,
-		Score
+		//Score
 	}
 	
 	enum State {
@@ -817,7 +796,7 @@ mod drawblins {
 							}
 						}
 					},
-					event = self.clients.receiver.recv() => {
+					event = self.clients.recv() => {
 						use client_index::Event;
 						let Some(event) = event else { break Err(()) };
 						match event {
@@ -1046,7 +1025,7 @@ mod drawblins {
 
 mod showdown {
 	
-	use super::*;
+	/*use super::*;
 	//use timeout::Timeout;
 	
 	//const MAX_PLAYER_COUNT: usize = 8;
@@ -1055,7 +1034,7 @@ mod showdown {
 	enum State {
 		Start,
 		Draw { submitted: [bool; MAX_PLAYER_COUNT] }
-	}
+	}*/
 	
 }
 
@@ -1074,37 +1053,16 @@ impl App {
 	pub fn new() -> Self {
 		Self { rooms: Arc::new(DashMap::new()) }
 	}
-	pub fn parse_room_id(join_code: &str) -> Option<RoomId> {
-		
-		if join_code.len() != ROOM_ID_LEN {
-			//error!("Invalid game id: {join_code}");
-			return None;
-		}
-		
-		join_code
-			.as_bytes()
-			.first_chunk::<ROOM_ID_LEN>()
-			.map(|id| id.to_owned())
-			//.and_then(move |id| self.handles.get(id))
-	}
-	
 	
 	pub fn has_room(&self, room_id: &RoomId) -> bool {
 		self.rooms.contains_key(room_id)
 	}
-	/*pub fn has_lobby(&self, room_id: &RoomId) -> bool {
-		let room = self.rooms.get()
-		matches!(self.rooms.get(room_id), Some(RoomHandle::Lobby(_)))
-	}*/
 	fn generate_room_id(&self) -> Option<RoomId> {
 		
 		const ATTEMPTS: usize = 5;
 		
-		use rand::Rng;
-		let mut rng = rand::thread_rng();
-		
 		for _ in 0..ATTEMPTS {
-			let id = [(); 5].map(|_| ROOM_ID_CHARS[rng.gen_range(0..ROOM_ID_CHARS.len())]);
+			let id = RoomId::generate();
 			if !self.rooms.contains_key(&id) {
 				return Some(id);
 			}
@@ -1115,16 +1073,16 @@ impl App {
 	}
 	pub async fn accept_host(&self, host_socket: WebSocket) {
 		let Some(id) = self.generate_room_id() else { return };
-		log::info!("[{}] Opening!", room_id_str(&id));
+		log::info!("[{}] Opening!", id.as_str());
 		self.init_room(id, host_socket).await;
-		log::info!("[{}] Closed", room_id_str(&id));
+		log::info!("[{}] Closed", id.as_str());
 	}
 	async fn init_room(&self, id: RoomId, host_socket: WebSocket) {
 		
 		let mut clients = ClientIndex::new(host_socket, MAX_PLAYER_COUNT as PlayerId);
 		//let mut settings = game::Settings::None;
 		let Ok(_) = clients.send_host(&GlobalHostMsgOut::Accepted {
-			join_code: &room_id_str(&id)
+			join_code: id.as_str()
 		}).await else { return };
 		
 		loop {

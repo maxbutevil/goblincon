@@ -8,7 +8,6 @@ async-scoped = { version = "0.9.0", features = ["tokio", "use-tokio"] }
 axum = { version = "0.7.5", features = ["ws"] }
 axum-macros = "0.4.1"
 dashmap = "5.5.3"
-env_logger = "0.11.3"
 futures-util = "0.3.30"
 log = "0.4.21"
 rand = "0.8.5"
@@ -19,3 +18,5 @@ tokio = { version = "1.37.0", features = ["rt", "macros", "full"] }
 tokio-macros = "2.2.0"
 tokio-util = { version = "0.7.11", features = ["time"] }
 tower-http = { version = "0.5.2", default-features = false, features = ["trace", "fs"] }
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"

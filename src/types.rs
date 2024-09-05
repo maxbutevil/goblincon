@@ -5,7 +5,7 @@ pub use tokio::time::Duration;
 
 //use std::net::SocketAddr;
 //use internment::ArcIntern;
-pub type RoomId = [u8; ROOM_ID_LEN];
+//pub type RoomId = [u8; ROOM_ID_LEN];
 //pub type ClientId = ArcIntern<SocketAddr>;
 pub type PlayerId = u8;
 pub type PlayerToken = u32; // can't use usize or javascript will throw a fit
@@ -21,9 +21,9 @@ pub const MAX_PLAYER_COUNT: usize = 12;
 pub const MIN_NAME_LEN: usize = 2;
 pub const MAX_NAME_LEN: usize = 16;
 
-pub const ROOM_ID_LEN: usize = 5;
+//pub const ROOM_ID_LEN: usize = 5;
 //pub const ROOM_ID_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-pub const ROOM_ID_CHARS: &[u8] = b"BCDFGHJKLMNPQRSTVWXZ";
+//pub const ROOM_ID_CHARS: &[u8] = b"BCDFGHJKLMNPQRSTVWXZ"; // no vowels
 
 /*#[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -51,120 +51,37 @@ pub enum GlobalHostMsgOut<'a> {
 #[derive(Deserialize)]
 #[serde(tag = "type", content = "data")]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-enum GlobalHostMsgIn {
+pub enum GlobalHostMsgIn {
 	Terminate
 }
 
-/*impl<'a> GlobalPlayerMsgOut<'a> {
-	fn ok(message: &'a str) -> Self {
-		Self::StatusUpdate { kind: StatusKind::Ok, message }
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct RoomId([u8; Self::LEN]);
+impl RoomId {
+	
+	const LEN: usize = 5;
+	const CHARS: &'static [u8] = b"BCDFGHJKLMNPQRSTVWXZ";
+	
+	pub fn generate() -> Self {
+		use rand::Rng;
+		let mut rng = rand::thread_rng();
+		let inner = [(); 5].map(|_| Self::CHARS[rng.gen_range(0..Self::CHARS.len())]);
+		Self(inner)
 	}
-	fn err(message: &'a str) -> Self {
-		Self::StatusUpdate { kind: StatusKind::Err, message }
+	pub fn parse(join_code: &str) -> Option<Self> {
+		/* Minor note: this method allows invalid characters not usable by generate() */
+		/* However, it still guarantees valid UTF-8, so it's fine */
+		if join_code.len() != Self::LEN {
+			None
+		} else {
+			join_code
+				.as_bytes()
+				.first_chunk::<{Self::LEN}>()
+				.map(|id| Self(id.to_owned()))
+		}
 	}
-}*/
-
-
-
-
-/*pub enum GameType {
-	Drawblins,
-	Showdown
-}
-
-
-#[derive(Deserialize)]
-#[serde(tag = "type", content = "data")]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum HostMessageIn {
-	//CreateGame {}
-}
-
-#[derive(Deserialize)]
-#[serde(tag = "type", content = "data")]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum PlayerMessageIn {
-	//JoinGame { room_id: RoomId, player_name: String },
-	StartGame,
-	DrawingSubmission { drawing: Box<String> },
-	//VoteSubmission { for_id: PlayerId }
-	VoteSubmission { for_name: String },
-}
-
-
-#[derive(Serialize)]
-#[serde(tag = "type", content = "data")]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum HostMessageOut<'a> {
-	
-	LobbyCreated { join_code: &'a str },
-	PlayerJoined { player_id: PlayerId, player_name: String },
-	PlayerLeft { player_id: PlayerId },
-	
-	GameStarted,
-	GameTerminated,
-	
-	DrawingStarted { goblin_name: &'a str },
-	DrawingTimeout,
-	VotingStarted,
-	ScoringStarted,/// { votes: [u8; MAX_PLAYER_COUNT] },
-	
-	DrawingSubmitted { player_id: PlayerId, drawing: &'a str },
-	VoteSubmitted { player_id: PlayerId, for_id: PlayerId }
-	
-}
-
-#[derive(Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub enum StatusKind {
-	Error,
-	
-}
-
-#[derive(Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub enum IdleKind {
-	Start,
-	Draw,
-	Vote,
-	Score,
-}
-
-#[derive(Serialize, Clone)]
-#[serde(tag = "type", content = "data")]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum PlayerMessageOut<'a> {
-	
-	//JoinedGame { room_id: RoomId }, //players: Vec<RemotePlayer> }
-	//PlayerJoined { player_id: usize, player_name: String },
-	
-	StatusUpdate { kind: StatusKind, message: &'a str },
-	
-	GameTerminated,
-	LobbyJoined { promoted: bool },
-	Promoted,
-	
-	Idle { kind: IdleKind },// { message: &'a str },
-	Drawing { goblin_name: &'a str, secs_left: f32 },
-	DrawingTimeout,
-	Voting { choices: &'a Vec<String>, secs_left: f32 }
-	
-}
-impl<'a> PlayerMessageOut<'a> {
-	
-	pub fn error(message: &'a str) -> PlayerMessageOut::<'a> {
-		Self::StatusUpdate { kind: StatusKind::Error, message }
+	pub fn as_str<'a>(&'a self) -> &'a str {
+		// Safety: A constructed RoomId is guaranteed to contain valid utf8
+		unsafe { std::str::from_utf8_unchecked(&self.0) }
 	}
-}*/
-
-/*#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RemotePlayer<'a> {
-	pub id: u8,
-	pub name: &'a str
-}*/
-
-
-
-
-
+}

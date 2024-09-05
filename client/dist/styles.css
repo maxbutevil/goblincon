@@ -1,0 +1,157 @@
+
+* {
+    margin: 0;
+}
+html, body, #root, #app {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+}
+body {
+    font-family: Arial;
+    background-color: #eeeee8;
+}
+input {
+    padding: 2px;
+}
+
+.status {
+    text-align: center;
+    font-weight: bold;
+}
+.status.error {
+    color: darkred;
+}
+
+.countdown {
+    font-size: 2em;
+}
+
+.tab {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: flex-start;
+    text-align: center;
+    gap: 10px;
+    margin: 28px;
+}
+
+.tab#landing {
+    justify-content: space-between;
+}
+.tab#landing input {
+    margin-top: 2px;
+}
+.tab#landing button {
+    margin-top: 6px;
+}
+
+#code-input {
+    text-transform: uppercase;
+}
+
+#host-lobby {
+    flex-flow: column nowrap;
+    justify-content: space-around;
+}
+#host-lobby .game-settings {
+    
+}
+#host-lobby .overview {
+    
+}
+
+
+.tab#draw {
+    flex-flow: row wrap;
+    height: 100%;
+    justify-content: center;
+    margin: auto;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none; /* lets player draw on mobile */
+}
+#goblin-name {
+    width: 200px;
+    text-align: center;
+    font-size: 1.6em;
+}
+.tab#draw .countdown {
+    width: 200px;
+    text-align: center;
+}
+#drawpad {
+    width: min(96vw, 78vh);
+    display: flex;
+    flex-flow: column nowrap;
+    border: 0.6vmin solid black;
+}
+#drawpad #canvas {
+    aspect-ratio: 1;
+    width: 100%;
+    height: auto;
+    background-color: white;
+    border-top: 0.6vmin solid black;
+    border-bottom: 0.6vmin solid black;
+}
+#drawpad .button-row {
+    display: flex;
+    flex-flow: row nowrap;
+}
+#drawpad button {
+    flex: 1;
+	aspect-ratio: 1;
+    border: none;
+    margin: none;
+}
+#drawpad .color-select-button {
+    border: 0.6vmin solid;
+}
+#drawpad #spacer-button {
+    flex: 2;
+    aspect-ratio: 2 / 1;
+}
+#drawpad #submit-button {
+    flex: 4;
+    aspect-ratio: 4 / 1;
+    background-color: green;
+}
+
+.submission-ctr {
+    display: flex;
+    flex-flow: horizontal wrap;
+    width: 96%;
+}
+.submission {
+    display: flex;
+    flex-flow: vertical nowrap;
+    align-items: center;
+    
+    background-color: #EEE;
+    border: 2px solid bold;
+    border-radius: 4px;
+}
+
+.score-entry-ctr {
+    display: flex;
+    flex-flow: vertical nowrap;
+    width: 30em;
+}
+.score-entry {
+    display: flex;
+    flex-flow: horizontal nowrap;
+    justify-content: space-between;
+}
+
+
+.tab.vote {
+    
+}
+.tab.score {
+    
+}
+
+
+

@@ -31,10 +31,9 @@ const NAMES: &[&str] = &[
 	"Boy Melter",
 	"Steamroller Victim",
 	"The Audiovisual Homunculus",
-	"#1 Fan",
+	"Fry Frencher",
 	
-	
-	
+	/* Misc */
 	"Wonk",
 	"Thimbel",
 	"Smelmer",
@@ -50,8 +49,8 @@ const NAMES: &[&str] = &[
 	
 	//"Orinboringor",
 	
-	"Romble Gomper",
-	"Gomp Rombler",
+	//"Romble Gomper",
+	//"Gomp Rombler",
 	//"The Girl Reading This",
 	"Torso Joe",
 	"Nilbog",
@@ -128,7 +127,7 @@ const NAMES: &[&str] = &[
 	"Mandiblo",
 	"Plogg",
 	"Jopple",
-	"Wendom",
+	//"Wendom",
 	"Tubo",
 	"Yurn",
 	"Agmor",
@@ -152,7 +151,7 @@ const NAMES: &[&str] = &[
 	"Flapple",
 	"Oom",
 	"Emunceo",
-	"Vinmor",
+	//"Vinmor",
 	"Fockle",
 	"Mogum",
 	"Gobbi Loach",
@@ -164,6 +163,7 @@ const NAMES: &[&str] = &[
 	"Bringlesnop",
 	"Pongel",
 	"Greegle",
+	"Lumpsucker",
 	
 ];
 
