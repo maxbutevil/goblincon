@@ -134,14 +134,12 @@ export default class Extract {
 	static NUMBER = Extract.simple<number>("number");
 	static STRING = Extract.simple<string>("string");
 	
+	
 	private static simple<T>(typeString: string): ExtractorMethod<T> {
 		return (value: any): value is T => typeof value === typeString;
-			/*if (typeof value === typeString) {
-				return true;
-			} else {
-				console.error(`Extractor type mismatch: ${value} is not a ${typeString}`);
-				return false;
-			}*/
+	}
+	static fixed<T>(value: T): ExtractorMethod<T> {
+		return (_value: any): _value is T => _value === value;
 	}
 	static optional<T>(extractor: Extractor<T>): ExtractorMethod<T | undefined> {
 		return (value: any): value is T | undefined => {
@@ -186,22 +184,11 @@ export default class Extract {
 			//throw new Error(`Extractor branch error: ${value} did not match any branches.`);
 		}
 	}
-	
-	/*static choice<T>(...extractors: Array<Extractor<T>>): Extractor<T> {
-		return (value: any) => {
-			for (const extractor of extractors) {
-				try {
-					return Extract.unsafe(extractor, value)
-				} catch(e) {}
-			}
-			throw new Error(`Extractor choice error: ${value} matches no paths.`);
-		};
-	}*/
 	static array<T>(extractor: ExtractorMethod<T>): ExtractorMethod<Array<T>> {
 		return (value: any): value is Array<T> => {
 			if (Array.isArray(value)) {
 				for (const element of value)
-					if (!Extract.is(extractor, value))
+					if (!Extract.is(extractor, element))
 						return false;
 				return true;
 			}
@@ -328,7 +315,7 @@ export class ReceiveIndex<I extends Index> {
 			console.log(`Message received: ${String(type)} | ${JSON.stringify(data)}`);
 			this.signals[type]!.emit(data);
 		} else {
-			console.error(`Invalid message data: ${String(type)} | ${data}`);
+			console.error(`Invalid message data: ${String(type)} | ${String(data)}`);
 			return Signal.HANDLED;
 		}
 		return Signal.HANDLED;
@@ -390,5 +377,5 @@ const outgoing = new EncodeIndex({
 });
 outgoing.encode("test", { num: 10, str: "Hello world!" });*/
 
-
+//console.log("Extractor Test: ", Extract.is(Extract.array(Extract.STRING), ["hello", "world"]))
 

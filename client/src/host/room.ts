@@ -42,6 +42,10 @@ export function getJoinCode(): string {
 	return joinCode;
 }
 
+//type Settings = { [key: string]: }
+
+//type Settings = { [key: string]: State<any> };
+
 /*export class Room {
 	
 	static readonly playerJoined = new Signal<{ playerId: number, player: Player }>();

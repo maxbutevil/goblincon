@@ -65,7 +65,7 @@ async fn main() {
 		.route("/play/rejoin", get(ws_upgrade_player_rejoin));
 	let page_router = Router::new()
 		// ServeDir handles index.html already (but not the others)
-		//.route_service("/", get(|| Redirect::permanent("/play")))
+		.route("/", get(|| async { Redirect::to("/play") }))
 		.route_service("/host", ServeFile::new("client/dist/host.html"))
 		.route_service("/play", ServeFile::new("client/dist/play.html"))
 		.fallback(|| async { "Page Not Found" });

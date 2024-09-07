@@ -1,6 +1,7 @@
 
 * {
     margin: 0;
+    user-select: none;
 }
 html, body, #root, #app {
     height: 100%;
@@ -30,8 +31,8 @@ input {
 .tab {
     display: flex;
     flex-flow: column nowrap;
-    justify-content: center;
-    align-items: flex-start;
+    justify-content: flex-start;
+    align-items: center;
     text-align: center;
     gap: 10px;
     margin: 28px;
@@ -51,9 +52,15 @@ input {
     text-transform: uppercase;
 }
 
+
 #host-lobby {
-    flex-flow: column nowrap;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: flex-start;
     justify-content: space-around;
+}
+#host-lobby #join-code {
+    font-size: 3em;
 }
 #host-lobby .game-settings {
     
@@ -61,6 +68,58 @@ input {
 #host-lobby .overview {
     
 }
+#host-drawing {
+    
+}
+
+.setting-select {
+    margin: 6px;
+    cursor: pointer;
+}
+.setting-select .name {
+    font-size: 1em;
+    margin-bottom: 4px;
+}
+.setting-select .setting {
+    font-size: 1.5em;
+}
+
+
+.submission-ctr {
+    display: flex;
+    flex-flow: row wrap;
+}
+.submission {
+    padding: 5px;
+    margin: 5px;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    
+    background-color: #CCC;
+    border: 2px solid bold;
+    border-radius: 4px;
+}
+.submission img {
+    
+}
+.submission .player-name {
+    
+}
+
+.score-entry-ctr {
+    display: flex;
+    flex-flow: column nowrap;
+    width: 16em;
+}
+.score-entry {
+    display: flex;
+    flex-flow: horizontal nowrap;
+    justify-content: space-between;
+    font-size: 1.3em;
+}
+
+
 
 
 .tab#draw {
@@ -117,32 +176,6 @@ input {
     flex: 4;
     aspect-ratio: 4 / 1;
     background-color: green;
-}
-
-.submission-ctr {
-    display: flex;
-    flex-flow: horizontal wrap;
-    width: 96%;
-}
-.submission {
-    display: flex;
-    flex-flow: vertical nowrap;
-    align-items: center;
-    
-    background-color: #EEE;
-    border: 2px solid bold;
-    border-radius: 4px;
-}
-
-.score-entry-ctr {
-    display: flex;
-    flex-flow: vertical nowrap;
-    width: 30em;
-}
-.score-entry {
-    display: flex;
-    flex-flow: horizontal nowrap;
-    justify-content: space-between;
 }
 
 

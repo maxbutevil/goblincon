@@ -8,16 +8,16 @@ export function useForceRerender(): () => void {
 	//return React.useCallback(() => rerender({}), []);
 	return () => rerender({});
 }
-export function useSignal<V>(signal: Signal<any>) {
+export function useSignal<V>(signal: Signal<V>) {
+	let [, rerender] = React.useState({});
 	React.useEffect(() => {
-		return signal.subscribe(useForceRerender())
+		return signal.subscribe(() => rerender({}))
 	}, []);
 }
 /*export function useExternal<T>(state: State<T>) {
 	useSignal(state.changed);
 }*/
 export function useExternal<T>(state: State<T>): T {
-	// Maybe could switch to NaN?
 	let [, rerender] = React.useState({});
 	React.useEffect(() => {
 		return state.changed.subscribe(() => rerender({}))

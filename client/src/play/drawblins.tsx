@@ -71,6 +71,7 @@ export function init(): () => void {
 		//voteSubmitted.subscribe(() => page.set(Enum.unit("voteSubmitted"))),
 	);
 }
+
 export function Component() {
 	
 	const current = Utils.useExternal(page);

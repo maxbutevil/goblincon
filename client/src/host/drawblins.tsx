@@ -9,6 +9,7 @@ import client from "../client"
 import * as Utils from "../utils"
 import * as Room from "./room"
 import React from "react"
+import { Setting, SettingMultiSelect, SettingsRemoteOf, toRemote } from "./setting"
 
 const INC = new ReceiveIndex({
 	"gameStarted": Extract.NONE,
@@ -30,8 +31,23 @@ type Page =
 	Variant<"results">;
 const page = new State<Page>(Enum.unit("starting"));
 
-let scores: number[];
+const settings = {
+	roundCount: new Setting("Number of Rounds", [ 1, 2, 3, 5, 8 ]),
+	drawTimeFactor: new Setting("Drawing Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ], 2, "x"),
+	voteTimeFactor: new Setting("Voting Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ], 2, "x")
+};
+
+export type SettingsRemote = SettingsRemoteOf<typeof settings>;
+export function getSettingsRemote(): SettingsRemote {
+	return toRemote(settings);
+}
+export function SettingSelect() {
+	return <SettingMultiSelect settings={settings} />;
+}
+
+
 let rounds: Round[];
+let scores: number[];
 function currentRound(): Round {
 	return rounds.at(-1)!;
 }
@@ -58,6 +74,8 @@ INC.listen("voteSubmitted", ({ playerId, forId }) => {
 });
 
 export function init() {
+	rounds = [];
+	scores = [];
 	return client.use(INC, OUT);
 }
 export function Component() {
@@ -72,7 +90,7 @@ export function Component() {
 function Starting() {
 	return (
 		<div className="tab">
-			<h1>Starting</h1>
+			<h1>Starting!</h1>
 		</div>
 	);
 }

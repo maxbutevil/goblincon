@@ -70,7 +70,7 @@ async fn next_string(receiver: &mut WebSocketReceiver) -> Option<String> {
 				log::warn!("invalid websocket message: {message:?}");
 			},
 			Err(err) => {
-				log::error!("websocket receive: {err}");
+				log::error!("{err}");
 				return None;
 			},
 		}
@@ -81,7 +81,7 @@ async fn send_raw(sender: &mut WebSocketSender, message: Message) -> Result<(), 
 	match sender.send(message).await {
 		Ok(()) => Ok(()),
 		Err(err) => {
-			log::warn!("websocket send: {err}");
+			log::warn!("{err}");
 			Err(())
 		}
 	}
@@ -266,13 +266,6 @@ mod client_index {
 			self.players.len() == self.players.capacity()
 		}
 		pub async fn recv(&mut self) -> Option<Event> {
-			/*let event = self.receiver.recv().await;
-			if let Some(Event::PlayerDisconnect(player_id)) = event {
-				if let Some(player) = self.players.get_mut(player_id as usize) {
-					
-				}
-			}
-			event*/
 			self.receiver.recv().await
 		}
 		

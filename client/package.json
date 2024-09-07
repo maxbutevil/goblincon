@@ -22,6 +22,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "framer-motion": "^11.5.4",
     "goblincon": "file:",
     "ts-loader": "^9.5.1"
   }

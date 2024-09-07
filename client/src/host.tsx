@@ -7,7 +7,8 @@ import Extract, { ReceiveIndex, SendIndex } from "./modules/extract"
 import client from "./client"
 import * as Utils from "./utils"
 import * as Room from "./host/room"
-import * as Drawblins from "./host/drawblins";
+import * as Drawblins from "./host/drawblins"
+import { Setting, SettingSelect } from "./host/setting"
 
 const INC = new ReceiveIndex({
 	"accepted": { joinCode: Extract.STRING },
@@ -24,7 +25,17 @@ const INC = new ReceiveIndex({
 	
 });
 const OUT = new SendIndex({
-	"terminate": Extract.NONE
+	"terminate": Extract.NONE,
+	"startGame": Extract.branch(
+		{
+			game: Extract.fixed<"drawblins">("drawblins"),
+			settings: {
+				roundCount: Extract.NUMBER,
+				drawTimeFactor: Extract.NUMBER,
+				voteTimeFactor: Extract.NUMBER
+			}
+		}
+	)
 });
 
 client.use(INC, OUT);
@@ -43,8 +54,20 @@ INC.listen("playerLeft", ({ playerId }) =>
 	Room.handlePlayerLeft(playerId));
 INC.listen("gameStarting", () => {
 	// here we relay the game settings and set the page accordingly
-	const cleanup = Drawblins.init();
-	page.set(Enum.variant("drawblins", { cleanup }));
+	let config;
+	switch(game.get()) {
+		case "drawblins":
+			OUT.send("startGame", {
+				game: "drawblins",
+				settings: Drawblins.getSettingsRemote()
+			});
+			const cleanup = Drawblins.init();
+			page.set(Enum.variant("drawblins", { cleanup }));
+			break;
+		default: /* Something went wrong somehow, handle */
+	}
+	
+	
 });
 /*INC.listen("gameStarted", () => {
 	// here we switch to game page, based on settings (eventually)
@@ -56,8 +79,17 @@ type Page =
 	Variant<"landing"> |
 	Variant<"lobby"> |
 	Variant<"drawblins", { cleanup: () => void }>;
+//type Game =
+//	Variant<"drawblins">;
+//type GameSettingsRemote =
+//	{ game: "drawblins", settings: Drawblins.SettingsRemote };
+
+/*function getSettings(): { [key: string]: State<any> } {
+	
+}*/
 
 const page = new State<Page>(Enum.unit("landing"));
+const game = new Setting<"drawblins">("Game Mode", [ "drawblins" ]);
 
 page.changed.listen(([from, to]) => {
 	if ("cleanup" in from)
@@ -70,8 +102,9 @@ function App() {
 		client.connect(`${Utils.wsRoot}/host`);
 	}, []);
 	
-	let { key } = Utils.useExternal(page);
-	switch(key) {
+	let current = Utils.useExternal(page);
+	console.log(current.key);
+	switch(current.key) {
 		case "landing": return <Landing />;
 		case "lobby": return <Lobby />;
 		case "drawblins": return <Drawblins.Component />;
@@ -80,14 +113,14 @@ function App() {
 
 function Landing() {
 	return (
-		<div className="tab">
+		<div className="tab" id="host-landing">
 			<h1>Connecting...</h1>
 		</div>
 	);
 }
 function Lobby() {
 	return (
-		<div id="lobby">
+		<div id="host-lobby">
 			<div className="tab overview">
 				<h1>Lobby</h1>
 				<div id="join-code">{Room.getJoinCode()}</div>
@@ -95,13 +128,17 @@ function Lobby() {
 			</div>
 			<div className="tab game-settings">
 				<h1>Settings</h1>
-				
+				<SettingSelect setting={game} />
+				<GameSettings />
 			</div>
 		</div>
 	);
 }
-function SettingSelect() {
-	
+function GameSettings() {
+	Utils.useSignal(game.changed);
+	switch(game.get()) {
+		case "drawblins": return <Drawblins.SettingSelect />
+	}
 }
 function PlayerList() {
 	
