@@ -45,6 +45,9 @@ const IP: &str = "0.0.0.0";
 async fn main() {
 	
 	tracing_subscriber::fmt::init();
+	//tracing_subscriber::fmt()
+		//.with_level(display_level)
+		//.init();
 	
 	/*env_logger::builder()
 		.filter_level(log::LevelFilter::Info)
@@ -63,18 +66,22 @@ async fn main() {
 		.route("/host", get(ws_upgrade_host))
 		.route("/play/join", get(ws_upgrade_player_join))
 		.route("/play/rejoin", get(ws_upgrade_player_rejoin));
-	let page_router = Router::new()
+	/*let page_router = Router::new()
 		// ServeDir handles index.html already (but not the others)
 		.route("/", get(|| async { Redirect::to("/play") }))
 		.route_service("/host", ServeFile::new("client/dist/host.html"))
 		.route_service("/play", ServeFile::new("client/dist/play.html"))
-		.fallback(|| async { "Page Not Found" });
-	let static_service = ServeDir::new("client/dist")
-		.fallback(page_router)
+		.fallback(|| async { "Page Not Found" });*/
+	let static_service = ServeDir::new("client/dist/assets")
+		//.fallback(page_router)
 		.append_index_html_on_directories(false);
 	let router = Router::new()
 		.nest("/ws", ws_router)
-		.nest_service("/", static_service)
+		.nest_service("/assets", static_service)
+		.route("/", get(|| async { Redirect::to("/play") }))
+		.route_service("/host", ServeFile::new("client/dist/host.html"))
+		.route_service("/play", ServeFile::new("client/dist/play.html"))
+		.fallback(|| async { "Page Not Found" })
 		.with_state(App::new());
 		//.into_make_service_with_connect_info::<SocketAddr>();
 	
@@ -134,7 +141,7 @@ async fn ws_upgrade_player_join(
 		}
 	}
 	
-	log::warn!("Room Not Found [{code}]");
+	tracing::warn!("Room Not Found [{code}]");
 	Err(StatusCode::BAD_REQUEST)
 }
 async fn ws_upgrade_player_rejoin(
@@ -157,7 +164,7 @@ async fn ws_upgrade_player_rejoin(
 		}
 	}
 	
-	log::warn!("Room Not Found [{code}]");
+	tracing::warn!("Room Not Found [{code}]");
 	Err(StatusCode::BAD_REQUEST)
 }
 

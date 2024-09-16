@@ -56,14 +56,17 @@ export function SettingSelect({ setting }: { setting: Setting<any> }) {
 	Utils.useSignal(setting.changed);
 	
 	const onClick: React.MouseEventHandler = React.useCallback((event) => {
-		if (event.button === 0)
+		let { left, right } = event.currentTarget.getBoundingClientRect();
+		let middle = (left + right)/2;
+		
+		if (event.clientX > middle)
 			setting.increment();
-		else if (event.button === 2)
+		else
 			setting.decrement();
 	}, []);
 	
 	return (
-		<div className="setting-select" onClick={onClick} onContextMenu={() => false} >
+		<div className="setting-select" onClick={onClick}>
 			{setting.name && <div className="name">{setting.name}</div>}
 			<div className="setting">{setting.getString()}</div>
 		</div>
@@ -72,7 +75,7 @@ export function SettingSelect({ setting }: { setting: Setting<any> }) {
 export function SettingMultiSelect({ settings }: { settings: SettingsMap }) {
 	const selectors: JSX.Element[] = [];
 	for (const key in settings)
-		selectors.push(<SettingSelect setting={settings[key]} />);
+		selectors.push(<SettingSelect key={key} setting={settings[key]} />);
 	
 	return <>{selectors}</>;
 }

@@ -28,7 +28,15 @@ export function handlePlayerLeft(playerId: number) {
 	delete players[playerId];
 	playerLeft.emit({ playerId, player });
 }
+export function handleDisconnected() {
+	//let oldPlayers = players;
+	joinCode = "";
+	players = [];
+}
 
+export function playerCount(): number {
+	return playerIds().length;
+}
 export function playerName(id: number): string | undefined {
 	return players[id].name;
 }

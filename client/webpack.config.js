@@ -5,7 +5,6 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 //const CopyPlugin = require("copy-webpack-plugin");
 
 
-const extensions = ['.tsx', '.ts', '.js'];
 const rules = [
   {
     test: /\.tsx?$/,
@@ -17,17 +16,19 @@ const rules = [
 function page(pageName, title) {
   return {
     entry: `./src/${pageName}`,
-    resolve: { extensions },
+    resolve: { extensions: ['.tsx', '.ts', '.js'] },
     module: { rules },
     output: {
       path: path.resolve(__dirname, 'dist'),
-      filename: `${pageName}.js`
+      filename: `assets/${pageName}.js`
     },
     plugins: [
       new HtmlWebpackPlugin({
         template: './src/template.html',
         filename: `${pageName}.html`,
         title,
+        publicPath: '/',
+        
       })
     ]
   };

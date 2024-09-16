@@ -39,7 +39,7 @@ fn serialize(value: &impl Serialize) -> Result<String, ()> {
 	match serde_json::to_string(value) {
 		Ok(string) => Ok(string),
 		Err(err) =>	{
-			log::error!("serialization: {err}");
+			tracing::error!("serialization: {err}");
 			Err(())
 		}
 	}
@@ -48,7 +48,7 @@ fn deserialize<'a, T: Deserialize<'a>>(str: &'a str) -> Result<T, ()> {
 	match serde_json::from_str::<T>(str) {
 		Ok(value) => Ok(value),
 		Err(err) => {
-			log::error!("deserialization: {err}");
+			tracing::error!("deserialization: {err}");
 			Err(())
 		}
 	}
@@ -63,14 +63,14 @@ async fn next_string(receiver: &mut WebSocketReceiver) -> Option<String> {
 				/* Ignore these, tungstenite handles them */
 			},
 			Ok(Message::Close(_)) => {
-				log::debug!("websocket connection closed");
+				tracing::debug!("websocket connection closed");
 				return None;
 			},
 			Ok(message) => {
-				log::warn!("invalid websocket message: {message:?}");
+				tracing::warn!("invalid websocket message: {message:?}");
 			},
 			Err(err) => {
-				log::error!("{err}");
+				tracing::error!("{err}");
 				return None;
 			},
 		}
@@ -81,7 +81,7 @@ async fn send_raw(sender: &mut WebSocketSender, message: Message) -> Result<(), 
 	match sender.send(message).await {
 		Ok(()) => Ok(()),
 		Err(err) => {
-			log::warn!("{err}");
+			tracing::warn!("{err}");
 			Err(())
 		}
 	}
@@ -165,7 +165,7 @@ impl Timeout {
 	}
 	fn variable_scaled(duration: VariableDuration, scale_factor: usize, scale_setting: f32) -> Duration {
 		let millis = (duration.millis(scale_factor) as f32) * scale_setting;
-		//log::debug!("{} | {}")
+		//tracing::debug!("{} | {}")
 		Duration::from_millis(millis as u64)
 	}
 	
@@ -247,7 +247,7 @@ mod client_index {
 							break;
 						}
 					}
-					//log::info!();
+					//tracing::info!();
 					let _ = sender.send(Event::HostDisconnect).await;
 				});
 				let presence = Presence::new(tx, handle);
@@ -308,17 +308,17 @@ mod client_index {
 		pub async fn reconnect_player(&mut self, socket: WebSocket, player_id: PlayerId, player_token: PlayerToken) -> Result<(), ()> {
 			
 			let Some(player) = self.players.get_mut(player_id as usize) else {
-				log::info!("game rejoin failure (no such player)");
+				tracing::info!("game rejoin failure (no such player)");
 				return Err(reject_socket(socket, "Couldn't rejoin game").await);
 			};
 			
 			if player_token != player.token {
-				log::info!("game rejoin failure (invalid token)");
+				tracing::info!("game rejoin failure (invalid token)");
 				return Err(reject_socket(socket, "Couldn't rejoin game").await);
 			}
 			
 			if player.presence.is_connected() {
-				log::info!("game rejoin failure (already connected)");
+				tracing::info!("game rejoin failure (already connected)");
 				return Err(reject_socket(socket, "Already connected elsewhere").await);
 			}
 			
@@ -335,7 +335,7 @@ mod client_index {
 				let mut player = self.players.remove(player_id as usize);
 				let _ = player.presence.disconnect().await;
 			} else {
-				log::warn!("attempted to remove player that is not present");
+				tracing::warn!("attempted to remove player that is not present");
 			}
 		}
 		pub fn remove_disconnected_players(&mut self) -> Vec<PlayerId> {
@@ -365,7 +365,7 @@ mod client_index {
 			if let Some(player) = self.players.get_mut(id as usize) {
 				player.send(message).await
 			} else {
-				log::error!("attempted to send to nonexistent player");
+				tracing::error!("attempted to send to nonexistent player");
 				Err(())
 			}
 		}
@@ -533,7 +533,7 @@ mod lobby {
 							Event::PlayerJoin { socket, name } => {
 								
 								let State::Open { ref mut leader_id } = self.state else {
-									log::debug!("player attempted to join lobby while not open");
+									tracing::debug!("player attempted to join lobby while not open");
 									continue;
 								};
 								
@@ -567,7 +567,7 @@ mod lobby {
 							Event::HostDisconnect => break Err(()),
 							Event::PlayerDisconnect(player_id) => {
 								let State::Open { leader_id } = self.state else {
-									log::debug!("player disconnected from lobby while not open");
+									tracing::debug!("player disconnected from lobby while not open");
 									continue;
 								};
 								
@@ -589,7 +589,7 @@ mod lobby {
 									HostMsgIn::Terminate => break Err(()),
 									HostMsgIn::StartGame(settings) => {
 										let State::Starting = self.state else {
-											log::warn!("host attempted to start game for lobby in invalid state");
+											tracing::warn!("host attempted to start game for lobby in invalid state");
 											continue;
 										};
 										
@@ -602,12 +602,12 @@ mod lobby {
 								match message {
 									PlayerMsgIn::StartGame => {
 										let State::Open { leader_id } = self.state else {
-											log::debug!("attempted to start game for lobby in invalid state");
+											tracing::debug!("attempted to start game for lobby in invalid state");
 											continue;
 										};
 										
 										if player_id != leader_id {
-											log::warn!("non-leader player attempted to start game");
+											tracing::warn!("non-leader player attempted to start game");
 											continue;
 										}
 										
@@ -836,7 +836,7 @@ mod drawblins {
 					} else {
 						/* Otherwise, ask them to draw */
 						let Some(goblin_name) = self.names.get(self.round) else {
-							log::error!("no goblin name for current round: {}", self.round);
+							tracing::error!("no goblin name for current round: {}", self.round);
 							return;
 						};
 						PlayerMsgOut::Drawing {
@@ -873,7 +873,7 @@ mod drawblins {
 				State::Results => self.start_score().await,
 				State::Score => self.start_draw().await,
 				State::Terminated(_) => {
-					log::warn!("[drawblins] attempted to advance a terminated game");
+					tracing::warn!("[drawblins] attempted to advance a terminated game");
 				}
 			}
 		}
@@ -948,10 +948,10 @@ mod drawblins {
 		}
 		async fn handle_drawing_submission(&mut self, player_id: PlayerId, drawing: String) {
 			let State::Draw { ref mut submitted } = self.state else {
-				return log::debug!("received a drawing while not in drawing state [{player_id}]");
+				return tracing::debug!("received a drawing while not in drawing state [{player_id}]");
 			};
 			let Some(false) = submitted.get(player_id as usize) else {
-				return log::debug!("duplicate drawing received [{player_id}]");
+				return tracing::debug!("duplicate drawing received [{player_id}]");
 			};
 			
 			submitted[player_id as usize] = true;
@@ -977,23 +977,23 @@ mod drawblins {
 					None
 				}
 			}) else {
-				return log::warn!("couldn't find player with name for vote: [{player_id} -> {for_name}]");
+				return tracing::warn!("couldn't find player with name for vote: [{player_id} -> {for_name}]");
 			};
 			
 			if player_id == for_id {
-				return log::warn!("self vote attempted [{player_id} -> {for_id}]"); //: {}", Self::id_str(&self.id), player_id);
+				return tracing::warn!("self vote attempted [{player_id} -> {for_id}]"); //: {}", Self::id_str(&self.id), player_id);
 			}
 			if !self.clients.players.contains(for_id as usize) {
-				return log::warn!("attempted to vote for player that is not present [{player_id} -> {for_id}]");
+				return tracing::warn!("attempted to vote for player that is not present [{player_id} -> {for_id}]");
 			}
 			let State::Vote { eligible, choices: _, ref mut votes } = self.state else {
-				return log::warn!("received a vote while not in voting state [{player_id} -> {for_id}]");
+				return tracing::warn!("received a vote while not in voting state [{player_id} -> {for_id}]");
 			};
 			let Some(true) = eligible.get(player_id as usize) else {
-				return log::warn!("voted for ineligible player [{player_id} -> {for_id}]");
+				return tracing::warn!("voted for ineligible player [{player_id} -> {for_id}]");
 			};
 			let Some(None) = votes.get(player_id as usize) else {
-				return log::warn!("duplicate vote received [{player_id} -> {for_id}]");
+				return tracing::warn!("duplicate vote received [{player_id} -> {for_id}]");
 			};
 			
 			votes[player_id as usize] = Some(for_id);
@@ -1061,14 +1061,14 @@ impl App {
 			}
 		}
 		
-		log::error!("failed to generate a valid room id (somehow)");
+		tracing::error!("failed to generate a valid room id (somehow)");
 		None
 	}
 	pub async fn accept_host(&self, host_socket: WebSocket) {
 		let Some(id) = self.generate_room_id() else { return };
-		log::info!("[{}] Opening!", id.as_str());
+		tracing::info!("[{}] Opening!", id.as_str());
 		self.init_room(id, host_socket).await;
-		log::info!("[{}] Closed", id.as_str());
+		tracing::info!("[{}] Closed", id.as_str());
 	}
 	async fn init_room(&self, id: RoomId, host_socket: WebSocket) {
 		
@@ -1104,7 +1104,7 @@ impl App {
 	pub async fn accept_player_join(&self, socket: WebSocket, room_id: RoomId, name: String) {
 		let Some(mut handle) = self.rooms.get_mut(&room_id) else { return; };
 		let RoomHandle::Lobby(ref mut handle) = *handle else {
-			return log::debug!("attempted to join a game that is already running");
+			return tracing::debug!("attempted to join a game that is already running");
 		};
 		let _ = handle.send(lobby::Event::PlayerJoin { socket, name }).await;
 	}

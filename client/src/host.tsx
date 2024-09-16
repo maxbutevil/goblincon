@@ -4,7 +4,7 @@ import Signal from "./modules/signal"
 import State from "./modules/state"
 import { Enum, Variant } from "./modules/variant"
 import Extract, { ReceiveIndex, SendIndex } from "./modules/extract"
-import client from "./client"
+import client, { Connection } from "./client"
 import * as Utils from "./utils"
 import * as Room from "./host/room"
 import * as Drawblins from "./host/drawblins"
@@ -52,9 +52,10 @@ INC.listen("playerJoined", ({ playerId, playerName }) =>
 	Room.handlePlayerJoined(playerId, playerName));
 INC.listen("playerLeft", ({ playerId }) =>
 	Room.handlePlayerLeft(playerId));
+client.disconnected.listen(() =>
+	Room.handleDisconnected());
 INC.listen("gameStarting", () => {
 	// here we relay the game settings and set the page accordingly
-	let config;
 	switch(game.get()) {
 		case "drawblins":
 			OUT.send("startGame", {
@@ -66,8 +67,6 @@ INC.listen("gameStarting", () => {
 			break;
 		default: /* Something went wrong somehow, handle */
 	}
-	
-	
 });
 /*INC.listen("gameStarted", () => {
 	// here we switch to game page, based on settings (eventually)
@@ -162,4 +161,9 @@ function PlayerList() {
 import { createRoot } from "react-dom/client";
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
+
+window.onbeforeunload = () => {
+	if (Room.playerCount() > 0)
+		return "";
+}
 

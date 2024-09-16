@@ -10,6 +10,7 @@ import * as Utils from "../utils"
 import * as Room from "./room"
 import React from "react"
 import { Setting, SettingMultiSelect, SettingsRemoteOf, toRemote } from "./setting"
+//import { motion } from "framer-motion"
 
 const INC = new ReceiveIndex({
 	"gameStarted": Extract.NONE,
@@ -28,8 +29,9 @@ type Page =
 	Variant<"starting"> |
 	Variant<"drawing"> |
 	Variant<"voting"> |
-	Variant<"results">;
+	Variant<"scoring">;
 const page = new State<Page>(Enum.unit("starting"));
+const voteRevealed = new Signal<number>();
 
 const settings = {
 	roundCount: new Setting("Number of Rounds", [ 1, 2, 3, 5, 8 ]),
@@ -58,14 +60,46 @@ function addScore(playerId: number, amount: number) {
 	scores[playerId] = getScore(playerId) + amount;
 }
 
-
 INC.listen("drawing", ({ goblinName }) => {
 	rounds.push(new Round(goblinName));
 	page.set(Enum.unit("drawing"));
 });
 INC.listen("voting", () => page.set(Enum.unit("voting")));
-//INC.listen("scoring", () => page.set)
-INC.listen("results", () => page.set(Enum.unit("results")));
+INC.listen("results", () => {
+	
+	const DELAY_MS = 0.9 * 1000;
+	
+	let round = currentRound();
+		for (const id of Room.playerIds())
+			addScore(id, round.voteCounts[id] ?? 0);
+	
+	//let votesLeft = new Map(round.voteCounts.entries());
+	let voteQueue: number[] = [];
+	//console.log(round.voteCounts, round.votes);
+	
+	for (let i = 0; i < 100; i++) {
+		let anyLeft = false;
+		for (const [player, count] of round.voteCounts.entries()) {
+			if (count > i) {
+				voteQueue.push(player);
+				anyLeft = true;
+			}
+		}
+		if (!anyLeft) break;
+	}
+	
+	//voteQueue.reverse();
+	//console.log(voteQueue);
+	
+	let interval = setInterval(() => {
+		let nextVote = voteQueue.pop();
+		if (page.get().key !== "voting" || nextVote === undefined)
+			clearInterval(interval);
+		else
+			voteRevealed.emit(nextVote);
+	}, DELAY_MS);
+});
+INC.listen("scoring", () => page.set(Enum.unit("scoring")));
 INC.listen("drawingSubmitted", ({ playerId, drawing }) => {
 	currentRound().handleDrawing(playerId, drawing);
 });
@@ -76,6 +110,7 @@ INC.listen("voteSubmitted", ({ playerId, forId }) => {
 export function init() {
 	rounds = [];
 	scores = [];
+	page.set(Enum.unit("starting"));
 	return client.use(INC, OUT);
 }
 export function Component() {
@@ -84,7 +119,7 @@ export function Component() {
 		case "starting": return <Starting />;
 		case "drawing": return <Drawing />;
 		case "voting": return <Voting />;
-		case "results": return <Results />;
+		case "scoring": return <Scoring />;
 	}
 }
 function Starting() {
@@ -103,28 +138,16 @@ function Drawing() {
 	);
 }
 function Voting() {
-	
-	const rerender = Utils.useForceRerender();
-	React.useCallback(() => {
-		return INC.subscribe("results", () => {
-			/* Todo: Show votes */
-			let round = currentRound();
-			for (const id of Room.playerIds()) {
-				addScore(id, round.voteCounts[id] ?? 0);
-			}
-		})
-	}, []);
-	
 	return (
 		<div className="tab">
 			<div>Vote for your favorite {currentRound().goblinName}!</div>
 			<div className="submission-ctr">
-				{Room.playerIds().map(id => <Submission playerId={id} />)}
+				{Room.playerIds().map(id => <Submission key={id} playerId={id} />)}
 			</div>
 		</div>
 	);
 }
-function Results() {
+function Scoring() {
 	
 	let sortedIds = Room.playerIds().sort((a, b) => {
 		return getScore(b) - getScore(a);
@@ -148,13 +171,25 @@ function Submission({ playerId }: { playerId: number }) {
 	const playerName = Room.playerName(playerId);
 	const drawing = currentRound().drawings[playerId];
 	
+	let [voteCount, setVoteCount] = React.useState(0);
+	React.useEffect(() => voteRevealed.subscribe((player) => {
+		//console.log(player, playerId);
+		if (player === playerId)
+			setVoteCount(voteCount + 1);
+	})); // this needs to rebuild since it references voteCount
+	
 	if (playerName === undefined || drawing === undefined)
 		return <></>;
 	
+	let voteIcons = [];
+	for (let i = 0; i < voteCount; i++)
+		voteIcons.push(<VoteIcon key={i} index={i} />)
+	
 	return (
 		<div className="submission">
-			<img src={drawing}></img>
+			<img src={drawing} />
 			<div className="player-name">{playerName}</div>
+			<div className="vote-ctr">{voteIcons}</div>
 		</div>
 	);
 }
@@ -166,7 +201,17 @@ function ScoreEntry({ playerId, rank }: { playerId: number, rank: number }) {
 		</div>
 	);
 }
-
+function VoteIcon({ index }: { index: number }) {
+	
+	return (
+		<div className="vote-icon fade-in"
+			//initial={{ scale: 0.0 }}
+			//animate={{ scale: 1.0 }}
+		>
+			yar
+		</div>
+	);
+}
 
 class Round {
 	goblinName: string;
@@ -182,7 +227,7 @@ class Round {
 	}
 	handleVote(playerId: number, forId: number) {
 		this.votes[playerId] = forId;
-		this.votes[forId] = 1 + (this.votes[forId] ?? 0);
+		this.voteCounts[forId] = 1 + (this.voteCounts[forId] ?? 0);
 	}
 }
 

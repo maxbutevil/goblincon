@@ -84,6 +84,7 @@ input {
     font-size: 1.5em;
 }
 
+
 .submission-ctr {
     display: flex;
     flex-flow: row wrap;
@@ -113,23 +114,18 @@ input {
     
 }
 .submission .vote-ctr {
-    position: absolute;
-    
     display: flex;
     flex-flow: row wrap;
-    justify-content: flex-start;
-    align-items: flex-start;
-    
-    top: 2%;
-    left: 2%;
-    right: 2%;
-    bottom: 2%;
-    gap: 2%;
+    position: absolute;
+    top: 10%;
+    left: 10%;
+    height: 90%;
+    bottom: 80%;
 }
 .submission .vote-icon {
-    aspect-ratio: 1;
-    flex-basis: 32%;
-    background-color: red;
+    width: 5em;
+    height: 5em;
+    background-color: #999;
 }
 
 .score-entry-ctr {
@@ -211,5 +207,13 @@ input {
     
 }
 
+
+.fade-in {
+    animation: 1s linear fade-in;
+}
+@keyframes fade-in {
+    from { opacity: 0.0; }
+    to { opacity: 1.0; }
+}
 
 

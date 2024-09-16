@@ -14,6 +14,9 @@ export function useSignal<V>(signal: Signal<V>) {
 		return signal.subscribe(() => rerender({}))
 	}, []);
 }
+/*export function useMountTransition() {
+	
+}*/
 /*export function useExternal<T>(state: State<T>) {
 	useSignal(state.changed);
 }*/
