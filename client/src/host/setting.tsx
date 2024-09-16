@@ -30,17 +30,20 @@ export class Setting<T = number> {
 		this.current = currentIndex;
 		this.decorator = decorator;
 	}
+	set(newCurrent: number) {
+		if (this.current !== newCurrent) {
+			this.current = newCurrent;
+			this.changed.emit();
+		}
+	}
 	decrement() {
-		this.current--;
 		if (this.current < 0)
-			this.current = this.choices.length - 1;
-		this.changed.emit();
+			this.set(this.choices.length - 1);
+		else
+			this.set(this.current - 1);
 	}
 	increment() {
-		this.current++;
-		if (this.current >= this.choices.length)
-			this.current = 0;
-		this.changed.emit();
+		this.set((this.current + 1) % this.choices.length);
 	}
 	get(): T {
 		return this.choices[this.current];

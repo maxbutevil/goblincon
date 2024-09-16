@@ -116,8 +116,11 @@ impl Presence {
 	}
 	async fn disconnect(&mut self) {
 		if self.is_connected() {
-			let _ = self.sender.close().await;
+			let _ = self.close().await;
 		}
+	}
+	async fn close(&mut self) {
+		let _ = self.sender.close().await;
 	}
 	/*async fn send_raw(&mut self, message: Message) -> Result<(), ()> {
 		send_raw(&mut self.sender, message).await
@@ -221,10 +224,12 @@ mod client_index {
 	pub type Sender = mpsc::Sender<Event>;
 	pub type Receiver = mpsc::Receiver<Event>;
 	pub enum Event {
-		HostDisconnect,
-		HostMessage(String),
-		PlayerDisconnect(PlayerId),
-		PlayerMessage(PlayerId, String)
+		Disconnect(ClientId),
+		Message(ClientId, String)
+		//HostDisconnect,
+		//HostMessage(String),
+		//PlayerDisconnect(PlayerId),
+		//PlayerMessage(PlayerId, String)
 	}
 	pub struct ClientIndex {
 		sender: Sender,
@@ -236,19 +241,19 @@ mod client_index {
 	impl ClientIndex {
 		
 		pub fn new(host_socket: WebSocket, capacity: PlayerId) -> Self {
-			let (sender, receiver) = mpsc::channel(2);
+			let (sender, receiver) = mpsc::channel(EVENT_QUEUE_SIZE);
 			let host = {
 				let (tx, mut rx) = host_socket.split();
 				let sender = sender.clone();
 				let handle = tokio::spawn(async move {
 					while let Some(content) = super::next_string(&mut rx).await {
-						let result = sender.send(Event::HostMessage(content)).await;
+						let result = sender.send(Event::Message(ClientId::Host, content)).await;
 						if result.is_err() {
 							break;
 						}
 					}
 					//tracing::info!();
-					let _ = sender.send(Event::HostDisconnect).await;
+					let _ = sender.send(Event::Disconnect(ClientId::Host)).await;
 				});
 				let presence = Presence::new(tx, handle);
 				Host { presence }
@@ -278,12 +283,13 @@ mod client_index {
 			let (tx, mut rx) = socket.split();
 			let handle = tokio::spawn(async move {
 				while let Some(content) = next_string(&mut rx).await {
-					let result = sender.send(Event::PlayerMessage(player_id, content)).await;
+					let event = Event::Message(ClientId::Player(player_id), content);
+					let result = sender.send(event).await;
 					if result.is_err() {
 						break;
 					}
 				}
-				let _ = sender.send(Event::PlayerDisconnect(player_id)).await;
+				let _ = sender.send(Event::Disconnect(ClientId::Player(player_id))).await;
 			});
 			Presence::new(tx, handle)
 		}
@@ -564,63 +570,34 @@ mod lobby {
 						use client_index::Event;
 						let Some(event) = event else { break Err(()); };
 						match event {
-							Event::HostDisconnect => break Err(()),
-							Event::PlayerDisconnect(player_id) => {
-								let State::Open { leader_id } = self.state else {
-									tracing::debug!("player disconnected from lobby while not open");
-									continue;
-								};
-								
-								self.clients.remove_player(player_id).await;
-								let _ = self.clients.send_host(&HostMsgOut::PlayerLeft { player_id }).await;
-								
-								/* If the leader left, promote someone else */
-								if player_id == leader_id && !self.clients.players.is_empty() {
-									let leader_id = self.new_leader_id();
-									self.state = State::Open { leader_id };
-									let _ = self.clients.send_player(leader_id, &PlayerMsgOut::InLobby {
-										promoted: true
-									}).await;
+							Event::Disconnect(client_id) => {
+								match client_id {
+									ClientId::Host => break Err(()),
+									ClientId::Player(player_id) =>
+										self.handle_player_disconnect(player_id).await
 								}
 							},
-							Event::HostMessage(message) => {
-								let Ok(message) = deserialize::<'_, HostMsgIn>(&message) else { continue };
-								match message {
-									HostMsgIn::Terminate => break Err(()),
-									HostMsgIn::StartGame(settings) => {
-										let State::Starting = self.state else {
-											tracing::warn!("host attempted to start game for lobby in invalid state");
-											continue;
-										};
-										
-										break Ok(settings);
-									}
-								}
-							},
-							Event::PlayerMessage(player_id, message) => {
-								let Ok(message) = deserialize::<'_, PlayerMsgIn>(&message) else { continue };
-								match message {
-									PlayerMsgIn::StartGame => {
-										let State::Open { leader_id } = self.state else {
-											tracing::debug!("attempted to start game for lobby in invalid state");
-											continue;
-										};
-										
-										if player_id != leader_id {
-											tracing::warn!("non-leader player attempted to start game");
-											continue;
+							Event::Message(client_id, message) => {
+								match client_id {
+									ClientId::Host => {
+										let Ok(message) = deserialize::<'_, HostMsgIn>(&message) else { continue };
+										match message {
+											HostMsgIn::Terminate => break Err(()),
+											HostMsgIn::StartGame(settings) =>
+												{
+													let result = self.handle_host_start_attempt().await;
+													if let Ok(()) = result {
+														break Ok(settings)
+													}
+												}
 										}
-										
-										if self.clients.players.len() < MIN_PLAYER_COUNT {
-											let message = GlobalPlayerMsgOut::Error(&"Not enough players");
-											let _ = self.clients.send_player(player_id, &message).await;
-											continue;
-										}
-										
-										/* Start the game */
-										self.state = State::Starting;
-										let _ = self.clients.send_host(&HostMsgOut::GameStarting).await;
-										//return Ok(());
+									},
+									ClientId::Player(player_id) => {
+										let Ok(message) = deserialize::<'_, PlayerMsgIn>(&message) else { continue };
+										match message {
+											PlayerMsgIn::StartGame =>
+												{ let _ = self.handle_player_start_attempt(player_id).await; }
+										};
 									}
 								}
 							},
@@ -628,6 +605,48 @@ mod lobby {
 					}
 				}
 			}
+		}
+		async fn handle_player_disconnect(&mut self, player_id: PlayerId) {
+			let State::Open { leader_id } = self.state else {
+				return tracing::debug!("player disconnected from lobby while not open");
+			};
+			
+			self.clients.remove_player(player_id).await;
+			let _ = self.clients.send_host(&HostMsgOut::PlayerLeft { player_id }).await;
+			
+			/* If the leader left, promote someone else */
+			if player_id == leader_id && !self.clients.players.is_empty() {
+				let leader_id = self.new_leader_id();
+				self.state = State::Open { leader_id };
+				let _ = self.clients.send_player(leader_id, &PlayerMsgOut::InLobby {
+					promoted: true
+				}).await;
+			}
+		}
+		async fn handle_host_start_attempt(&mut self) -> Result<(), ()> {
+			let State::Starting = self.state else {
+				return Err(tracing::warn!("host attempted to start game for lobby in invalid state"));
+			};
+			return Ok(());
+		}
+		async fn handle_player_start_attempt(&mut self, player_id: PlayerId) -> Result<(), ()> {
+			let State::Open { leader_id } = self.state else {
+				return Err(tracing::debug!("attempted to start game for lobby in invalid state"));
+			};
+			
+			if player_id != leader_id {
+				return Err(tracing::warn!("non-leader player attempted to start game"));
+			}
+			
+			if self.clients.players.len() < MIN_PLAYER_COUNT {
+				let message = GlobalPlayerMsgOut::Error(&"Not enough players");
+				let _ = self.clients.send_player(player_id, &message).await;
+				return Err(());
+			}
+			
+			self.state = State::Starting;
+			let _ = self.clients.send_host(&HostMsgOut::GameStarting).await;
+			return Ok(());
 		}
 	}
 	
@@ -653,29 +672,21 @@ mod drawblins {
 	
 	use super::*;
 	
-	const EVENT_QUEUE_SIZE: usize = 2;
-
 	const MAX_PLAYER_COUNT: usize = 12;
-	//const ROUND_COUNT: usize = 1;
 	const START_DURATION: Duration = Duration::from_secs(3);
 	const DRAW_DURATION: Duration = Duration::from_secs(150);
-	//const DRAW_DURATION: Duration = Duration::from_secs(120);
-	//const DRAW_AUTOSUBMIT_DURATION: Duration = Duration::from_secs(5);
-	//const VOTE_DURATION: Duration = Duration::from_secs(16);
 	const VOTE_DURATION: VariableDuration = VariableDuration::from_secs(12, 2);
 	const RESULTS_DURATION: VariableDuration = VariableDuration::from_secs(8, 1);
 	const SCORE_DURATION: Duration = Duration::from_secs(10);
 	
-	
 	#[derive(Serialize, Deserialize)]
 	#[serde(rename_all = "camelCase")]
 	pub struct Settings {
-		//pub max_player_count: usize,
 		// final round bonus?
 		pub round_count: usize,
 		pub draw_time_factor: f32,
 		pub vote_time_factor: f32,
-		//pub score_time_factor: f64
+		pub score_time_factor: f32
 	}
 	
 	#[derive(Deserialize)]
@@ -688,9 +699,8 @@ mod drawblins {
 	#[serde(tag = "type", content = "data")]
 	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 	enum HostMsgOut<'a> {
-		//LobbyCreated { join_code: &'a str },
 		//PlayerDisconnected { player_id: PlayerId }
-		//PlayerRejoined { player_id: PlayerId, player_name: String },
+		//PlayerReconnected { player_id: PlayerId, player_name: String },
 		GameStarted,
 		
 		Drawing { goblin_name: &'a str },
@@ -778,9 +788,7 @@ mod drawblins {
 				}
 				
 				tokio::select! {
-					_ = &mut self.timeout.future() => {
-						self.advance().await
-					},
+					_ = &mut self.timeout.future() => self.advance().await,
 					event = self.receiver.recv() => {
 						let Some(event) = event else { break Err(()) };
 						match event {
@@ -790,32 +798,41 @@ mod drawblins {
 						}
 					},
 					event = self.clients.recv() => {
-						use client_index::Event;
-						let Some(event) = event else { break Err(()) };
-						match event {
-							Event::HostDisconnect => break Err(()),
-							Event::PlayerDisconnect(_player_id) => {},
-							Event::HostMessage(message) => {
-								let Ok(message) = deserialize::<'_, HostMsgIn>(&message) else { continue };
-								match message {
-									HostMsgIn::Terminate => break Err(())
-								}
-							},
-							Event::PlayerMessage(player_id, message) => {
-								let Ok(message) = deserialize::<'_, PlayerMsgIn>(&message) else { continue };
-								match message {
-									PlayerMsgIn::DrawingSubmission { drawing } =>
-										self.handle_drawing_submission(player_id, drawing).await,
-									PlayerMsgIn::VoteSubmission { for_name } =>
-										self.handle_vote_submission(player_id, for_name).await
-								}
-							},
-						}
+						let Some(event) = event else { return Err(()) };
+						self.handle_client_event(event).await?
 					},
-					
 				}
 			}
-			
+		}
+		async fn handle_client_event(&mut self, event: client_index::Event) -> Result<(), ()> {
+			match event {
+				client_index::Event::Disconnect(client_id) => {
+					match client_id {
+						ClientId::Host => return Err(()),
+						ClientId::Player(_player_id) => {}
+					}
+				},
+				client_index::Event::Message(client_id, message) => {
+					match client_id {
+						ClientId::Host => {
+							let Ok(message) = deserialize::<'_, HostMsgIn>(&message) else { return Ok(()) };
+							match message {
+								HostMsgIn::Terminate => return Err(())
+							}
+						},
+						ClientId::Player(player_id) => {
+							let Ok(message) = deserialize::<'_, PlayerMsgIn>(&message) else { return Ok(()) };
+							match message {
+								PlayerMsgIn::DrawingSubmission { drawing } =>
+									self.handle_drawing_submission(player_id, drawing).await,
+								PlayerMsgIn::VoteSubmission { for_name } =>
+									self.handle_vote_submission(player_id, for_name).await
+							}
+						}
+					};
+				}
+			}
+			return Ok(())
 		}
 		async fn handle_rejoin(&mut self, socket: WebSocket, player_id: PlayerId, token: PlayerToken) {
 			if let State::Terminated(_) = self.state {
@@ -848,7 +865,6 @@ mod drawblins {
 				State::Vote { eligible: _, ref choices, votes } => {
 					if let Some(None) = votes.get(player_id as usize) {
 						/* If the player hasn't voted, ask them to */
-						//let choices = &*choices;
 						let _ = self.clients.send_player(player_id, &PlayerMsgOut::Voting {
 							choices,
 							secs_left: self.timeout.remaining_secs()
@@ -936,12 +952,8 @@ mod drawblins {
 		}
 		async fn start_score(&mut self) {
 			self.state = State::Score;
-			self.timeout = Timeout::new(SCORE_DURATION);
+			self.timeout.replace(Timeout::scaled(SCORE_DURATION, self.settings.score_time_factor));
 			let _ = self.clients.send_host(&HostMsgOut::Scoring).await;
-			/*let _ = self.clients.send_all(
-				&HostMsgOut::Scoring,
-				&PlayerMsgOut::Waiting(WaitingKind::Score)
-			).await;*/
 		}
 		async fn start_finale(&mut self) {
 			self.terminate(Ok(()));
@@ -1102,14 +1114,14 @@ impl App {
 		
 	}
 	pub async fn accept_player_join(&self, socket: WebSocket, room_id: RoomId, name: String) {
-		let Some(mut handle) = self.rooms.get_mut(&room_id) else { return; };
-		let RoomHandle::Lobby(ref mut handle) = *handle else {
+		let Some(handle) = self.rooms.get(&room_id) else { return; };
+		let RoomHandle::Lobby(ref handle) = *handle else {
 			return tracing::debug!("attempted to join a game that is already running");
 		};
 		let _ = handle.send(lobby::Event::PlayerJoin { socket, name }).await;
 	}
 	pub async fn accept_player_rejoin(&self, socket: WebSocket, room_id: RoomId, name: String, player_id: PlayerId, token: PlayerToken) {
-		let Some(handle) = self.rooms.get_mut(&room_id) else { return; };
+		let Some(handle) = self.rooms.get(&room_id) else { return; };
 		
 		match *handle {
 			RoomHandle::Lobby(ref handle) => {

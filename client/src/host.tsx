@@ -122,8 +122,14 @@ function Lobby() {
 		<div id="host-lobby">
 			<div className="tab overview">
 				<h1>Lobby</h1>
-				<div id="join-code">{Room.getJoinCode()}</div>
-				<PlayerList />
+				<div>
+					<h2>Join Code</h2>
+					<div id="join-code">{Room.getJoinCode()}</div>
+				</div>
+				<div>
+					<h2>Players</h2>
+					<PlayerList />
+				</div>
 			</div>
 			<div className="tab game-settings">
 				<h1>Settings</h1>
@@ -137,6 +143,7 @@ function GameSettings() {
 	Utils.useSignal(game.changed);
 	switch(game.get()) {
 		case "drawblins": return <Drawblins.SettingSelect />
+		
 	}
 }
 function PlayerList() {

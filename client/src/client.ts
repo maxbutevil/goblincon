@@ -85,6 +85,9 @@ class Client {
 		};
 		
 	}
+	close() {
+		this.ws?.close();
+	}
 	protected handle(message: Message) {
 		let handled = this.incoming.handle(message);
 		if (!handled)

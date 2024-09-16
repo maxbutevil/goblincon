@@ -15,6 +15,8 @@ pub enum ClientId {
 	Player(PlayerId)
 }
 
+pub const EVENT_QUEUE_SIZE: usize = 2;
+
 pub const MIN_PLAYER_COUNT: usize = 2;
 pub const MAX_PLAYER_COUNT: usize = 12;
 //pub const ROUND_COUNT: usize = 3;

@@ -38,7 +38,7 @@ use serde::Deserialize;
 use crate::types::*;
 
 
-const PORT: &str = "5050";
+//const PORT: &str = "5050";
 const IP: &str = "0.0.0.0";
 
 #[tokio::main]
@@ -85,7 +85,8 @@ async fn main() {
 		.with_state(App::new());
 		//.into_make_service_with_connect_info::<SocketAddr>();
 	
-	let listener = TcpListener::bind(format!("{IP}:{PORT}"))
+	let port = std::env::var("PORT").unwrap_or("5050".to_string());
+	let listener = TcpListener::bind(format!("{IP}:{port}"))
 		.await
 		.expect("server error");
 	axum::serve(listener, router)

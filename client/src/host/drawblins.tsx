@@ -36,7 +36,8 @@ const voteRevealed = new Signal<number>();
 const settings = {
 	roundCount: new Setting("Number of Rounds", [ 1, 2, 3, 5, 8 ]),
 	drawTimeFactor: new Setting("Drawing Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ], 2, "x"),
-	voteTimeFactor: new Setting("Voting Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ], 2, "x")
+	voteTimeFactor: new Setting("Voting Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ], 2, "x"),
+	scoreTimeFactor: new Setting("Scoring Time", [0.7, 1.0, 1.3], 1, "x")
 };
 
 export type SettingsRemote = SettingsRemoteOf<typeof settings>;
@@ -154,12 +155,18 @@ function Scoring() {
 	});
 	
 	let entries: JSX.Element[] = [];
+	let rank = 1;
 	for (let i = 0; i < sortedIds.length; i++) {
-		entries.push(<ScoreEntry playerId={sortedIds[i]} rank={i+1} />);
+		let id = sortedIds[i], score = getScore(id), name = Room.playerName(id) ?? "";
+		// If score is tied with the previous player, their rank is the same
+		if (i > 0 && score < getScore(sortedIds[i-1]))
+			rank = i+1;
+		entries.push(<ScoreEntry key={id} rank={rank} name={name} score={score} />);
 	}
 	
 	return (
 		<div className="tab">
+			<h1>Scores</h1>
 			<div className="score-entry-ctr">
 				{entries}
 			</div>
@@ -193,11 +200,11 @@ function Submission({ playerId }: { playerId: number }) {
 		</div>
 	);
 }
-function ScoreEntry({ playerId, rank }: { playerId: number, rank: number }) {
+function ScoreEntry({ rank, name, score }: { rank: number, name: string, score: number }) {
 	return (
 		<div className="score-entry">
-			<span className="name">{rank}. {Room.playerName(playerId)}</span>
-			<span className="score">{getScore(playerId)}</span>
+			<span className="name">{rank}. {name}</span>
+			<span className="score">{score}</span>
 		</div>
 	);
 }
@@ -208,7 +215,7 @@ function VoteIcon({ index }: { index: number }) {
 			//initial={{ scale: 0.0 }}
 			//animate={{ scale: 1.0 }}
 		>
-			yar
+			
 		</div>
 	);
 }
