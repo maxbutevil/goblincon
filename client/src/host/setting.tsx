@@ -37,7 +37,7 @@ export class Setting<T = number> {
 		}
 	}
 	decrement() {
-		if (this.current < 0)
+		if (this.current <= 0)
 			this.set(this.choices.length - 1);
 		else
 			this.set(this.current - 1);

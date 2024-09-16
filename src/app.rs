@@ -116,26 +116,25 @@ impl Presence {
 	}
 	async fn disconnect(&mut self) {
 		if self.is_connected() {
-			let _ = self.close().await;
+			//self.handle.abort();
+			let _ = self.sender.close().await;
 		}
 	}
-	async fn close(&mut self) {
-		let _ = self.sender.close().await;
-	}
-	/*async fn send_raw(&mut self, message: Message) -> Result<(), ()> {
-		send_raw(&mut self.sender, message).await
-	}*/
-	async fn send(&mut self, message: &impl Serialize) -> Result<(), ()> {
+	async fn send_raw(&mut self, message: Message) -> Result<(), ()> {
 		if self.is_connected() {
-			send(&mut self.sender, message).await
+			send_raw(&mut self.sender, message).await
 		} else {
 			Err(())
 		}
 	}
+	async fn send(&mut self, message: &impl Serialize) -> Result<(), ()> {
+		self.send_raw(Message::Text(serialize(message)?)).await
+	}
 }
 impl Host {
 	async fn send(&mut self, message: &impl Serialize) -> Result<(), ()> {
-		send(&mut self.presence.sender, message).await
+		self.presence.send(message).await
+		//send(&mut self.presence.sender, message).await
 	}
 }
 impl Player {
@@ -143,10 +142,10 @@ impl Player {
 		Self { presence, name, token }
 	}
 	async fn send_raw(&mut self, message: Message) -> Result<(), ()> {
-		send_raw(&mut self.presence.sender, message).await
+		self.presence.send_raw(message).await
 	}
 	async fn send(&mut self, message: &impl Serialize) -> Result<(), ()> {
-		send(&mut self.presence.sender, message).await
+		self.presence.send(message).await
 	}
 }
 
@@ -168,7 +167,6 @@ impl Timeout {
 	}
 	fn variable_scaled(duration: VariableDuration, scale_factor: usize, scale_setting: f32) -> Duration {
 		let millis = (duration.millis(scale_factor) as f32) * scale_setting;
-		//tracing::debug!("{} | {}")
 		Duration::from_millis(millis as u64)
 	}
 	
@@ -202,18 +200,6 @@ impl VariableDuration {
 	const fn millis(&self, scale_factor: usize) -> u64 {
 		self.base_millis + (scale_factor as u64) * self.scaled_millis
 	}
-	/*const fn duration(&self, scale_factor: usize) -> Duration {
-		Duration::from_millis(self.millis(scale_factor))
-	}
-	const fn duration_scaled(&self, scale_factor: usize, scale_setting: f32) {
-		
-	}*/
-	/*fn build_timeout(&self, scale_factor: u64, scale_setting: f32) -> Timeout {
-		let millis = (self.millis(scale_factor) as f32) * scale_setting
-		let duration = Duration::from_millis(self.millis(scale_factor) * scale_setting);
-		
-		//Timeout::from_secs(((self.secs(scale_factor) as f32) * scale_setting))
-	}*/
 }
 
 mod client_index {
@@ -252,7 +238,7 @@ mod client_index {
 							break;
 						}
 					}
-					//tracing::info!();
+					//tracing::debug!("host receiver closing");
 					let _ = sender.send(Event::Disconnect(ClientId::Host)).await;
 				});
 				let presence = Presence::new(tx, handle);
@@ -339,7 +325,7 @@ mod client_index {
 		pub async fn remove_player(&mut self, player_id: PlayerId) {
 			if self.players.contains(player_id as usize) {
 				let mut player = self.players.remove(player_id as usize);
-				let _ = player.presence.disconnect().await;
+				player.presence.disconnect().await;
 			} else {
 				tracing::warn!("attempted to remove player that is not present");
 			}
@@ -402,6 +388,7 @@ mod client_index {
 			let (_, results) = TokioScope::scope_and_block(|scope| {
 				for (_, player) in players {
 					scope.spawn(player.send_raw(message.clone()));
+					//player.send_raw()
 				}
 			});
 			

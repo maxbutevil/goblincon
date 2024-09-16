@@ -169,8 +169,12 @@ import { createRoot } from "react-dom/client";
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
 
-window.onbeforeunload = () => {
-	if (Room.playerCount() > 0)
-		return "";
+window.onbeforeunload = (event) => {
+	if (Room.playerCount() > 0) {
+		event.preventDefault();
+		return true;
+	}	else {
+		client.close();
+	}
 }
 
