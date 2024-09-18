@@ -35,9 +35,10 @@ const voteRevealed = new Signal<number>();
 
 const settings = {
 	roundCount: new Setting("Number of Rounds", [ 1, 2, 3, 5, 8 ]),
-	drawTimeFactor: new Setting("Drawing Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ], 2, "x"),
-	voteTimeFactor: new Setting("Voting Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ], 2, "x"),
-	scoreTimeFactor: new Setting("Scoring Time", [0.7, 1.0, 1.3], 1, "x")
+	drawTimeFactor: Setting.multiplier("Drawing Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ]),
+	voteTimeFactor: Setting.multiplier("Voting Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ]),
+	scoreTimeFactor: Setting.multiplier("Scoring Time", [0.7, 1.0, 1.3])
+	//keepScores: Setting.multiplier("")
 };
 
 export type SettingsRemote = SettingsRemoteOf<typeof settings>;

@@ -19,17 +19,26 @@ export class Setting<T = number> {
 	
 	changed = new Signal();
 	
-	choices: T[];
-	current: number;
 	name: string;
-	decorator: string;
+	choices: T[];
+	initial: number;
+	current: number;
+	stringifier: (v: T) => string;
 	
-	constructor(name: string, choices: T[], currentIndex = Math.floor(choices.length/2), decorator = "") {
+	constructor(name: string, choices: T[], initialIndex = Math.floor(choices.length/2), stringifier: ((v: T) => string) = (v => String(v))) {
 		this.name = name;
 		this.choices = choices;
-		this.current = currentIndex;
-		this.decorator = decorator;
+		this.current = this.initial = initialIndex;
+		this.stringifier = stringifier;
 	}
+	static multiplier(name: string, choices: number[], currentIndex = Math.floor(choices.length/2), precision = 1): Setting<number> {
+		return new Setting(name, choices, currentIndex, (v) => Number(v).toFixed(precision) + "x")
+	}
+	static boolean(name: string, current = false): Setting<boolean> {
+		let currentIndex = current ? 1 : 0;
+		return new Setting(name, [false, true], currentIndex, (v) => v ? "Yes" : "No");
+	}
+	
 	set(newCurrent: number) {
 		if (this.current !== newCurrent) {
 			this.current = newCurrent;
@@ -49,7 +58,7 @@ export class Setting<T = number> {
 		return this.choices[this.current];
 	}
 	getString(): string {
-		return `${this.get()}${this.decorator}`;
+		return this.stringifier(this.get());
 	}
 	
 }

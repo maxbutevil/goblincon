@@ -1,7 +1,15 @@
 
 * {
     margin: 0;
+    /* lets player draw on mobile */
     user-select: none;
+    touch-action: none;
+    -webkit-touch-callout: none; /* scorched earth, iOS does not make this easy */
+    -webkit-user-callout: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-user-modify: none;
+    -webkit-highlight: none;
 }
 html, body, #root, #app {
     height: 100%;
@@ -154,7 +162,6 @@ input {
     -moz-user-select: none;
     -webkit-user-select: none;
     user-select: none;
-    touch-action: none; /* lets player draw on mobile */
 }
 #goblin-name {
     width: 200px;
