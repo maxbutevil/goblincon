@@ -145,6 +145,7 @@ function Voting() {
 			<div>Vote for your favorite {currentRound().goblinName}!</div>
 			<div className="submission-ctr">
 				{Room.playerIds().map(id => <Submission key={id} playerId={id} />)}
+				{Room.playerIds().map(_ => <div className="submission-placeholder"></div>)}
 			</div>
 		</div>
 	);

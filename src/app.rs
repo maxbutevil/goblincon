@@ -1046,6 +1046,15 @@ impl App {
 		Self { rooms: Arc::new(DashMap::new()) }
 	}
 	
+	pub fn find_room<'a>(&self, room_code: &str) -> Option<RoomId> {
+		if let Some(room_id) = RoomId::parse(room_code) {
+			//return self.rooms.get_mut(&room_id);
+			if self.has_room(&room_id) {
+				return Some(room_id);
+			}
+		}
+		None
+	}
 	pub fn has_room(&self, room_id: &RoomId) -> bool {
 		self.rooms.contains_key(room_id)
 	}

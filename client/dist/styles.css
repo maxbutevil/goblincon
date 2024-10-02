@@ -99,7 +99,8 @@ input {
 }
 .submission {
     padding: 0.6em;
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 13%;
     aspect-ratio: 1;
     
     position: relative;
@@ -110,6 +111,15 @@ input {
     background-color: #CCC;
     border: 2px solid bold;
     border-radius: 4px;
+}
+.submission-placeholder {
+    padding: 0.6em;
+    flex: 1 1 0;
+    min-width: 13%;
+    height: 0;
+    visibility: hidden;
+    
+    border: 2px solid bold;
 }
 .submission img {
     aspect-ratio: 1;
