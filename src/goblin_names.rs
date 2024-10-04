@@ -92,7 +92,7 @@ const NAMES: &[&str] = &[
 	"Quag",
 	"Munch",
 	"Nom",
-	"Lactoid",
+	//"Lactoid",
 	"Toothless",
 	"Oculus",
 	"Chunk",
