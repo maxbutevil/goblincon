@@ -743,7 +743,7 @@ mod drawblins {
 		receiver: game::Receiver,
 		state: State,
 		round: usize,
-		names: Box<[&'static str]>,
+		names: Box<[String]>,
 		timeout: Timeout
 	}
 	impl<'a> Game<'a> {
@@ -901,7 +901,7 @@ mod drawblins {
 				self.round += 1;
 			}
 			
-			let Some(&goblin_name) = self.names.get(self.round) else {
+			let Some(goblin_name) = self.names.get(self.round) else {
 				return self.start_finale().await; // last round just ended, we're done
 			};
 			
