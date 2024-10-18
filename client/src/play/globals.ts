@@ -1,60 +1,64 @@
 
 
-import Extract, { Extractor } from "../modules/extract"
-type RejoinInfo = { code: string, playerId: number, token: number };
-const REJOIN_INFO_EXTRACTOR: Extractor<RejoinInfo> = {
-	code: Extract.STRING,
-	playerId: Extract.NUMBER,
-	token: Extract.NUMBER
-};
+import * as Utils from "../modules/utils"
 
 class Globals {
-	static joinCode?: string;
+	
+	static joinCode = new URLSearchParams(window.location.search).get("code") ?? "";
 	static playerName = localStorage.getItem("playerName") ?? "";
-	static getJoinCode() {
-		
-	}
-	static getInitialJoinCode(): string {
-		return new URLSearchParams(window.location.search).get("code") ?? "";
-	}
-	static getPlayerName(): string {
-		return this.playerName;
-	}
-	static setPlayerName(newName: string) {
+	
+	static readonly MIN_NAME_LEN = 2;
+	static readonly MAX_NAME_LEN = 16;
+	static readonly CODE_LEN = 5;
+	
+	static storePlayerName() {
 		try {
-			localStorage.setItem("playerName", this.playerName = newName);
+			localStorage.setItem("playerName", this.playerName);
 		} catch(e) {
-			console.log(e);
+			console.log("Error saving playerName to localStorage: ", e);
 		}
 	}
-	static setRejoinInfo(info: RejoinInfo) {
+	static setRejoinInfo(id: number, token: number) {
 		try {
-			localStorage.setItem("rejoinInfo", JSON.stringify(info));
+			localStorage.setItem("rejoinCode", this.joinCode);
+			localStorage.setItem("rejoinId", id.toString());
+			localStorage.setItem("rejoinToken", token.toString());
 		} catch(e) {
-			console.error(e);
+			console.error("Error saving rejoinInfo to localStorage: ", e);
 		}
 	}
 	static clearRejoinInfo() {
-		localStorage.removeItem("rejoinInfo");
+		localStorage.removeItem("rejoinCode");
+		localStorage.removeItem("rejoinId");
+		localStorage.removeItem("rejoinToken");
 	}
-	static getRejoinInfo(): RejoinInfo | undefined {
-		let raw = localStorage.getItem("rejoinInfo");
-		if (raw === null)
-			return undefined;
-		return Extract.get(REJOIN_INFO_EXTRACTOR, JSON.parse(raw));
+	
+	static hasJoinCode(): boolean {
+		return this.joinCode !== "";
 	}
+	static getJoinUrl(): string | null {
+		if (this.playerName && this.joinCode) {
+			return `${Utils.wsRoot}/play/join?name=${this.playerName}&code=${this.joinCode.toUpperCase()}`;
+		} else {
+			return null;
+		}
+	}
+	static getRejoinUrl(): string | null {
+		let name = this.playerName;
+		let code = localStorage.getItem("rejoinCode")?.toUpperCase();
+		let id = localStorage.getItem("rejoinId");
+		let token = localStorage.getItem("rejoinToken");
+		/* Maybe length check name and code? */
+		if (name && code && id && token) {
+			let params = `code=${code}&name=${name}&id=${id}&token=${token}`;
+			return `${Utils.wsRoot}/play/rejoin?${params}`;
+		} else {
+			return null;
+		}
+	}
+	
+
 };
 
 export default Globals;
-/*export function useLifetime(callback: (() => undefined) | (() => () => void)) {
-	const appliedRef = React.useRef(false);
-	if (appliedRef.current === false) {
-		appliedRef.current = true;
-		const cleanup = callback();
-		if (cleanup !== undefined) {
-			React.useEffect(() => cleanup, []);
-			React.useMemo
-		}
-	}
-}*/
 

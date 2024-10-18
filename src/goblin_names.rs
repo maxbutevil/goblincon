@@ -55,6 +55,9 @@ impl<T: Copy + 'static> Table<T> {
 		assert!(total_weight > 0, "Table cannot be empty");
 		Self { total_weight, entries }
 	}
+	/*const fn unweighted(values: &'static [T]) -> Self {
+		Self::new([(1, values)])
+	}*/
 	fn pick(&self) -> T {
 		use rand::Rng;
 		self.pick_at(rand::thread_rng().gen_range(0..self.total_weight))
@@ -71,6 +74,7 @@ impl<T: Copy + 'static> Table<T> {
 		unreachable!();
 	}
 }
+
 impl Display for StrTable {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		write!(f, "{}", self.pick())
@@ -83,29 +87,32 @@ impl Display for FnTable {
 }
 
 const TEMPLATES: FnTable = Table::new(&[
-	(256, &[
-		
-	]),
-	(128, &[
-		|| format!("{ROOT}"),
+	(96, &[
 		|| format!("{PREFIX} {ROOT}"),
-		|| format!("{ROOT}{SUFFIX}"),
 		|| format!("{ROOT} the {ADJECTIVE}"),
 	]),
 	(64, &[
-		|| format!("{PREFIX} {ROOT} the {ADJECTIVE}"),
+		|| format!("{ROOT}{SUFFIX}"),
 	]),
 	(32, &[
-		|| format!("{PREFIX} {ROOT}{SUFFIX}"),
+		|| format!("{ROOT}"),
+		|| format!("{PREFIX} {ROOT}, {COMMA_SUFFIX}"),
+		|| format!("{PREFIX} {ROOT} the {ADJECTIVE}"),
 	]),
 	(16, &[
-		|| format!("{ADJECTIVE} {ROOT}"),
+		|| format!("{PREFIX} {ROOT} {STANDARD_SUFFIX}"),
 	]),
 	(8, &[
+		|| format!("{ADJECTIVE} {ROOT}"),
+	]),
+	(4, &[
 		|| format!("{ADJECTIVE} {ROOT}{SUFFIX}")
 	]),
 	(2, &[
-		|| format!("{LEGENDARY}")
+		|| format!("{LEGENDARY}"),
+	]),
+	(1, &[	
+		|| format!("{LEGENDARY}{SUFFIX}")
 	]),
 ]);
 
@@ -113,15 +120,42 @@ const LEGENDARY: StrTable = Table::new(&[
 	(1, &[
 		"The Audiovisual Homunculus",
 		"Steamroller Victim",
+		"The Great Worm",
+		"The Squinge",
+		
 	]),
 ]);
+
+//const COMPOUND: 
+const COMPOUND_PRE: StrTable = StrTable::new(&[
+	(1, &[
+		"Hel",
+		"Bal",
+		"Ar",
+		"Com",
+		"Wolf",
+		"Crug",
+		"Lar"
+	]),
+]);
+const COMPOUND_POST: StrTable = StrTable::new(&[
+	(1, &[
+		"bolge",
+		"grug",
+		"puter",
+		"lord",
+		"crug"
+	]),
+]);
+
 const ROOT: StrTable = Table::new(&[
 	(1, &[
 		/* Goblinsonas */
-		"Axmay",
+		"Mikmak",
 		"Gatthew",
 		"Jobnis",
 		"Glarsom",
+		"Burger",
 		
 		/* Bicons */
 		"Mobi",
@@ -129,8 +163,9 @@ const ROOT: StrTable = Table::new(&[
 		"Quirko",
 		"Wackine",
 		"Milburt",
-		"Chrysanthorp",
+		//"Chrysanthorp",
 		"Graggle",
+		"Mindoid",
 		
 		/* Epithets */
 		"Kills People",
@@ -141,29 +176,28 @@ const ROOT: StrTable = Table::new(&[
 		"Wonk",
 		"Thimbel",
 		"Smelmer",
-		"Torpeed",
+		"Torpedo",
 		"Walter",
 		"Jimmy",
+		"Chuck",
 		//"Gaylord",
 		//"Gerson",
 		"Bindle",
-		"Grim",
-		"Gnarlie",
+		//"Grim",
+		//"Gnarlie",
 		"Pockets",
-		
 		//"Orinboringor",
 		
 		//"Romble Gomper",
 		//"Gomp Rombler",
-		//"The Girl Reading This",
-		"Torso Joe",
-		"Nilbog",
-		"Wattelglot",
+		//"Torso Joe",
+		//"Nilbog",
+		//"Wattelglot",
 		"Mingle",
-		"The Sniff",
-		"Londo Moneir",
-		//"Dehydrus",
-		"Chin Steve",
+		//"The Sniff",
+		//"Londo Moneir",
+		//"Chin Steve",
+		"Chin",
 		
 		"Fangle",
 		"Wilford",
@@ -178,11 +212,11 @@ const ROOT: StrTable = Table::new(&[
 		"Dimples",
 		"Devio",
 		"Joe",
-		"Donny",
-		"Kreibert",
-		"Greeb",
+		//"Donny",
+		//"Kreibert",
+		//"Greeb",
 		"Screeble",
-		"Comedius",
+		//"Comedius",
 		"Fink",
 		"Hamper",
 		"Trundle",
@@ -198,7 +232,7 @@ const ROOT: StrTable = Table::new(&[
 		"Nom",
 		//"Lactoid",
 		"Toothless",
-		"Oculus",
+		//"Oculus",
 		"Chunk",
 		"Swinkle",
 		"Spew",
@@ -206,8 +240,27 @@ const ROOT: StrTable = Table::new(&[
 		"Homuncules",
 		"Glug",
 		"Lasanga",
-		"Milburt",
-		
+		//"Tom",
+		"Butterlord",
+		//"Garfield",
+		//"Dixon",
+		//"Teddy",
+		"Fingers",
+		"Bones",
+		"Knees",
+		"Toes",
+		"Chompers",
+		//"Nab",
+		//"Jaxon",
+		"Baldo",
+		"Dingus",
+		"Smooch",
+		//"Grin",
+		"Bigfoot",
+		"Gimmsby",
+		"Wrangle",
+		"Gub",
+						
 		/* Carson's Contributions */
 		//"Jorm",
 		//"Klum",
@@ -216,17 +269,16 @@ const ROOT: StrTable = Table::new(&[
 		"Nubbs",
 		"Phlemble",
 		"Flirm",
-		"Squigius",
-		"Quelq",
+		//"Squigius",
+		//"Quelq",
 		"Grinkles",
 		"Toadus",
 		"Fleam",
 		"Cruggle",
-		"Minch",
-		"Mindle",
+		//"Minch",
+		//"Mindle",
 		"Squeakom",
-		"Mindoid",
-		"The Squinge",
+		//"The Squinge",
 		"Fluppis",
 		"Flog",
 		"Mandiblo",
@@ -234,33 +286,32 @@ const ROOT: StrTable = Table::new(&[
 		"Jopple",
 		//"Wendom",
 		"Tubo",
-		"Yurn",
-		"Agmor",
+		//"Yurn",
+		//"Agmor",
 		"Dimp",
 		"Tuggules",
 		"Uncle Pete",
 		"Slobbo",
 		"Splunck",
 		"Bubblo",
-		"Torso Glunn",
-		"Plopi Grosse",
+		//"Torso Glunn",
+		//"Plopi Grosse",
 		"Murt",
 		"Crinkle",
 		"Flappold",
-		"Goremack McClundis",
-		"Toto Swinki",
+		//"Goremack McClundis",
+		//"Toto Swinki",
 		"Teef",
 		"Poddle",
-		"The Great Worm",
 		"Clog",
 		"Flapple",
-		"Oom",
-		"Emunceo",
+		//"Oom",
+		//"Emunceo",
 		//"Vinmor",
 		"Fockle",
-		"Mogum",
-		"Gobbi Loach",
-		"King Tundis",
+		//"Mogum",
+		//"Gobbi Loach",
+		//"King Tundis",
 		
 		/* Charlie's Contributions */
 		"Schplorples",
@@ -272,46 +323,64 @@ const ROOT: StrTable = Table::new(&[
 	]),
 ]);
 const ADJECTIVE: StrTable = Table::new(&[
-	(1, &[
+	(8, &[
 		"Hairy",
+		"Bald",
 		"Magnificent",
-		"Ominous",
+		//"Ominous",
 		"Devilish",
 		"Colossal",
-		"Puny",
+		//"Puny",
 		"Scrawny",
-		"Average",
+		//"Average",
 		"Lazy",
 		"Curious",
 		"Chubby",
 		"Glamorous",
 		"Handsome",
 		"Bold",
-		"Victorious",
-		"Obnoxious",
-		"Fierce"
+		//"Victorious",
+		//"Obnoxious",
+		//"Fierce",
+		//"Devious",
+		"Devilish",
+		"Beautiful",
+		"Repulsive",
+	]),
+	(2, &[
+		"Pompous",
+	]),
+	(1, &[
+		"Goblinistic",
+		"Vainglorious"
 	]),
 ]);
 const SUFFIX: FnTable = Table::new(&[
 	(3, &[
-		|| format!(" {NORMAL_SUFFIX}")
+		|| format!(" {STANDARD_SUFFIX}")
 	]),
 	(1, &[
 		|| format!(", {COMMA_SUFFIX}")
 	])
 ]);
-const NORMAL_SUFFIX: StrTable = Table::new(&[
+const STANDARD_SUFFIX: StrTable = Table::new(&[
 	(4, &[
-		"Jr."
+		"Jr.",
 	]),
 	(2, &[
 		"Sr.",
-		"the Third"
+	]),
+	(1, &[
+		"the Third",
 	])
 ]);
 const COMMA_SUFFIX: StrTable = Table::new(&[
+	(2, &[
+		"PhD",
+		"MD",
+	]),
 	(1, &[
-		"Esq."
+		"Esq.",
 	])
 ]);
 const PREFIX: StrTable = Table::new(&[
@@ -323,6 +392,33 @@ const PREFIX: StrTable = Table::new(&[
 		"Mrs.",
 		"Ms."
 	]),
+	(4, &[
+		"Professor",
+		"Uncle",
+		"Aunt",
+	]),
+	(2, &[
+		"Senator",
+		"Captain",
+		"Mayor",
+		"Coach",
+		"Agent",
+		"Old Man",
+		
+		/* Gendered Pairs */
+		"King",
+		"Queen",
+		"Sir",
+		"Madame",
+		"Lord",
+		"Lady"
+	]),
+	(1, &[
+		"Major",
+		"Colonel",
+		"General",
+		"Admiral"
+	])
 ]);
 
 

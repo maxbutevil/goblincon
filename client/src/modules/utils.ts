@@ -1,9 +1,8 @@
 
-import Signal from "./modules/signal"
-import State from "./modules/state"
-import React from "react"
+/*import Signal from "./signal"
+import State from "./state"*/
 
-export function useForceRerender(): () => void {
+/*export function useForceRerender(): () => void {
 	let [, rerender] = React.useState({});
 	//return React.useCallback(() => rerender({}), []);
 	return () => rerender({});
@@ -14,12 +13,6 @@ export function useSignal<V>(signal: Signal<V>) {
 		return signal.subscribe(() => rerender({}))
 	}, []);
 }
-/*export function useMountTransition() {
-	
-}*/
-/*export function useExternal<T>(state: State<T>) {
-	useSignal(state.changed);
-}*/
 export function useExternal<T>(state: State<T>): T {
 	let [, rerender] = React.useState({});
 	React.useEffect(() => {
@@ -30,7 +23,7 @@ export function useExternal<T>(state: State<T>): T {
 
 function wrap() {
 	
-}
+}*/
 
 export const wsRoot = (function() {
 	let prefix = window.location.hostname === "localhost" ? "ws://" : "wss://";

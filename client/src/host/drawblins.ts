@@ -3,37 +3,31 @@
 
 import Signal from "../modules/signal"
 import State from "../modules/state"
-import { Enum, Variant } from "../modules/variant"
-import Extract, { ReceiveIndex, SendIndex } from "../modules/extract"
-import client from "../client"
-import * as Utils from "../utils"
+import { Variant, unit, variant } from "../modules/variant"
+import Validate, { ReceiveIndex, SendIndex } from "../modules/validate"
+import client from "../modules/client"
+import * as Utils from "../modules/utils"
+import { h, signaled, stateful, VNode } from "../modules/render"
+
 import * as Room from "./room"
-import React from "react"
-import { Setting, SettingMultiSelect, SettingsRemoteOf, toRemote } from "./setting"
+import Setting, { SettingsRemoteOf, toRemote } from "./setting"
+
 //import { motion } from "framer-motion"
 
 const INC = new ReceiveIndex({
-	"gameStarted": Extract.NONE,
-	"drawing": { goblinName: Extract.STRING },
-	"voting": Extract.NONE,
-	"results": Extract.NONE,
-	"scoring": Extract.NONE,
-	"drawingSubmitted": { playerId: Extract.NUMBER, drawing: Extract.STRING },
-	"voteSubmitted": { playerId: Extract.NUMBER, forId: Extract.NUMBER }
+	"gameStarted": Validate.NONE,
+	"drawing": { goblinName: Validate.STRING },
+	"voting": Validate.NONE,
+	"results": Validate.NONE,
+	"scoring": Validate.NONE,
+	"drawingSubmitted": { playerId: Validate.NUMBER, drawing: Validate.STRING },
+	"voteSubmitted": { playerId: Validate.NUMBER, forId: Validate.NUMBER }
 });
 const OUT = new SendIndex({
-	"terminate": Extract.NONE
+	"terminate": Validate.NONE
 });
 
-type Page = 
-	Variant<"starting"> |
-	Variant<"drawing"> |
-	Variant<"voting"> |
-	Variant<"scoring">;
-const page = new State<Page>(Enum.unit("starting"));
-const voteRevealed = new Signal<number>();
-
-const settings = {
+export const settings = {
 	roundCount: new Setting("Number of Rounds", [ 1, 2, 3, 5, 8 ]),
 	drawTimeFactor: Setting.multiplier("Drawing Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ]),
 	voteTimeFactor: Setting.multiplier("Voting Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ]),
@@ -45,13 +39,18 @@ export type SettingsRemote = SettingsRemoteOf<typeof settings>;
 export function getSettingsRemote(): SettingsRemote {
 	return toRemote(settings);
 }
-export function SettingSelect() {
-	return <SettingMultiSelect settings={settings} />;
-}
 
+type Page = 
+	Variant<"starting"> |
+	Variant<"drawing"> |
+	Variant<"voting"> |
+	Variant<"scoring">;
+const page = new State<Page>(unit("starting"));
+const voteRevealed = new Signal<number>();
 
 let rounds: Round[];
 let scores: number[];
+
 function currentRound(): Round {
 	return rounds.at(-1)!;
 }
@@ -64,9 +63,9 @@ function addScore(playerId: number, amount: number) {
 
 INC.listen("drawing", ({ goblinName }) => {
 	rounds.push(new Round(goblinName));
-	page.set(Enum.unit("drawing"));
+	page.set(unit("drawing"));
 });
-INC.listen("voting", () => page.set(Enum.unit("voting")));
+INC.listen("voting", () => page.set(unit("voting")));
 INC.listen("results", () => {
 	
 	const DELAY_MS = 0.9 * 1000;
@@ -101,7 +100,7 @@ INC.listen("results", () => {
 			voteRevealed.emit(nextVote);
 	}, DELAY_MS);
 });
-INC.listen("scoring", () => page.set(Enum.unit("scoring")));
+INC.listen("scoring", () => page.set(unit("scoring")));
 INC.listen("drawingSubmitted", ({ playerId, drawing }) => {
 	currentRound().handleDrawing(playerId, drawing);
 });
@@ -112,114 +111,115 @@ INC.listen("voteSubmitted", ({ playerId, forId }) => {
 export function init() {
 	rounds = [];
 	scores = [];
-	page.set(Enum.unit("starting"));
+	page.set(unit("starting"));
 	return client.use(INC, OUT);
 }
-export function Component() {
-	const { key } = Utils.useExternal(page);
-	switch(key) {
-		case "starting": return <Starting />;
-		case "drawing": return <Drawing />;
-		case "voting": return <Voting />;
-		case "scoring": return <Scoring />;
-	}
+export function view() {
+	init();
+	
+	return stateful(page, (curr) => {
+		switch (curr.key) {
+			case "starting": return starting();
+			case "drawing": return drawing();
+			case "scoring": return scoring();
+			case "voting": return voting();
+		}
+	});
+	
 }
-function Starting() {
-	return (
-		<div className="tab">
-			<h1>Starting!</h1>
-		</div>
+function starting() {
+	return h(
+		"div.tab",
+		h("h1", "Starting!")
 	);
 }
-function Drawing() {
-	return (
-		<div className="tab">
-			<h2>Draw a creature named...</h2>
-			<h1>{currentRound().goblinName}</h1>
-		</div>
+function drawing() {
+	return h(
+		"div.tab",
+		[
+			h("h2", "Draw a creature named..."),
+			h("h1", currentRound().goblinName)
+		]
 	);
 }
-function Voting() {
-	return (
-		<div className="tab">
-			<div>Vote for your favorite {currentRound().goblinName}!</div>
-			<div className="submission-ctr">
-				{Room.playerIds().map(id => <Submission key={id} playerId={id} />)}
-				{Room.playerIds().map(_ => <div className="submission-placeholder"></div>)}
-			</div>
-		</div>
+function voting() {
+	
+	let playerIds = Room.playerIds();
+	let playerCount = playerIds.length;
+	
+	return h(
+		"div.tab",
+		[
+			h("div", `Vote for your favorite ${currentRound().goblinName}!`),
+			h("div.submission-ctr", Room.playerIds().map(id => submission(id)))
+			/*h("div.submission-ctr", [
+				...Room.playerIds().map(id => submission(id)),
+				...Room.playerIds().map(id => submission(id)),
+				...Room.playerIds().map(id => submission(id)),
+				...Room.playerIds().map(id => submission(id)),
+				...Room.playerIds().map(id => submission(id))
+			])*/
+		]
 	);
 }
-function Scoring() {
+function scoring() {
 	
 	let sortedIds = Room.playerIds().sort((a, b) => {
 		return getScore(b) - getScore(a);
 	});
 	
-	let entries: JSX.Element[] = [];
+	let entries: VNode[] = [];
 	let rank = 1;
 	for (let i = 0; i < sortedIds.length; i++) {
-		let id = sortedIds[i], score = getScore(id), name = Room.playerName(id) ?? "";
+		let id = sortedIds[i], score = getScore(id);
 		// If score is tied with the previous player, their rank is the same
 		if (i > 0 && score < getScore(sortedIds[i-1]))
 			rank = i+1;
-		entries.push(<ScoreEntry key={id} rank={rank} name={name} score={score} />);
+		entries.push(scoreEntry(id, rank));
 	}
 	
-	return (
-		<div className="tab">
-			<h1>Scores</h1>
-			<div className="score-entry-ctr">
-				{entries}
-			</div>
-		</div>
+	return h(
+		"div.tab",
+		[
+			h("h1", "Scores"),
+			h("div.score-entry-ctr", entries)
+		]
 	);
 }
-function Submission({ playerId }: { playerId: number }) {
+function submission(playerId: number) {
 	
 	const playerName = Room.playerName(playerId);
 	const drawing = currentRound().drawings[playerId];
 	
-	let [voteCount, setVoteCount] = React.useState(0);
-	React.useEffect(() => voteRevealed.subscribe((player) => {
-		//console.log(player, playerId);
-		if (player === playerId)
-			setVoteCount(voteCount + 1);
-	})); // this needs to rebuild since it references voteCount
-	
 	if (playerName === undefined || drawing === undefined)
-		return <></>;
+		return null;
 	
-	let voteIcons = [];
+	/*let voteIcons = [];
 	for (let i = 0; i < voteCount; i++)
-		voteIcons.push(<VoteIcon key={i} index={i} />)
+		voteIcons.push(<VoteIcon key={i} index={i} />)*/
 	
-	return (
-		<div className="submission">
-			<img src={drawing} />
-			<div className="player-name">{playerName}</div>
-			<div className="vote-ctr">{voteIcons}</div>
-		</div>
+	return h(
+		"div.submission",
+		[
+			h("img", { attrs: { src: drawing }}),
+			h("div.player-name", playerName),
+			/* vote icons here */
+		]
 	);
 }
-function ScoreEntry({ rank, name, score }: { rank: number, name: string, score: number }) {
-	return (
-		<div className="score-entry">
-			<span className="name">{rank}. {name}</span>
-			<span className="score">{score}</span>
-		</div>
+function scoreEntry(playerId: number, rank: number) {
+	let name = Room.playerName(playerId);
+	let score = getScore(playerId);
+	return h(
+		"div.score-entry",
+		[
+			h("span.name", `${rank}. ${name}`),
+			h("span.score", score)
+		]
 	);
 }
 function VoteIcon({ index }: { index: number }) {
-	
-	return (
-		<div className="vote-icon fade-in"
-			//initial={{ scale: 0.0 }}
-			//animate={{ scale: 1.0 }}
-		>
-			
-		</div>
-	);
+	return h("div.vote-icon.fade-in");
 }
 
 class Round {

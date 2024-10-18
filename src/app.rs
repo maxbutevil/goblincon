@@ -90,6 +90,7 @@ async fn send(sender: &mut WebSocketSender, message: impl Serialize) -> Result<(
 	send_raw(sender, Message::Text(serialize(&message)?)).await
 }
 async fn reject_socket(mut socket: WebSocket, message: &str) {
+	//let _ = send(&mut socket, &GlobalPlayerMsgOut::Error(message)).await;
 	let Ok(message) = serialize(&GlobalPlayerMsgOut::Error(message)) else { return };
 	let _ = socket.send(Message::Text(message)).await;
 }
@@ -300,17 +301,17 @@ mod client_index {
 		pub async fn reconnect_player(&mut self, socket: WebSocket, player_id: PlayerId, player_token: PlayerToken) -> Result<(), ()> {
 			
 			let Some(player) = self.players.get_mut(player_id as usize) else {
-				tracing::info!("game rejoin failure (no such player)");
+				tracing::info!("game rejoin failed (no such player)");
 				return Err(reject_socket(socket, "Couldn't rejoin game").await);
 			};
 			
 			if player_token != player.token {
-				tracing::info!("game rejoin failure (invalid token)");
+				tracing::info!("game rejoin failed (invalid token)");
 				return Err(reject_socket(socket, "Couldn't rejoin game").await);
 			}
 			
 			if player.presence.is_connected() {
-				tracing::info!("game rejoin failure (already connected)");
+				tracing::info!("game rejoin failed (already connected)");
 				return Err(reject_socket(socket, "Already connected elsewhere").await);
 			}
 			

@@ -1,6 +1,6 @@
 
 
-import React from "react"
+import { h } from "../modules/render"
 
 type CanvasColorStyle = string | CanvasGradient | CanvasPattern;
 

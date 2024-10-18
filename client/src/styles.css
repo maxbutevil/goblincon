@@ -1,7 +1,18 @@
 
+
 * {
     margin: 0;
+    /* lets player draw on mobile */
     user-select: none;
+    touch-action: none;
+    -webkit-touch-callout: none; /* scorched earth, iOS does not make this easy */
+    -webkit-user-callout: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-user-modify: none;
+    -webkit-highlight: none;
+    -moz-user-select: none;
+    /* somehow, despite all this, iOS still has a selection popup occasionally... */
 }
 html, body, #root, #app {
     height: 100%;
@@ -84,16 +95,21 @@ input {
     font-size: 1.5em;
 }
 
-
 .submission-ctr {
     display: flex;
     flex-flow: row wrap;
-    gap: 1em;
+    justify-content: center;
+    gap: 0.6em;
 }
+/*.submission-row {
+    display: flex;
+    flex-flow: row nowrap;
+    gap: 0.6em;
+}*/
 .submission {
     padding: 0.6em;
-    margin: 0.6em;
-    flex: 1;
+    flex: 1 1 calc(20% - 40px);
+    min-width: 13%;
     aspect-ratio: 1;
     
     position: relative;
@@ -105,6 +121,15 @@ input {
     border: 2px solid bold;
     border-radius: 4px;
 }
+.submission-placeholder {
+    padding: 0.6em;
+    flex: 1 1 0;
+    min-width: 13%;
+    height: 0;
+    visibility: hidden;
+    
+    border: 2px solid bold;
+}
 .submission img {
     aspect-ratio: 1;
     width: 100%;
@@ -114,18 +139,23 @@ input {
     
 }
 .submission .vote-ctr {
+    position: absolute;
+    
     display: flex;
     flex-flow: row wrap;
-    position: absolute;
-    top: 10%;
-    left: 10%;
-    height: 90%;
-    bottom: 80%;
+    justify-content: flex-start;
+    align-items: flex-start;
+    
+    top: 2%;
+    left: 2%;
+    right: 2%;
+    bottom: 2%;
+    gap: 2%;
 }
 .submission .vote-icon {
-    width: 5em;
-    height: 5em;
-    background-color: #999;
+    aspect-ratio: 1;
+    flex-basis: 32%;
+    background-color: red;
 }
 
 .score-entry-ctr {
@@ -148,10 +178,6 @@ input {
     height: 100%;
     justify-content: center;
     margin: auto;
-    -moz-user-select: none;
-    -webkit-user-select: none;
-    user-select: none;
-    touch-action: none; /* lets player draw on mobile */
 }
 #goblin-name {
     width: 200px;
@@ -183,8 +209,13 @@ input {
 #drawpad button {
     flex: 1;
 	aspect-ratio: 1;
-    border: none;
-    margin: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+}
+#drawpad button img {
+    width: 100%;
+    height: auto;
 }
 #drawpad .color-select-button {
     border: 0.6vmin solid;
@@ -194,8 +225,8 @@ input {
     aspect-ratio: 2 / 1;
 }
 #drawpad #submit-button {
-    flex: 4;
-    aspect-ratio: 4 / 1;
+    flex: 3;
+    aspect-ratio: 3 / 1;
     background-color: green;
 }
 
@@ -208,12 +239,30 @@ input {
 }
 
 
-.fade-in {
-    animation: 1s linear fade-in;
-}
-@keyframes fade-in {
-    from { opacity: 0.0; }
-    to { opacity: 1.0; }
+/*body {
+  margin: 0;
+  color: #fff;
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  background-image: linear-gradient(to bottom, #020917, #101725);
 }
 
+.content {
+  display: flex;
+  min-height: 100vh;
+  line-height: 1.1;
+  text-align: center;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.content h1 {
+  font-size: 3.6rem;
+  font-weight: 700;
+}
+
+.content p {
+  font-size: 1.2rem;
+  font-weight: 400;
+  opacity: 0.5;
+}*/
 

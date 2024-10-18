@@ -71,15 +71,16 @@ async fn main() {
 		.route_service("/host", ServeFile::new("client/dist/host.html"))
 		.route_service("/play", ServeFile::new("client/dist/play.html"))
 		.fallback(|| async { "Page Not Found" });*/
-	let static_service = ServeDir::new("client/dist/assets")
+	let static_service = ServeDir::new("client/dist/static")
 		//.fallback(page_router)
 		.append_index_html_on_directories(false);
 	let router = Router::new()
 		.nest("/ws", ws_router)
-		.nest_service("/assets", static_service)
+		.nest_service("/static", static_service)
 		.route("/", get(|| async { Redirect::to("/play") }))
 		.route_service("/host", ServeFile::new("client/dist/host.html"))
 		.route_service("/play", ServeFile::new("client/dist/play.html"))
+		//.route_service("/testing", ServeFile::new("client/dist/testing.html"))
 		.fallback(|| async { "Page Not Found" })
 		.with_state(App::new());
 		//.into_make_service_with_connect_info::<SocketAddr>();

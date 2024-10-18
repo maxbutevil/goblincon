@@ -2,8 +2,8 @@
 
 import Signal from "../modules/signal"
 import State from "../modules/state"
-import { Enum, Variant } from "../modules/variant"
-import Extract, { ReceiveIndex, SendIndex } from "../modules/extract"
+import { Variant, unit, variant } from "../modules/variant"
+import Extract, { ReceiveIndex, SendIndex } from "../modules/validate"
 
 export class Player {
 	public name: string;

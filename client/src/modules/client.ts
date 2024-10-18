@@ -1,9 +1,9 @@
 
 //import Client from "../modules/client"
 //import Extract, { SendIndex, ReceiveIndex } from "./modules/extract"
-import State from "./modules/state"
-import Signal from "./modules/signal"
-import { SendIndex, ReceiveIndex } from "./modules/extract"
+import State from "./state"
+import Signal from "./signal"
+import { SendIndex, ReceiveIndex } from "./validate"
 
 export enum Connection {
 	PENDING,
@@ -26,25 +26,10 @@ class Client {
 	connected = this.state.transitionTo(Connection.OPEN);
 	disconnected = this.state.transitionFrom(Connection.OPEN);
 	connectionFailed = this.state.transition(Connection.PENDING, Connection.CLOSED);
-	//error = new Signal<void>();
-	
-	//phase = new State(Phase.NONE);
-	
-	//voteChoices: Array<string> = [];
 	
 	private ws: WebSocket | undefined;
 	
-	//listen = this.inc.listen;
-	//send = this.out.send;
-	
-	constructor() {
-		
-		/*this.inc.listen("promoted", () => {
-			this.promoted.emit();
-		});*/
-		
-		
-	}
+	//constructor() {}
 	connect(addr: string) {
 		
 		this.ws = new WebSocket(addr);
@@ -61,6 +46,7 @@ class Client {
 		};
 		this.ws.onerror = (ev) => {
 			console.error("WebSocket error: ", ev);
+			this.state.set(Connection.CLOSED);
 		};
 		this.ws.onmessage = (ev: MessageEvent<string>) => {
 			if (typeof ev.data != "string") {
@@ -83,6 +69,10 @@ class Client {
 				}
 			}
 		};
+		
+		//setTimeout(() => this.close(), 3000);
+		//this.close();
+		//this.state.set(Connection.CLOSED);
 		
 	}
 	close() {

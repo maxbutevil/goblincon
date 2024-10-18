@@ -1,8 +1,8 @@
 
 
+import { h, fragment, conditional, signaled, VNode } from "../modules/render";
 import Signal from "../modules/signal"
-import * as Utils from "../utils"
-import React from "react"
+//import * as Utils from "../utils"
 
 export type SettingsMap = { [key: string]: Setting<any> };
 export type SettingsRemoteOf<M extends SettingsMap> = {
@@ -15,7 +15,7 @@ export function toRemote<M extends SettingsMap>(settingsMap: M): SettingsRemoteO
 	return remote as SettingsRemoteOf<M>;
 }
 
-export class Setting<T = number> {
+export default class Setting<T = number> {
 	
 	changed = new Signal();
 	
@@ -61,35 +61,38 @@ export class Setting<T = number> {
 		return this.stringifier(this.get());
 	}
 	
-}
-
-export function SettingSelect({ setting }: { setting: Setting<any> }) {
+	static view(setting: Setting<any>): VNode {
+		const click = (event: MouseEvent) => {
+			
+			let target = event.currentTarget as HTMLElement;
+			
+			let { left, right } = target.getBoundingClientRect();
+			let middle = (left + right)/2;
+			
+			if (event.clientX > middle)
+				setting.increment();
+			else
+				setting.decrement();
+		};
+		return h(
+			"div.setting-select",
+			{
+				key: setting.name,
+				on: { click }
+			},
+			[
+				h("div.name", {}, setting.name),
+				signaled(setting.changed, () => h("div.setting", {}, setting.getString()))
+			]
+		);
+	}
+	static multiView(settings: SettingsMap): VNode {
+		let nodes = [];
+		for (const key in settings)
+			nodes.push(this.view(settings[key]));
+		return fragment(nodes);
+	}
 	
-	Utils.useSignal(setting.changed);
-	
-	const onClick: React.MouseEventHandler = React.useCallback((event) => {
-		let { left, right } = event.currentTarget.getBoundingClientRect();
-		let middle = (left + right)/2;
-		
-		if (event.clientX > middle)
-			setting.increment();
-		else
-			setting.decrement();
-	}, []);
-	
-	return (
-		<div className="setting-select" onClick={onClick}>
-			{setting.name && <div className="name">{setting.name}</div>}
-			<div className="setting">{setting.getString()}</div>
-		</div>
-	);
-}
-export function SettingMultiSelect({ settings }: { settings: SettingsMap }) {
-	const selectors: JSX.Element[] = [];
-	for (const key in settings)
-		selectors.push(<SettingSelect key={key} setting={settings[key]} />);
-	
-	return <>{selectors}</>;
 }
 
 

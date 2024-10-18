@@ -15,21 +15,39 @@ export default class State<T> {
 	public changed = new Signal<[from: T, to: T]>();
 	
 	private value: T;
+	private cmpDepth: number;
 	private signalEntries = new Array<{ signal: Signal<[T, T]>, from: StatePool<T>, to: StatePool<T> }>();
 	
-	constructor(value: T) {
+	constructor(value: T, cmpDepth = 0) {
 		this.value = value;
+		this.cmpDepth = cmpDepth;
+	}
+	static deep<T>(value: T): State<T> {
+		return new State(value, Infinity);
+	}
+	
+	private static cmp<T>(one: T, two: T, depth: number): boolean {
+		if (typeof one !== typeof two)
+			return false;
+		
+		if (depth > 1 && typeof one === 'object') {
+			for (const key in one)
+				if (!this.cmp(one[key], two[key], depth - 1))
+					return false;
+			
+			return true;
+		} else {
+			return one === two;
+		}
 	}
 	
 	private handleChanged(from: T, to: T): void {
-		
 		const out: [T, T] = [from, to];
 		this.changed.emit(out);
 		
 		for (const entry of this.signalEntries)
 			if (this.stateMatch(entry.from, from) && this.stateMatch(entry.to, to))
 				entry.signal.emit(out);
-		
 	}
 	
 	private stateMatch(pool: StatePool<T>, state: T): boolean {

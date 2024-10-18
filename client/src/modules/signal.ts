@@ -73,10 +73,17 @@ export default class Signal<T = void> extends Set<Callback<T>> {
 	}
 	public handle(arg: T): boolean {
 		for (const callback of this)
-			if (callback(arg) == Signal.HANDLED)
+			if (callback(arg) === Signal.HANDLED)
 				return Signal.HANDLED;
 		return Signal.UNHANDLED;
 	}
+	
+	/*public static register() {
+		
+	}
+	public static flush() {
+		
+	}*/
 	
 }
 
