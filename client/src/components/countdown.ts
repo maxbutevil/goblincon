@@ -6,10 +6,6 @@ import { h, stateful, cleaned } from "../modules/render"
 
 export default function countdown(endTime: number, onFinish?: () => void) {
 	
-	/* A lot more complicated than I expected... */
-	
-	//const delta = endTime - Date.now();
-	
 	let secondsLeft = new State<number>(NaN);
 	let interval: NodeJS.Timeout | undefined;
 	

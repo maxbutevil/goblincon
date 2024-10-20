@@ -1,0 +1,5 @@
+export { default as erase } from "./erase.png"
+export { default as undo } from "./undo.png"
+export { default as redo } from "./redo.png"
+export { default as thin } from "./thin.png"
+export { default as thick } from "./thick.png"

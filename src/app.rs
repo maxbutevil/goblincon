@@ -758,7 +758,7 @@ mod drawblins {
 				settings,
 				state: State::Start,
 				round: 0,
-				names: goblin_names::generate(round_count),
+				names: goblin_names::generate_names(round_count),
 				timeout: Timeout::new(START_DURATION)
 			};
 			(game, sender)
@@ -1016,6 +1016,75 @@ mod drawblins {
 	
 }
 
+mod dating {
+	
+	use super::*;
+	
+	#[derive(Serialize, Deserialize)]
+	#[serde(rename_all = "camelCase")]
+	struct Settings {
+		pub round_count: usize,
+		
+	}
+	
+	/*#[derive(Deserialize)]
+	#[serde(tag = "type", content = "data")]
+	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+	enum HostMsgIn {
+		Terminate
+	}
+	#[derive(Serialize)]
+	#[serde(tag = "type", content = "data")]
+	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+	enum HostMsgOut<'a> {
+		//PlayerDisconnected { player_id: PlayerId }
+		//PlayerReconnected { player_id: PlayerId, player_name: String },
+		GameStarted,
+		
+		Drawing { goblin_name: &'a str },
+		Voting,
+		Results,
+		Scoring,
+		
+		DrawingSubmitted { player_id: PlayerId, drawing: &'a str },
+		VoteSubmitted { player_id: PlayerId, for_id: PlayerId }
+	}
+	
+	#[derive(Deserialize)]
+	#[serde(tag = "type", content = "data")]
+	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+	enum PlayerMsgIn {
+		DrawingSubmission { drawing: String },
+		VoteSubmission { for_name: String } //for_id: PlayerId }
+	}
+	
+	#[derive(Serialize, Clone)]
+	#[serde(tag = "type", content = "data")]
+	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+	enum PlayerMsgOut<'a> {
+		InGame,
+		Waiting(WaitingKind),
+		Drawing { goblin_name: &'a str, secs_left: f32 },
+		Voting { choices: &'a [String], secs_left: f32 },
+	}*/
+	
+	
+	enum State {
+		Start,
+		Draw {},
+	}
+	
+	struct Game<'a> {
+		clients: &'a mut ClientIndex,
+		receiver: game::Receiver,
+		settings: Settings,
+	}
+	impl<'a> Game<'a> {
+		/*pub fn new(clients: &'a mut ClientIndex, settings: Settings) -> (Self, game::Sender) {
+			let (sender, receiver) = mpsc::channel(EVENT_QUEUE_SIZE);
+		}*/
+	}
+}
 mod showdown {
 	
 	/*use super::*;

@@ -1,6 +1,6 @@
 
 
-import { h } from "../modules/render"
+import { h } from "./render"
 
 type CanvasColorStyle = string | CanvasGradient | CanvasPattern;
 
@@ -82,6 +82,11 @@ export default class Canvas {
 		canvas.ctx.putImageData(imageData, 0, 0);
 		return canvas;
 		
+	}
+	static fromImage(image: HTMLImageElement): Canvas {
+		let canvas = Canvas.create(image.width, image.height);
+		canvas.ctx.drawImage(image, 0, 0);
+		return canvas;
 	}
 	static create(sourceWidth: number, sourceHeight: number): Canvas {
 		
@@ -278,9 +283,6 @@ export default class Canvas {
 	putImageData(data: ImageData, x = 0, y = 0): void {
 		this.ctx.putImageData(data, x, y);
 	}
-	
-	
-	
 }
 
 export type Point = [number, number];

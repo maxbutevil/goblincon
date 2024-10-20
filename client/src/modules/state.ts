@@ -22,15 +22,18 @@ export default class State<T> {
 		this.value = value;
 		this.cmpDepth = cmpDepth;
 	}
+	static shallow<T>(value: T): State<T> {
+		return new State(value, 0);
+	}
 	static deep<T>(value: T): State<T> {
 		return new State(value, Infinity);
 	}
 	
-	private static cmp<T>(one: T, two: T, depth: number): boolean {
+	static cmp<T>(one: T, two: T, depth: number): boolean {
 		if (typeof one !== typeof two)
 			return false;
 		
-		if (depth > 1 && typeof one === 'object') {
+		if (depth > 0 && typeof one === 'object') {
 			for (const key in one)
 				if (!this.cmp(one[key], two[key], depth - 1))
 					return false;
@@ -50,7 +53,18 @@ export default class State<T> {
 				entry.signal.emit(out);
 	}
 	
+	private cmp(one: T, two: T): boolean {
+		return State.cmp(one, two, this.cmpDepth);
+	}
 	private stateMatch(pool: StatePool<T>, state: T): boolean {
+		/*if (pool === State.ANY) return true;
+		if (!Array.isArray(pool)) return this.cmp(state, pool);
+		
+		for (const item of pool)
+			if (this.cmp(state, item))
+				return true;
+		
+		return false;*/
 		return pool === State.ANY || pool === state || (Array.isArray(pool) && pool.includes(state));
 	}
 	private createTransition(from: StatePool<T>, to: StatePool<T>): Signal<[T, T]> {
@@ -87,7 +101,7 @@ export default class State<T> {
 	}
 	
 	set(to: T) {
-		if (to !== this.value)
+		if (!this.cmp(to, this.value))
 			this.handleChanged(this.value, this.value = to);
 	}
 	get(): T {
@@ -95,4 +109,9 @@ export default class State<T> {
 	}
 	
 }
+
+/*console.log(State.cmp(
+	{ hello: "world" },
+	{ hello: "world" }, 2
+));*/
 

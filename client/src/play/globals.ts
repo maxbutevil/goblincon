@@ -1,6 +1,6 @@
 
 
-import * as Utils from "../modules/utils"
+import { wsRoot } from "../modules/shared"
 
 class Globals {
 	
@@ -38,7 +38,7 @@ class Globals {
 	}
 	static getJoinUrl(): string | null {
 		if (this.playerName && this.joinCode) {
-			return `${Utils.wsRoot}/play/join?name=${this.playerName}&code=${this.joinCode.toUpperCase()}`;
+			return `${wsRoot}/play/join?name=${this.playerName}&code=${this.joinCode.toUpperCase()}`;
 		} else {
 			return null;
 		}
@@ -51,7 +51,7 @@ class Globals {
 		/* Maybe length check name and code? */
 		if (name && code && id && token) {
 			let params = `code=${code}&name=${name}&id=${id}&token=${token}`;
-			return `${Utils.wsRoot}/play/rejoin?${params}`;
+			return `${wsRoot}/play/rejoin?${params}`;
 		} else {
 			return null;
 		}

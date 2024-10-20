@@ -6,11 +6,11 @@ import State from "./modules/state"
 import { Variant, unit, variant } from "./modules/variant"
 import Validate, { ReceiveIndex, SendIndex } from "./modules/validate"
 import client, { Connection } from "./modules/client"
-import * as Utils from "./modules/utils"
+import * as Utils from "./modules/shared"
 
 import Globals from "./play/globals"
 import * as Drawblins from "./play/drawblins"
-import { patchRoot, h, conditional, signaled, stateful } from "./modules/render"
+import { patchRoot, h, fragment, stateful } from "./modules/render"
 
 const INC = new ReceiveIndex({
 	terminated: Validate.NONE,
@@ -29,7 +29,7 @@ type Page =
 	Variant<"lobby", { promoted: boolean }> |
 	Variant<"drawblins">;
 
-const page = new State<Page>(unit("landing"));
+const page = State.deep<Page>(unit("landing"));
 
 
 type StatusUpdate = null | { type: "info" | "error", message: string };
@@ -51,16 +51,12 @@ client.disconnected.listen(() => {
 });
 client.connectionFailed.listen(() => {
 	Globals.clearRejoinInfo();
-	//Globals.joinCode = "";
 });
 INC.listen("terminated", () => {
 	Globals.clearRejoinInfo();
-	//Globals.joinCode = "";
 });
 INC.listen("accepted", ({ playerId, token }) => {
-	// Set rejoin info (but only if we're not rejoining)
-	if (Globals.hasJoinCode())
-		Globals.setRejoinInfo(playerId, token);
+	Globals.setRejoinInfo(playerId, token);
 });
 INC.listen("inLobby", ({ promoted }) => {
 	statusNone();
@@ -73,7 +69,6 @@ INC.listen("error", (message) => {
 	statusError(message);
 });
 
-
 function statusMessage() {
 	return stateful(status, (curr) => {
 		if (curr === null)
@@ -81,6 +76,11 @@ function statusMessage() {
 		else
 			return h(`div.status.${curr.type}`, curr.message);
 	});
+}
+function clearedStatusMessage() {
+	//console.log("Clearing")
+	statusNone();
+	return statusMessage();
 }
 function statusNone() {
 	status.set(null);
@@ -121,51 +121,54 @@ function landing() {
 	
 	const canHost = !Utils.isMobileClient;
 	
-	return stateful(client.state, (curr) => {
-		const disabled = (curr !== Connection.CLOSED);
-		return h("div#landing.tab", [
-			h("div", [
-				h("h1", "GoblinCon"),
-				h("div.tab.join-input", [
-					h("div.join-input-section", [
-						h("div", "Nickname"),
-						h("input#name-input", {
-							attrs: {
-								disabled,
-								maxLength: Globals.MAX_NAME_LEN,
-								value: Globals.playerName,
-							},
-							on: {
-								change: ev => Globals.playerName = (ev.currentTarget as HTMLInputElement).value
-							}
-						})
-					]),
-					h("div.join-input-section", [
-						h("div", "Join Code"),
-						h("input#code-input", {
-							attrs: {
-								disabled,
-								maxLength: Globals.CODE_LEN,
-								value: Globals.joinCode ?? ""
-							},
-							on: {
-								change: ev => Globals.joinCode = (ev.currentTarget as HTMLInputElement).value
-							}
-						})
-					]),
-					h("button#join-button", {
-						attrs: { disabled },
-						on: { click: joinGame }
-					}, "Join!"),
-					statusMessage()
-				]),
-			]),
-			(!canHost) ? null :
-				h("a#footer", {
-					attrs: { href: "/host" }
-				}, "Hosting a game? Click here")
-		]);
-	});
+	return h("div#landing.tab", [
+		h("div", [
+			h("h1", "GoblinCon"),
+			stateful(client.state, curr => {
+				const disabled = (curr !== Connection.CLOSED);
+				return h(
+					"div.tab.join-input",
+					[
+						h("div.join-input-section", [
+							h("div", "Nickname"),
+							h("input#name-input", {
+								attrs: {
+									disabled,
+									maxLength: Globals.MAX_NAME_LEN,
+									value: Globals.playerName,
+								},
+								on: {
+									change: ev => Globals.playerName = (ev.currentTarget as HTMLInputElement).value
+								}
+							})
+						]),
+						h("div.join-input-section", [
+							h("div", "Join Code"),
+							h("input#code-input", {
+								attrs: {
+									disabled,
+									maxLength: Globals.CODE_LEN,
+									value: Globals.joinCode ?? ""
+								},
+								on: {
+									change: ev => Globals.joinCode = (ev.currentTarget as HTMLInputElement).value
+								}
+							})
+						]),
+						h("button#join-button", {
+							attrs: { disabled },
+							on: { click: joinGame }
+						}, "Join!"),
+					]
+				);	
+			}),
+			clearedStatusMessage()
+		]),
+		(!canHost) ? null :
+			h("a#footer", {
+				attrs: { href: "/host" }
+			}, "Hosting a game? Click here")
+	]);
 }
 function lobby(promoted: boolean) {
 	
@@ -176,9 +179,14 @@ function lobby(promoted: boolean) {
 	return h("div#lobby.tab", [
 		h("h1", "Lobby!!"),
 		(!promoted) ? null :
-			h("button#start-game-button", {
-				on: { click: startGame }
-			}, "Start Game")
+			fragment([
+				h(
+					"button#start-game-button",
+					{	on: { click: startGame } },
+					"Start Game"
+				),
+				clearedStatusMessage() /* to say "Not Enough Players" */
+			])
 	]);
 }
 

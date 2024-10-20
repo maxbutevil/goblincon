@@ -6,7 +6,7 @@ import State from "../modules/state"
 import { Variant, unit, variant } from "../modules/variant"
 import Validate, { ReceiveIndex, SendIndex } from "../modules/validate"
 import client from "../modules/client"
-import * as Utils from "../modules/utils"
+import * as Utils from "../modules/shared"
 import { h, signaled, stateful, VNode } from "../modules/render"
 
 import * as Room from "./room"
@@ -144,21 +144,44 @@ function drawing() {
 }
 function voting() {
 	
-	let playerIds = Room.playerIds();
-	let playerCount = playerIds.length;
+	//let playerIds = Room.playerIds();
+	//let playerCount = playerIds.length;
+	
+	let submissions: VNode[] = [];
+	for (const id of Room.playerIds()) {
+		let drawing = currentRound().drawings[id];
+		if (drawing !== null)
+			submissions.push(submission(Room.playerName(id)!, drawing));
+	}
+	
+	let aspectRatio = window.innerWidth / window.innerHeight;
+	let rowWidth = submissions.length;
+	let rowCount = 1;
+	if (submissions.length >= aspectRatio * 2.4) {
+		for (let i = 2; i < submissions.length; i++) {
+			rowCount = i;
+			rowWidth = Math.ceil(submissions.length/i);
+			if ((rowWidth / i) <= aspectRatio * 1.2)
+				break;
+		}
+	}
+	
+	let rows: VNode[][] = [];
+	for (let i = 0; i < rowCount; i++)
+		rows.push([]);
+	
+	for (let i = 0; i < submissions.length; i++) {
+		let row = Math.floor(i/rowWidth);
+		rows[row].push(submissions[i]);
+	}
+		
+	let ctrSelector = rowCount <= 1 ? "div.submission-ctr.single-row" : "div.submission-ctr";
 	
 	return h(
 		"div.tab",
 		[
 			h("div", `Vote for your favorite ${currentRound().goblinName}!`),
-			h("div.submission-ctr", Room.playerIds().map(id => submission(id)))
-			/*h("div.submission-ctr", [
-				...Room.playerIds().map(id => submission(id)),
-				...Room.playerIds().map(id => submission(id)),
-				...Room.playerIds().map(id => submission(id)),
-				...Room.playerIds().map(id => submission(id)),
-				...Room.playerIds().map(id => submission(id))
-			])*/
+			h(ctrSelector, rows.map(row => h("div.submission-row", row)))
 		]
 	);
 }
@@ -186,13 +209,13 @@ function scoring() {
 		]
 	);
 }
-function submission(playerId: number) {
+function submission(playerName: string, drawing: string) {
 	
-	const playerName = Room.playerName(playerId);
-	const drawing = currentRound().drawings[playerId];
+	//const playerName = Room.playerName(playerId);
+	//const drawing = currentRound().drawings[playerId];
 	
-	if (playerName === undefined || drawing === undefined)
-		return null;
+	//if (playerName === undefined || drawing === undefined)
+	//	return null;
 	
 	/*let voteIcons = [];
 	for (let i = 0; i < voteCount; i++)

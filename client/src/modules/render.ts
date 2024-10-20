@@ -49,9 +49,9 @@ export function conditional(condition: any, vnode: VNode): VNode | null {
   return !!condition ? vnode : null;
 }
 export function stateful<T>(state: State<T>, builder: (current: T) => VNode): VNode {
-  //console.log("Building with: ", state.get());
+  console.log("Building with: ", state.get());
   const rebuild = ([from, curr]: [T, T]) => {
-    //console.log("Rebuilding with: ", state.get());
+    console.log("Rebuilding with: ", state.get());
     ref.rebuild(() => builder(state.get()));
   };
   let [ref, vnode] = Ref.build(

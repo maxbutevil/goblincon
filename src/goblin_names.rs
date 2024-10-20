@@ -127,7 +127,7 @@ const LEGENDARY: StrTable = Table::new(&[
 ]);
 
 //const COMPOUND: 
-const COMPOUND_PRE: StrTable = StrTable::new(&[
+/*const COMPOUND_PRE: StrTable = StrTable::new(&[
 	(1, &[
 		"Hel",
 		"Bal",
@@ -146,7 +146,7 @@ const COMPOUND_POST: StrTable = StrTable::new(&[
 		"lord",
 		"crug"
 	]),
-]);
+]);*/
 
 const ROOT: StrTable = Table::new(&[
 	(1, &[
@@ -355,13 +355,23 @@ const ADJECTIVE: StrTable = Table::new(&[
 		"Vainglorious"
 	]),
 ]);
+/*const PRE_TITLES: StrTable = Table::new(&[
+	(1, &[
+		"Son of ",
+	])
+]);
+const POST_TITLES: StrTable = Table::new(&[
+	(1, &[
+		"'s Evil Twin"
+	]),
+]);*/
 const SUFFIX: FnTable = Table::new(&[
 	(3, &[
 		|| format!(" {STANDARD_SUFFIX}")
 	]),
 	(1, &[
 		|| format!(", {COMMA_SUFFIX}")
-	])
+	]),
 ]);
 const STANDARD_SUFFIX: StrTable = Table::new(&[
 	(4, &[
@@ -421,14 +431,17 @@ const PREFIX: StrTable = Table::new(&[
 	])
 ]);
 
+fn generate(count: usize, table: &FnTable) -> Box<[String]> {
+	(0..count).map(|_| format!("{table}")).collect()
+}
 
-pub fn generate(count: usize) -> Box<[String]> {
-	(0..count).map(|_| format!("{TEMPLATES}")).collect()
+pub fn generate_names(count: usize) -> Box<[String]> {
+	return generate(count, &TEMPLATES);
 }
 
 #[test]
 fn test() {
-	println!("{:?}", generate(100));
+	println!("{:?}", generate_names(100));
 	//assert!(false);
 }
 

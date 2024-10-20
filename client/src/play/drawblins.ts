@@ -7,15 +7,13 @@ import State from "../modules/state"
 import { Variant, unit, variant } from "../modules/variant"
 import Validate, { ReceiveIndex, SendIndex } from "../modules/validate";
 import Globals from "./globals"
-import Canvas, { Path } from "../components/canvas"
-import countdown from "../components/countdown"
-import { h, conditional, stateful, contained, cleaned } from "../modules/render"
+import * as Utils from "../modules/shared"
+import Canvas, { Path } from "../modules/canvas"
 
-import eraseIcon from "../assets/erase.png"
-import undoIcon from "../assets/undo.png"
-import redoIcon from "../assets/redo.png"
-import thinIcon from "../assets/thin.png"
-import thickIcon from "../assets/thick.png"
+import { h, conditional, stateful, contained, cleaned } from "../modules/render"
+import countdown from "../components/countdown"
+
+import * as icons from "../assets/drawpad/index"
 
 
 const INC = new ReceiveIndex({
@@ -89,16 +87,6 @@ function drawPad() {
 	const THIN_LINE_WIDTH = 8;
 	const THICK_LINE_WIDTH = 20;
 	const ERASER_WIDTH = 20;
-	const COLORS = [
-		"#ff0000",
-		"#ff9900",
-		"#ffff00",
-		"#00ff00",
-		"#0099ff",
-		"#0000ff",
-		"#9900ff",
-		"#000000",
-	]; // must be lowercase
 	
 	type DrawWeight = "thick" | "thin";
 	//type DrawMode = Variant<"erase"> | Variant<"draw", { style: string, weight: DrawWeight }>;
@@ -211,12 +199,12 @@ function drawPad() {
 							}
 						}
 					},
-					icon(eraseIcon)
+					icon(icons.erase)
 				);
 			}
 			
 			return h("div#color-select.button-row", [
-				...COLORS.map(color => colorButton(color)),
+				...Utils.COLORS.map(color => colorButton(color)),
 				eraseButton()
 			]);
 		});
@@ -348,9 +336,9 @@ function drawPad() {
 		draw(ev);
 	}
 	function handleEndDraw(ev: PointerEvent) {
-		if (state.get() !== CanvasState.DRAWING)
-			return;
 		if (!ev.isPrimary)
+			return;
+		if (state.get() !== CanvasState.DRAWING)
 			return;
 		draw(ev);
 		endDraw();
@@ -358,7 +346,7 @@ function drawPad() {
 	
 	function lineWidthBtn() {
 		return contained(rerender => {
-			const iconSrc = drawMode.weight === "thin" ? thinIcon : thickIcon;
+			const iconSrc = drawMode.weight === "thin" ? icons.thin : icons.thick;
 			return h(
 				"button#weight-button",
 				{
@@ -433,8 +421,8 @@ function drawPad() {
 				}
 			}, "You don't have canvas support!"),
 			h("div#draw-utils.button-row", [
-				h("button#undo-button", { on: { click: undo }}, icon(undoIcon)),
-				h("button#redo-button", { on: { click: redo }}, icon(redoIcon)),
+				h("button#undo-button", { on: { click: undo }}, icon(icons.undo)),
+				h("button#redo-button", { on: { click: redo }}, icon(icons.redo)),
 				lineWidthBtn(),
 				h("button#spacer-button", { attrs: { disabled: true } }),
 				h("button#submit-button", { on: { click: submit }}, "Submit")

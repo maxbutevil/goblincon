@@ -80,10 +80,8 @@ async fn main() {
 		.route("/", get(|| async { Redirect::to("/play") }))
 		.route_service("/host", ServeFile::new("client/dist/host.html"))
 		.route_service("/play", ServeFile::new("client/dist/play.html"))
-		//.route_service("/testing", ServeFile::new("client/dist/testing.html"))
 		.fallback(|| async { "Page Not Found" })
 		.with_state(App::new());
-		//.into_make_service_with_connect_info::<SocketAddr>();
 	
 	let port = std::env::var("PORT").unwrap_or("5050".to_string());
 	let listener = TcpListener::bind(format!("{IP}:{port}"))
