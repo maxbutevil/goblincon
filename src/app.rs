@@ -164,11 +164,11 @@ impl Timeout {
 	fn scaled(duration: Duration, scale_setting: f32) -> Duration {
 		Duration::from_secs_f32(scale_setting * duration.as_secs_f32())
 	}
-	fn variable(duration: VariableDuration, scale_factor: usize) -> Duration {
-		Duration::from_millis(duration.millis(scale_factor))
+	fn dynamic(duration: DynamicDuration, num_players: usize) -> Duration {
+		Duration::from_millis(duration.millis(num_players))
 	}
-	fn variable_scaled(duration: VariableDuration, scale_factor: usize, scale_setting: f32) -> Duration {
-		let millis = (duration.millis(scale_factor) as f32) * scale_setting;
+	fn scaled_dynamic(duration: DynamicDuration, scale_factor: f32, num_players: usize) -> Duration {
+		let millis = scale_factor * (duration.millis(num_players) as f32);
 		Duration::from_millis(millis as u64)
 	}
 	
@@ -185,22 +185,22 @@ impl Timeout {
 }
 
 /* A duration that varies based on the number of players present */
-struct VariableDuration {
+struct DynamicDuration {
 	base_millis: u64,
-	scaled_millis: u64
+	player_millis: u64
 }
-impl VariableDuration {
+impl DynamicDuration {
 	const fn from_secs(base_secs: u64, scaled_secs: u64) -> Self {
 		Self::from_millis(base_secs * 1000, scaled_secs * 1000)
 	}
-	const fn from_millis(base_millis: u64, scaled_millis: u64) -> Self {
-		Self { base_millis, scaled_millis }
+	const fn from_millis(base_millis: u64, player_millis: u64) -> Self {
+		Self { base_millis, player_millis }
 	}
-	const fn secs(&self, scale_factor: usize) -> u64 {
-		self.millis(scale_factor).div_ceil(1000)
+	const fn secs(&self, num_players: usize) -> u64 {
+		self.millis(num_players).div_ceil(1000)
 	}
-	const fn millis(&self, scale_factor: usize) -> u64 {
-		self.base_millis + (scale_factor as u64) * self.scaled_millis
+	const fn millis(&self, num_players: usize) -> u64 {
+		self.base_millis + (num_players as u64) * self.player_millis
 	}
 }
 
@@ -671,8 +671,8 @@ mod drawblins {
 	const MAX_PLAYER_COUNT: usize = 12;
 	const START_DURATION: Duration = Duration::from_secs(3);
 	const DRAW_DURATION: Duration = Duration::from_secs(150);
-	const VOTE_DURATION: VariableDuration = VariableDuration::from_secs(12, 2);
-	const RESULTS_DURATION: VariableDuration = VariableDuration::from_secs(8, 1);
+	const VOTE_DURATION: DynamicDuration = DynamicDuration::from_secs(12, 2);
+	const RESULTS_DURATION: DynamicDuration = DynamicDuration::from_secs(8, 1);
 	const SCORE_DURATION: Duration = Duration::from_secs(10);
 	
 	#[derive(Serialize, Deserialize)]
@@ -927,7 +927,7 @@ mod drawblins {
 		}
 		async fn start_vote(&mut self, eligible: [bool; MAX_PLAYER_COUNT]) {
 			let choices = self.vote_choices(eligible);
-			self.timeout.replace(Timeout::variable_scaled(VOTE_DURATION, choices.len(), self.settings.vote_time_factor));
+			self.timeout.replace(Timeout::scaled_dynamic(VOTE_DURATION, self.settings.vote_time_factor, choices.len()));
 			let _ = self.clients.send_all(
 				&HostMsgOut::Voting {},
 				&PlayerMsgOut::Voting {
@@ -939,7 +939,7 @@ mod drawblins {
 		}
 		async fn start_results(&mut self, choice_count: usize) {
 			self.state = State::Results;
-			self.timeout.replace(Timeout::variable(RESULTS_DURATION, choice_count));
+			self.timeout.replace(Timeout::dynamic(RESULTS_DURATION, choice_count));
 			//let _ = self.clients.send_host(&HostMsgOut::Results).await;
 			let _ = self.clients.send_all(
 				&HostMsgOut::Results,

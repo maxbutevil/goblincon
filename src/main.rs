@@ -98,24 +98,24 @@ async fn main() {
 #[serde(rename_all = "camelCase")]
 struct JoinQuery {
 	code: String,
-	name: String,
 	
-	#[serde(default = "default_icon")]
+	name: String,
+	#[serde(default)]
 	icon: PlayerIcon
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RejoinQuery {
 	code: String,
-	name: String,
-	#[serde(default = "default_icon")]
-	icon: PlayerIcon,
-	
 	id: PlayerId,
-	token: PlayerToken
+	token: PlayerToken,
+	
+	name: String,
+	#[serde(default)]
+	icon: PlayerIcon,
 }
 
-fn default_icon() -> u8 { 2 }
+//fn default_icon() -> u8 { 0 }
 
 //#[debug_handler]
 async fn ws_upgrade_host(State(app): State<App>, ws: WebSocketUpgrade) -> Response {
