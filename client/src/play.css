@@ -1,0 +1,86 @@
+
+
+/* Landing */
+.tab#landing {
+	justify-content: space-between;
+}
+.tab#landing input {
+	margin-top: 2px;
+}
+.tab#landing button {
+	margin-top: 6px;
+}
+
+#code-input {
+	text-transform: uppercase;
+}
+
+/* Lobby */
+.icon-select {
+	display: flex;
+	flex-flow: row wrap;
+	font-size: 2em;
+}
+
+/* Drawing */
+.tab#draw {
+	height: 100%;
+	
+	flex-flow: row wrap;
+	justify-content: center;
+	margin: auto;
+	
+}
+#goblin-name {
+	flex: 1 0;
+	text-align: center;
+	font-size: 1.6em;
+}
+.tab#draw .countdown {
+	flex: 1 0;
+	text-align: center;
+}
+#drawpad {
+	width: min(96vw, 78vh);
+	display: flex;
+	flex-flow: column nowrap;
+	border: 0.6vmin solid black;
+}
+#drawpad #canvas {
+	aspect-ratio: 1;
+	width: 100%;
+	height: auto;
+	background-color: white;
+	border-top: 0.6vmin solid black;
+	border-bottom: 0.6vmin solid black;
+}
+#drawpad .btn-row {
+	display: flex;
+	flex-flow: row nowrap;
+}
+#drawpad button {
+	flex: 1;
+	aspect-ratio: 1;
+	border: 0;
+	margin: 0;
+	padding: 0;
+}
+#drawpad button img {
+	width: 100%;
+	height: auto;
+}
+#drawpad .color-select-btn {
+	border: 0.6vmin solid;
+}
+#drawpad #spacer-btn {
+	flex: 2;
+	aspect-ratio: 2 / 1;
+}
+#drawpad #submit-btn {
+	flex: 3;
+	aspect-ratio: 3 / 1;
+	background-color: green;
+}
+
+
+

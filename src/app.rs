@@ -104,9 +104,10 @@ struct Host {
 }
 struct Player {
 	presence: Presence,
+	token: PlayerToken,
 	//addr: SocketAddr,
 	name: String,
-	token: PlayerToken
+	icon: PlayerIcon,
 }
 impl Presence {
 	fn new(sender: WebSocketSender, handle: JoinHandle<()>) -> Self {
@@ -139,8 +140,8 @@ impl Host {
 	}
 }
 impl Player {
-	fn new(presence: Presence, name: String, token: PlayerToken) -> Self {
-		Self { presence, name, token }
+	fn new(presence: Presence, token: PlayerToken, name: String, icon: PlayerIcon) -> Self {
+		Self { presence, token, name, icon }
 	}
 	async fn send_raw(&mut self, message: Message) -> Result<(), ()> {
 		self.presence.send_raw(message).await
@@ -280,7 +281,7 @@ mod client_index {
 			});
 			Presence::new(tx, handle)
 		}
-		pub async fn connect_player(&mut self, socket: WebSocket, name: String) -> Result<(PlayerId, PlayerToken), ()> {
+		pub async fn connect_player(&mut self, socket: WebSocket, name: String, icon: PlayerIcon) -> Result<(PlayerId, PlayerToken), ()> {
 			
 			if self.is_full() {
 				return Err(reject_socket(socket, "Lobby is full").await);
@@ -295,7 +296,7 @@ mod client_index {
 			let token = Self::generate_token();
 			
 			let presence = Self::player_presence(self.sender.clone(), socket, player_id);
-			self.players.insert(Box::new(Player::new(presence, name, token)));
+			self.players.insert(Box::new(Player::new(presence, token, name, icon)));
 			Ok((player_id, token))
 		}
 		pub async fn reconnect_player(&mut self, socket: WebSocket, player_id: PlayerId, player_token: PlayerToken) -> Result<(), ()> {
@@ -434,8 +435,9 @@ mod lobby {
 	enum HostMsgOut {
 		InLobby,
 		//LobbyCreated,
-		PlayerJoined { player_id: PlayerId, player_name: String },
+		PlayerJoined { player_id: PlayerId, name: String, icon: PlayerIcon },
 		PlayerLeft { player_id: PlayerId },
+		PlayerIconChanged { player_id: PlayerId, icon: PlayerIcon },
 		GameStarting,
 	}
 	
@@ -443,7 +445,8 @@ mod lobby {
 	#[serde(tag = "type", content = "data")]
 	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 	enum PlayerMsgIn {
-		StartGame
+		StartGame,
+		ChangeIcon { icon: u8 },
 	}
 	#[derive(Serialize, Clone)]
 	#[serde(tag = "type", content = "data")]
@@ -456,7 +459,7 @@ mod lobby {
 	}
 	
 	pub enum Event {
-		PlayerJoin { socket: WebSocket, name: String }
+		PlayerJoin { socket: WebSocket, name: String, icon: PlayerIcon }
 	}
 	enum State {
 		//New,
@@ -524,14 +527,14 @@ mod lobby {
 					event = self.receiver.recv() => {
 						let Some(event) = event else { break Err(()); };
 						match event {
-							Event::PlayerJoin { socket, name } => {
+							Event::PlayerJoin { socket, name, icon } => {
 								
 								let State::Open { ref mut leader_id } = self.state else {
 									tracing::debug!("player attempted to join lobby while not open");
 									continue;
 								};
 								
-								let result = self.clients.connect_player(socket, name.clone()).await;
+								let result = self.clients.connect_player(socket, name.clone(), icon).await;
 								let Ok((player_id, token)) = result else { continue };
 								
 								/* If we don't have a leader, make this player the leader */
@@ -541,7 +544,8 @@ mod lobby {
 								
 								let _ = self.clients.send_host(&HostMsgOut::PlayerJoined {
 									player_id,
-									player_name: name
+									name,
+									icon
 								}).await;
 								let _ = self.clients.send_player(player_id, &PlayerMsgOut::Accepted {
 									player_id,
@@ -584,7 +588,9 @@ mod lobby {
 										let Ok(message) = deserialize::<'_, PlayerMsgIn>(&message) else { continue };
 										match message {
 											PlayerMsgIn::StartGame =>
-												{ let _ = self.handle_player_start_attempt(player_id).await; }
+												{ let _ = self.handle_player_start_attempt(player_id).await; },
+											PlayerMsgIn::ChangeIcon { icon } =>
+												{ let _ = self.handle_player_change_icon(player_id, icon).await; }
 										};
 									}
 								}
@@ -636,8 +642,10 @@ mod lobby {
 			let _ = self.clients.send_host(&HostMsgOut::GameStarting).await;
 			return Ok(());
 		}
+		async fn handle_player_change_icon(&mut self, player_id: PlayerId, icon: u8) {
+			let _ = self.clients.send_host(&HostMsgOut::PlayerIconChanged { player_id, icon }).await;
+		}
 	}
-	
 }
 mod game {
 	use super::*;
@@ -1179,19 +1187,19 @@ impl App {
 		clients.disconnect_all().await;
 		
 	}
-	pub async fn accept_player_join(&self, socket: WebSocket, room_id: RoomId, name: String) {
+	pub async fn accept_player_join(&self, socket: WebSocket, room_id: RoomId, name: String, icon: PlayerIcon) {
 		let Some(handle) = self.rooms.get(&room_id) else { return; };
 		let RoomHandle::Lobby(ref handle) = *handle else {
 			return tracing::debug!("attempted to join a game that is already running");
 		};
-		let _ = handle.send(lobby::Event::PlayerJoin { socket, name }).await;
+		let _ = handle.send(lobby::Event::PlayerJoin { socket, name, icon }).await;
 	}
-	pub async fn accept_player_rejoin(&self, socket: WebSocket, room_id: RoomId, name: String, player_id: PlayerId, token: PlayerToken) {
+	pub async fn accept_player_rejoin(&self, socket: WebSocket, room_id: RoomId, name: String, icon: PlayerIcon, player_id: PlayerId, token: PlayerToken) {
 		let Some(handle) = self.rooms.get(&room_id) else { return; };
 		
 		match *handle {
 			RoomHandle::Lobby(ref handle) => {
-				let _ = handle.send(lobby::Event::PlayerJoin { socket, name }).await;
+				let _ = handle.send(lobby::Event::PlayerJoin { socket, name, icon }).await;
 			}
 			RoomHandle::Game(ref handle) => {
 				let _ = handle.send(game::Event::PlayerRejoin { socket, player_id, token }).await;

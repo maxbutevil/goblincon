@@ -1,26 +1,51 @@
 
-import icons from "../assets/players/index"
+import iconMap from "../assets/players/index"
 import Canvas from "./canvas"
 
-const bases: Record<string, HTMLImageElement> = {};
-const cache: Record<string, Record<string, string>> = {};
-for (const path in icons) {
+//export type IconKey = keyof typeof icons;
+
+export const icons: string[] = Object.values(iconMap);
+
+
+const bases: HTMLImageElement[] = new Array(icons.length);
+const cache: { [key: string]: string }[] = new Array(icons.length);
+
+let promises: Promise<void>[] = [];
+for (let i = 0; i < icons.length; i++) {
+	cache[i] = {};
+	
 	let img = new Image();
-	img.onload = () => bases[path] = img;
-	img.src = icons[path as keyof typeof icons] as string;
+	bases[i] = img;
+	img.src = icons[i];
+	promises.push(img.decode());
 }
 
-function generate(src: string, color: string): string {
-	let canvas = Canvas.fromImage(bases[src]);
-	canvas.setOperation("multiply");
+await Promise.all(promises);
+
+
+function generate(icon: number, color: string): string {
+	//if (!bases[src].complete) await bases[src]?.decode();
+	let canvas = Canvas.fromImage(bases[icon]);
+	canvas.setOperation("source-in");
 	canvas.wipeStyle(color);
-	return cache[src][color] = canvas.element.toDataURL();
+	canvas.setOperation("multiply");
+	canvas.putImage(bases[icon]);
+	return canvas.element.toDataURL();
 }
-export function get(src: string, color: string): string {
-	if (!(src in cache)) {
-		cache[src] = {};
-		return cache[src][color] = generate(src, color);
-	} else {
-		return cache[src][color] ??= generate(src, color);
-	}
+export function get(icon: number, color: string): string {
+	return cache[icon][color] ??= generate(icon, color);
 }
+export function cacheColor(color: string) {
+	for (let i = 0; i < count(); i++)
+		get(i, color);
+}
+
+import { h } from "./render"
+export function view(icon: number, color: string) {
+	return h("img.player-icon", { attrs: { src: get(icon, color) } });
+}
+
+export function count(): number {
+	return icons.length;
+}
+

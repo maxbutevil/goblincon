@@ -1,18 +1,16 @@
 
-
+import Signal from "./signal"
+import State from "./state"
 import {
   init,
   classModule,
-  //propsModule,
   styleModule,
   attributesModule,
   eventListenersModule,
-  //Module,
   
   h,
   fragment,
   VNode,
-  
 } from "snabbdom";
 export {
   h,
@@ -21,9 +19,6 @@ export {
 export type {
   VNode
 };
-
-import Signal from "./signal"
-import State from "./state"
 
 const modules = [
   classModule,
@@ -45,13 +40,15 @@ export function patchRoot(vnode: VNode): VNode {
   return patchId("root", vnode)!; /* Maybe shouldn't assume root exists */
 }
 
+type Cleanup = () => void;
+
 export function conditional(condition: any, vnode: VNode): VNode | null {
   return !!condition ? vnode : null;
 }
 export function stateful<T>(state: State<T>, builder: (current: T) => VNode): VNode {
-  console.log("Building with: ", state.get());
+  //console.log("Building with: ", state.get());
   const rebuild = ([from, curr]: [T, T]) => {
-    console.log("Rebuilding with: ", state.get());
+    //console.log("Rebuilding with: ", state.get());
     ref.rebuild(() => builder(state.get()));
   };
   let [ref, vnode] = Ref.build(
@@ -60,18 +57,18 @@ export function stateful<T>(state: State<T>, builder: (current: T) => VNode): VN
   );
   return ref.vnode(); // lame traversal here
 }
-export function signaled<T>(signals: Signal<T> | Signal<T>[], builder: () => VNode): VNode {
+export function signaled<T>(signals: Signal<T> | Signal<T>[], builder: (arg: T | undefined) => VNode): VNode {
   
   let ref: Ref, vnode: VNode;
-  const rebuild = () => ref.rebuild(builder);
+  const rebuild = (arg: T) => ref.rebuild(() => builder(arg));
   if (Array.isArray(signals)) {
     [ref, vnode] = Ref.build(
-      builder,
+      builder as any,
       Signal.group(...signals.map(signal => signal.subscribe(rebuild)))
     );
   } else {
     [ref, vnode] = Ref.build(
-      builder,
+      builder as any,
       signals.subscribe(rebuild)
     );
   }
@@ -93,12 +90,6 @@ export function cleaned(cleanup: Cleanup, builder: () => VNode): VNode {
   let [_ref, vnode] = Ref.build(builder, cleanup);
   return vnode;
 }
-/*export function mount() {
-  
-}*/
-
-type Cleanup = () => void;
-
 
 class Ref {
   
@@ -151,7 +142,7 @@ class Ref {
     //console.log(oldVnode.sel, "->", vnode.sel); 
     
     /* fucked up and evil workaround */
-    oldVnode = patch(oldVnode, h("!"));
+    //oldVnode = patch(oldVnode, h("!"));
     tail.node = patch(oldVnode, tail.node as VNode);
   }
   /*static to(vnode: VNode, cleanup: Cleanup): Ref {

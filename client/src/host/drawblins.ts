@@ -1,16 +1,18 @@
 
 
+import {
+	Signal, State, Variant, unit, variant,
+	Validate, ReceiveIndex, SendIndex
+} from "../modules/index"
 
-import Signal from "../modules/signal"
-import State from "../modules/state"
-import { Variant, unit, variant } from "../modules/variant"
-import Validate, { ReceiveIndex, SendIndex } from "../modules/validate"
+
 import client from "../modules/client"
 import * as Utils from "../modules/shared"
 import { h, signaled, stateful, VNode } from "../modules/render"
 
 import * as Room from "./room"
 import Setting, { SettingsRemoteOf, toRemote } from "./setting"
+import * as PlayerIcons from "../modules/player_icons"
 
 //import { motion } from "framer-motion"
 
@@ -46,7 +48,9 @@ type Page =
 	Variant<"voting"> |
 	Variant<"scoring">;
 const page = new State<Page>(unit("starting"));
-const voteRevealed = new Signal<number>();
+const voteRevealed = new Signal<{ playerId: number, forId: number }>();
+//const voteRevealed = new Signal<{ }>();
+
 
 let rounds: Round[];
 let scores: number[];
@@ -71,26 +75,23 @@ INC.listen("results", () => {
 	const DELAY_MS = 0.9 * 1000;
 	
 	let round = currentRound();
-		for (const id of Room.playerIds())
-			addScore(id, round.voteCounts[id] ?? 0);
+	for (const id of Room.playerIds())
+		addScore(id, round.votesReceived[id]?.length ?? 0);
 	
-	//let votesLeft = new Map(round.voteCounts.entries());
-	let voteQueue: number[] = [];
-	//console.log(round.voteCounts, round.votes);
+	let voteQueue: { playerId: number, forId: number }[] = [];
 	
 	for (let i = 0; i < 100; i++) {
 		let anyLeft = false;
-		for (const [player, count] of round.voteCounts.entries()) {
-			if (count > i) {
-				voteQueue.push(player);
+		for (const [forId, votes] of round.votesReceived.entries()) {
+			if (votes.length > i) {
+				voteQueue.push({ playerId: votes[i], forId })
 				anyLeft = true;
 			}
 		}
 		if (!anyLeft) break;
 	}
 	
-	//voteQueue.reverse();
-	//console.log(voteQueue);
+	voteQueue.reverse();
 	
 	let interval = setInterval(() => {
 		let nextVote = voteQueue.pop();
@@ -99,6 +100,7 @@ INC.listen("results", () => {
 		else
 			voteRevealed.emit(nextVote);
 	}, DELAY_MS);
+	
 });
 INC.listen("scoring", () => page.set(unit("scoring")));
 INC.listen("drawingSubmitted", ({ playerId, drawing }) => {
@@ -144,46 +146,55 @@ function drawing() {
 }
 function voting() {
 	
-	//let playerIds = Room.playerIds();
-	//let playerCount = playerIds.length;
+	let votes: number[][] = [];
 	
-	let submissions: VNode[] = [];
-	for (const id of Room.playerIds()) {
-		let drawing = currentRound().drawings[id];
-		if (drawing !== null)
-			submissions.push(submission(Room.playerName(id)!, drawing));
-	}
-	
-	let aspectRatio = window.innerWidth / window.innerHeight;
-	let rowWidth = submissions.length;
-	let rowCount = 1;
-	if (submissions.length >= aspectRatio * 2.4) {
-		for (let i = 2; i < submissions.length; i++) {
-			rowCount = i;
-			rowWidth = Math.ceil(submissions.length/i);
-			if ((rowWidth / i) <= aspectRatio * 1.2)
-				break;
-		}
-	}
-	
-	let rows: VNode[][] = [];
-	for (let i = 0; i < rowCount; i++)
-		rows.push([]);
-	
-	for (let i = 0; i < submissions.length; i++) {
-		let row = Math.floor(i/rowWidth);
-		rows[row].push(submissions[i]);
-	}
+	return signaled(voteRevealed, vote => {
 		
-	let ctrSelector = rowCount <= 1 ? "div.submission-ctr.single-row" : "div.submission-ctr";
+		if (vote) {
+			let { playerId, forId } = vote;
+			votes[forId] ??= [];
+			votes[forId].push(playerId);
+		}
+		
+		let submissions: VNode[] = [];
+		for (const id of Room.playerIds()) {
+			let drawing = currentRound().drawings[id];
+			if (drawing !== null)
+				submissions.push(submission(Room.playerName(id)!, drawing, votes[id]));
+		}
+		
+		let aspectRatio = window.innerWidth / window.innerHeight;
+		let rowWidth = submissions.length;
+		let rowCount = 1;
+		if (submissions.length >= aspectRatio * 2.4) {
+			for (let i = 2; i < submissions.length; i++) {
+				rowCount = i;
+				rowWidth = Math.ceil(submissions.length/i);
+				if ((rowWidth / i) <= aspectRatio * 1.2)
+					break;
+			}
+		}
+		
+		let rows: VNode[][] = [];
+		for (let i = 0; i < rowCount; i++)
+			rows.push([]);
+		
+		for (let i = 0; i < submissions.length; i++) {
+			let row = Math.floor(i/rowWidth);
+			rows[row].push(submissions[i]);
+		}
+			
+		let ctrSelector = rowCount <= 1 ? "div.submission-ctr.single-row" : "div.submission-ctr";
+		
+		return h(
+			"div.tab",
+			[
+				h("div", `Vote for your favorite ${currentRound().goblinName}!`),
+				h(ctrSelector, rows.map(row => h("div.submission-row", row)))
+			]
+		);
+	});
 	
-	return h(
-		"div.tab",
-		[
-			h("div", `Vote for your favorite ${currentRound().goblinName}!`),
-			h(ctrSelector, rows.map(row => h("div.submission-row", row)))
-		]
-	);
 }
 function scoring() {
 	
@@ -209,24 +220,24 @@ function scoring() {
 		]
 	);
 }
-function submission(playerName: string, drawing: string) {
+function submission(playerName: string, drawing: string, votes: number[] = []) {
 	
 	//const playerName = Room.playerName(playerId);
 	//const drawing = currentRound().drawings[playerId];
-	
-	//if (playerName === undefined || drawing === undefined)
-	//	return null;
-	
-	/*let voteIcons = [];
-	for (let i = 0; i < voteCount; i++)
-		voteIcons.push(<VoteIcon key={i} index={i} />)*/
 	
 	return h(
 		"div.submission",
 		[
 			h("img", { attrs: { src: drawing }}),
 			h("div.player-name", playerName),
-			/* vote icons here */
+			h("div.vote-ctr", votes.map(playerId => {
+				let player = Room.players[playerId];
+				let src = PlayerIcons.get(player.icon, player.color);
+				return h(
+					"img.player-icon.vote-icon",
+					{ attrs: { src } }
+				);
+			}))
 		]
 	);
 }
@@ -248,8 +259,10 @@ function VoteIcon({ index }: { index: number }) {
 class Round {
 	goblinName: string;
 	drawings: string[] = []; //new Map<Player, string>();
-	votes: number[] = []; // = new Map<number, number>();
-	voteCounts: number[] = []; // = new Map<number, number>();
+	//votes: number[] = []; // = new Map<number, number>();
+	//voteCounts: number[] = []; // = new Map<number, number>();
+	votesSent: number[] = [];
+	votesReceived: number[][] = [];
 	
 	constructor(goblinName: string) {
 		this.goblinName = goblinName;
@@ -258,8 +271,10 @@ class Round {
 		this.drawings[playerId] = drawing;
 	}
 	handleVote(playerId: number, forId: number) {
-		this.votes[playerId] = forId;
-		this.voteCounts[forId] = 1 + (this.voteCounts[forId] ?? 0);
+		this.votesSent[playerId] = forId;
+		this.votesReceived[forId] ??= [];
+		this.votesReceived[forId].push(playerId);
+		//this.voteCounts[forId] = 1 + (this.voteCounts[forId] ?? 0);
 	}
 }
 

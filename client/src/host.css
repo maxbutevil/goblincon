@@ -1,0 +1,121 @@
+
+
+.setting-select {
+	margin: 6px;
+	cursor: pointer;
+}
+.setting-select .name {
+	font-size: 1em;
+	margin-bottom: 4px;
+}
+.setting-select .setting {
+	font-size: 1.5em;
+}
+
+/* Lobby */
+#host-lobby {
+	display: flex;
+	flex-flow: row nowrap;
+	align-items: flex-start;
+	justify-content: space-around;
+}
+#host-lobby #join-code {
+	font-size: 3em;
+}
+#host-lobby .game-settings {
+	
+}
+#host-lobby .overview {
+	
+}
+
+
+
+/* Drawing */
+#host-drawing {
+	
+}
+
+
+/* Voting/Submission Page */
+.submission-ctr {
+    
+	flex: 1 1 0;
+	width: 96vw;
+	
+	display: flex;
+	flex-flow: column nowrap;
+	justify-content: center;
+	gap: 0.6em;
+}
+.submission-row {
+	flex: 1 1 0;
+	
+	display: flex;
+	flex-flow: row nowrap;
+	justify-content: center;
+	align-items: center;
+	
+	gap: 0.6em;
+}
+.submission-ctr.single-row .submission {
+	height: auto;
+	flex: 0 1 34%;
+}
+.submission {
+	
+	aspect-ratio: 7 / 8;
+	height: 88%;
+	flex: 0 1 0;
+	
+	display: flex;
+	flex-flow: column nowrap;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0.6em;
+	
+	position: relative;
+	
+	background-color: #DDD;
+	border: 3px solid black;
+	border-radius: 8px;
+}
+.submission img {
+	width: 100%;
+}
+.submission .player-name {
+	
+}
+.submission .vote-ctr {
+	position: absolute;
+	top: 2%;
+	left: 2%;
+	right: 2%;
+	bottom: 2%;
+	
+	display: flex;
+	flex-flow: row wrap;
+	font-size: 2.4em;
+}
+.submission .vote-icon {
+	animation: fadeIn 0.6s;
+}
+
+@keyframes fadeIn {
+	0% { opacity: 0; rotate: -25deg; }
+	50% { opacity: 0.5; rotate: 25deg; }
+	100% { opacity: 1; rotate: 0deg; }
+}
+
+/* Scoring */
+.score-entry-ctr {
+	display: flex;
+	flex-flow: column nowrap;
+	min-width: 16em;
+}
+.score-entry {
+	display: flex;
+	flex-flow: row nowrap;
+	justify-content: space-between;
+	font-size: 1.3em;
+}

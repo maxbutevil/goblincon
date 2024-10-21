@@ -9,6 +9,7 @@ pub use tokio::time::Duration;
 //pub type ClientId = ArcIntern<SocketAddr>;
 pub type PlayerId = u8;
 pub type PlayerToken = u32; // can't use usize or javascript will throw a fit
+pub type PlayerIcon = u8;
 
 pub enum ClientId {
 	Host,
@@ -22,6 +23,7 @@ pub const MAX_PLAYER_COUNT: usize = 12;
 //pub const ROUND_COUNT: usize = 3;
 pub const MIN_NAME_LEN: usize = 2;
 pub const MAX_NAME_LEN: usize = 16;
+pub const DEFAULT_ICON: PlayerIcon = 2;
 
 //pub const ROOM_ID_LEN: usize = 5;
 //pub const ROOM_ID_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ";

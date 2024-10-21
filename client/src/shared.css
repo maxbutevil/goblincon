@@ -1,0 +1,107 @@
+
+
+* {
+    margin: 0;
+    /* lets player draw on mobile */
+    /* scorched earth, iOS does not make this easy */
+    user-select: none;
+    touch-action: none;
+    /* pointer-events: none; */
+    -webkit-touch-callout: none;
+    -webkit-user-callout: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-user-modify: none;
+    -webkit-highlight: none;
+    -moz-user-select: none;
+    /* somehow, despite all this, iOS still has a selection popup occasionally... */
+}
+html, body, #root, #app {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+}
+body {
+    font-family: Arial;
+    background-color: #eeeee8;
+}
+input {
+    padding: 2px;
+}
+
+.status {
+    text-align: center;
+    font-weight: bold;
+}
+.status.error {
+    color: darkred;
+}
+
+.countdown {
+    font-size: 2em;
+}
+
+.player-icon {
+    width: 2em;
+    height: 2em;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 0.25em;
+    margin-right: 0.25em;
+    flex: 0 0 2em;
+}
+
+.tab {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    margin: 28px;
+}
+
+
+
+
+/*.submission-ctr {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: center;
+    gap: 0.6em;
+}*/
+
+/*.submission-ctr {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: center;
+}*/
+
+
+/*body {
+  margin: 0;
+  color: #fff;
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  background-image: linear-gradient(to bottom, #020917, #101725);
+}
+
+.content {
+  display: flex;
+  min-height: 100vh;
+  line-height: 1.1;
+  text-align: center;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.content h1 {
+  font-size: 3.6rem;
+  font-weight: 700;
+}
+
+.content p {
+  font-size: 1.2rem;
+  font-weight: 400;
+  opacity: 0.5;
+}*/
+

@@ -1,27 +1,37 @@
 
 
-import { wsRoot } from "../modules/shared"
+
+import { Shared } from "../modules/index"
 
 class Globals {
 	
 	static joinCode = new URLSearchParams(window.location.search).get("code") ?? "";
 	static playerName = localStorage.getItem("playerName") ?? "";
+	static playerIcon = parseInt(localStorage.getItem("playerIcon") ?? "2");
+	static playerId = -1;
+	
+	static get playerColor() { return Shared.playerColor(this.playerId); }
 	
 	static readonly MIN_NAME_LEN = 2;
 	static readonly MAX_NAME_LEN = 16;
 	static readonly CODE_LEN = 5;
 	
 	static storePlayerName() {
-		try {
-			localStorage.setItem("playerName", this.playerName);
-		} catch(e) {
-			console.log("Error saving playerName to localStorage: ", e);
-		}
+		try { localStorage.setItem("playerName", this.playerName); }
+		catch(e) { console.log("localStorage error: ", e); }
 	}
-	static setRejoinInfo(id: number, token: number) {
+	static storePlayerIcon() {
+		try { localStorage.setItem("playerIcon", this.playerIcon.toString()); }
+		catch(e) { console.log("localStorage error: ", e); }
+	}
+	/*static storePlayerId() {
+		try { localStorage.setItem("playerId", this.playerId.toString()); }
+		catch(e) { console.log("localStorage error: ", e); }
+	}*/
+	static storeRejoinInfo(token: number) {
 		try {
-			localStorage.setItem("rejoinCode", this.joinCode);
-			localStorage.setItem("rejoinId", id.toString());
+			if (this.joinCode !== "") localStorage.setItem("rejoinCode", this.joinCode);
+			localStorage.setItem("rejoinId", this.playerId.toString());
 			localStorage.setItem("rejoinToken", token.toString());
 		} catch(e) {
 			console.error("Error saving rejoinInfo to localStorage: ", e);
@@ -38,20 +48,21 @@ class Globals {
 	}
 	static getJoinUrl(): string | null {
 		if (this.playerName && this.joinCode) {
-			return `${wsRoot}/play/join?name=${this.playerName}&code=${this.joinCode.toUpperCase()}`;
+			return `${Shared.wsRoot}/play/join?code=${this.joinCode.toUpperCase()}&name=${this.playerName}&icon=${this.playerIcon}`;
 		} else {
 			return null;
 		}
 	}
 	static getRejoinUrl(): string | null {
 		let name = this.playerName;
+		let icon = this.playerIcon;
 		let code = localStorage.getItem("rejoinCode")?.toUpperCase();
 		let id = localStorage.getItem("rejoinId");
 		let token = localStorage.getItem("rejoinToken");
 		/* Maybe length check name and code? */
 		if (name && code && id && token) {
-			let params = `code=${code}&name=${name}&id=${id}&token=${token}`;
-			return `${wsRoot}/play/rejoin?${params}`;
+			let params = `code=${code}&name=${name}&icon=${icon}&id=${id}&token=${token}`;
+			return `${Shared.wsRoot}/play/rejoin?${params}`;
 		} else {
 			return null;
 		}

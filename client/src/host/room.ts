@@ -3,42 +3,27 @@
 import Signal from "../modules/signal"
 import State from "../modules/state"
 import { Variant, unit, variant } from "../modules/variant"
-import Extract, { ReceiveIndex, SendIndex } from "../modules/validate"
+import Validate, { ReceiveIndex, SendIndex } from "../modules/validate"
+import client from "../modules/client"
+import * as Shared from "../modules/shared"
 
-export class Player {
-	public name: string;
-	constructor(name: string) {
-		this.name = name;
-	}
-}
+
 
 export const playerJoined = new Signal<{ playerId: number, player: Player }>();
 export const playerLeft = new Signal<{ playerId: number, player: Player }>()
+export const playerIconChanged = new Signal<{ playerId: number, player: Player }>();
 
 export let joinCode = "";
 export let players: Player[] = [];
-
-export function handlePlayerJoined(playerId: number, playerName: string) {
-	const player = new Player(playerName);
-	players[playerId] = player;
-	playerJoined.emit({ playerId, player });
-}
-export function handlePlayerLeft(playerId: number) {
-	const player = players[playerId];
-	delete players[playerId];
-	playerLeft.emit({ playerId, player });
-}
-export function handleDisconnected() {
-	//let oldPlayers = players;
-	joinCode = "";
-	players = [];
-}
 
 export function playerCount(): number {
 	return playerIds().length;
 }
 export function playerName(id: number): string | undefined {
 	return players[id].name;
+}
+export function playerIcon(id: number): number {
+	return players[id].icon;
 }
 export function playerIds(): number[] {
 	return Array.from(players.keys());
@@ -50,36 +35,46 @@ export function getJoinCode(): string {
 	return joinCode;
 }
 
-//type Settings = { [key: string]: }
-
-//type Settings = { [key: string]: State<any> };
-
-/*export class Room {
+const INC = new ReceiveIndex({
+	"accepted": { joinCode: Validate.STRING },
+	"playerJoined": { playerId: Validate.NUMBER, name: Validate.STRING, icon: Validate.NUMBER },
+	"playerLeft": { playerId: Validate.NUMBER },
+	"playerIconChanged": { playerId: Validate.NUMBER, icon: Validate.NUMBER }
+});
+const OUT = new SendIndex({
 	
-	static readonly playerJoined = new Signal<{ playerId: number, player: Player }>();
-	static readonly playerLeft = new Signal<{ playerId: number, player: Player }>();
-	
-	static joinCode: string = "";
-	static players: Player[] = [];
-	
-	static setJoinCode(code: string) {
-		this.joinCode = code;
+});
+
+client.use(INC, OUT);
+INC.listen("accepted", ({ joinCode }) => setJoinCode(joinCode));
+INC.listen("playerJoined", ({ playerId, name, icon }) => {
+	const player = new Player(playerId, name, icon);
+	players[playerId] = player;
+	playerJoined.emit({ playerId, player });
+});
+INC.listen("playerLeft", ({ playerId }) => {
+	const player = players[playerId];
+	delete players[playerId];
+	playerLeft.emit({ playerId, player });
+});
+INC.listen("playerIconChanged", ({ playerId, icon }) => {
+	const player = players[playerId];
+	player.icon = icon;
+	playerIconChanged.emit({ playerId, player });
+});
+client.disconnected.listen(() => {
+	joinCode = "";
+	players = [];
+});
+
+export class Player {
+	public id: number;
+	public name: string;
+	public icon: number;
+	get color() { return Shared.playerColor(this.id); }
+	constructor(id: number, name: string, icon: number) {
+		this.id = id;
+		this.name = name;
+		this.icon = icon;
 	}
-	static handlePlayerJoined(playerId: number, playerName: string) {
-		const player = new Player(playerName);
-		this.players[playerId] = player;
-		this.playerJoined.emit({ playerId, player });
-	}
-	static handlePlayerLeft(playerId: number) {
-		const player = this.players[playerId];
-		delete this.players[playerId];
-		this.playerLeft.emit({ playerId, player });
-	}
-}*/
-
-
-
-
-
-
-
+}

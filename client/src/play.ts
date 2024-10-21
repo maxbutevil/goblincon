@@ -1,16 +1,18 @@
 
-import "./styles.css"
+import "./shared.css"
+import "./play.css"
 
-import Signal from "./modules/signal"
-import State from "./modules/state"
-import { Variant, unit, variant } from "./modules/variant"
-import Validate, { ReceiveIndex, SendIndex } from "./modules/validate"
-import client, { Connection } from "./modules/client"
-import * as Utils from "./modules/shared"
+import {
+	State, Variant, unit, variant,
+	Validate, ReceiveIndex, SendIndex,
+	client, Connection,
+	Shared,
+	PlayerIcons,
+	patchRoot, h, fragment, stateful, contained, VNode,
+} from "./modules/index"
 
 import Globals from "./play/globals"
 import * as Drawblins from "./play/drawblins"
-import { patchRoot, h, fragment, stateful } from "./modules/render"
 
 const INC = new ReceiveIndex({
 	terminated: Validate.NONE,
@@ -21,7 +23,8 @@ const INC = new ReceiveIndex({
 	inGame: Validate.NONE, // eventually needs to hold the settings
 });
 const OUT = new SendIndex({
-	startGame: Validate.NONE
+	startGame: Validate.NONE,
+	changeIcon: { icon: Validate.NUMBER }
 });
 
 type Page = 
@@ -56,7 +59,8 @@ INC.listen("terminated", () => {
 	Globals.clearRejoinInfo();
 });
 INC.listen("accepted", ({ playerId, token }) => {
-	Globals.setRejoinInfo(playerId, token);
+	Globals.playerId = playerId;
+	Globals.storeRejoinInfo(token);
 });
 INC.listen("inLobby", ({ promoted }) => {
 	statusNone();
@@ -119,7 +123,7 @@ function landing() {
 		if (url) client.connect(url);
 	}
 	
-	const canHost = !Utils.isMobileClient;
+	const canHost = !Shared.isMobileClient;
 	
 	return h("div#landing.tab", [
 		h("div", [
@@ -176,8 +180,39 @@ function lobby(promoted: boolean) {
 		OUT.send("startGame", undefined);
 	}
 	
+	function iconSelect() {
+		
+		return contained(rerender => {
+			
+			let icons: VNode[] = [];
+			for (let i = 0; i < PlayerIcons.count(); i++) {
+				let color = Globals.playerIcon === i ? Globals.playerColor : "#ffffff";
+				let src = PlayerIcons.get(i, color);
+				icons.push(h(
+					"img.player-icon",
+					{
+						attrs: { src },
+						on: {
+							click: () => {
+								Globals.playerIcon = i;
+								Globals.storePlayerIcon();
+								OUT.send("changeIcon", { icon: i });
+								rerender();
+							}
+						}
+					},
+				));
+			}
+			
+			return h("div.icon-select", icons);
+		});
+		
+		
+	}
+	
 	return h("div#lobby.tab", [
 		h("h1", "Lobby!!"),
+		iconSelect(),
 		(!promoted) ? null :
 			fragment([
 				h(
@@ -190,6 +225,7 @@ function lobby(promoted: boolean) {
 	]);
 }
 
+patchRoot(app());
 function app() {
 	/* Attempt rejoin */
 	let rejoinUrl = Globals.getRejoinUrl();
@@ -204,7 +240,7 @@ function app() {
 	});
 }
 
-window.addEventListener("DOMContentLoaded", () => patchRoot(app()));
+
 window.onbeforeunload = () => client.close();
 
 

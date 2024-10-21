@@ -1,20 +1,19 @@
 
 
+import {
+	Signal, State, Variant, unit, variant,
+	Validate, ReceiveIndex, SendIndex,
+	Shared,
+	client,// Connection,
+	h, conditional, stateful, contained, cleaned
+} from "../modules/index"
 
-import client, { Connection } from "../modules/client"
-import Signal from "../modules/signal"
-import State from "../modules/state"
-import { Variant, unit, variant } from "../modules/variant"
-import Validate, { ReceiveIndex, SendIndex } from "../modules/validate";
 import Globals from "./globals"
-import * as Utils from "../modules/shared"
+
+import countdown from "../components/countdown"
 import Canvas, { Path } from "../modules/canvas"
 
-import { h, conditional, stateful, contained, cleaned } from "../modules/render"
-import countdown from "../components/countdown"
-
 import * as icons from "../assets/drawpad/index"
-
 
 const INC = new ReceiveIndex({
 	waiting: Validate.choice<"start" | "draw" | "vote" | "results" | "score">("start", "draw", "vote", "results", "score"),
@@ -164,7 +163,7 @@ function drawPad() {
 				const isSelected = drawMode.type === "draw" && drawMode.color === color;
 				let borderColor = isSelected ? "white" : color;
 				
-				return h("button.button.color-select-button",
+				return h("button.button.color-select-btn",
 					{
 						style: {
 							backgroundColor: color,
@@ -184,7 +183,8 @@ function drawPad() {
 			function eraseButton() {
 				const isSelected = drawMode.type === "erase";
 				let borderColor = isSelected ? "black" : "white";
-				return h("button.button.color-select-button",
+				return h(
+					"button.button.color-select-btn",
 					{
 						style: {
 							backgroundColor: "white",
@@ -203,8 +203,8 @@ function drawPad() {
 				);
 			}
 			
-			return h("div#color-select.button-row", [
-				...Utils.COLORS.map(color => colorButton(color)),
+			return h("div#color-select.btn-row", [
+				...Shared.COLORS.map(color => colorButton(color)),
 				eraseButton()
 			]);
 		});
@@ -348,7 +348,7 @@ function drawPad() {
 		return contained(rerender => {
 			const iconSrc = drawMode.weight === "thin" ? icons.thin : icons.thick;
 			return h(
-				"button#weight-button",
+				"button#weight-btn",
 				{
 					on: {
 						click: () => {
@@ -420,12 +420,12 @@ function drawPad() {
 					}
 				}
 			}, "You don't have canvas support!"),
-			h("div#draw-utils.button-row", [
-				h("button#undo-button", { on: { click: undo }}, icon(icons.undo)),
-				h("button#redo-button", { on: { click: redo }}, icon(icons.redo)),
+			h("div#draw-utils.btn-row", [
+				h("button#undo-btn", { on: { click: undo }}, icon(icons.undo)),
+				h("button#redo-btn", { on: { click: redo }}, icon(icons.redo)),
 				lineWidthBtn(),
-				h("button#spacer-button", { attrs: { disabled: true } }),
-				h("button#submit-button", { on: { click: submit }}, "Submit")
+				h("button#spacer-btn", { attrs: { disabled: true } }),
+				h("button#submit-btn", { on: { click: submit }}, "Submit")
 			])
 		])
 	);
@@ -447,11 +447,14 @@ function vote(endTime: number, choices: string[]) {
 	return h("div#vote.tab", [
 		h("h1", "Vote!!"),
 		countdown(endTime),
-		...(choices
-			.filter(name => name !== Globals.playerName)
-			.map(name => h("button", {
-				on: { click: () => submitVote(name) }
-			}, name)))// can't vote for yourself
+		...(choices.map(name => 
+			(name === Globals.playerName) ? null : // can't vote for yourself
+				h(
+					"button",
+					{	on: { click: () => submitVote(name) } },
+					name
+				)
+		))
 	]);
 }
 function idle(header: string, subheader?: string) {

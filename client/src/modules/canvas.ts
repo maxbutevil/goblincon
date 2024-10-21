@@ -85,7 +85,7 @@ export default class Canvas {
 	}
 	static fromImage(image: HTMLImageElement): Canvas {
 		let canvas = Canvas.create(image.width, image.height);
-		canvas.ctx.drawImage(image, 0, 0);
+		canvas.putImage(image);
 		return canvas;
 	}
 	static create(sourceWidth: number, sourceHeight: number): Canvas {
@@ -282,6 +282,9 @@ export default class Canvas {
 	}
 	putImageData(data: ImageData, x = 0, y = 0): void {
 		this.ctx.putImageData(data, x, y);
+	}
+	putImage(image: CanvasImageSource, x = 0, y = 0) {
+		this.ctx.drawImage(image, x, y);
 	}
 }
 

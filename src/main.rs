@@ -98,17 +98,24 @@ async fn main() {
 #[serde(rename_all = "camelCase")]
 struct JoinQuery {
 	code: String,
-	name: String
+	name: String,
+	
+	#[serde(default = "default_icon")]
+	icon: PlayerIcon
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RejoinQuery {
 	code: String,
 	name: String,
+	#[serde(default = "default_icon")]
+	icon: PlayerIcon,
+	
 	id: PlayerId,
 	token: PlayerToken
 }
 
+fn default_icon() -> u8 { 2 }
 
 //#[debug_handler]
 async fn ws_upgrade_host(State(app): State<App>, ws: WebSocketUpgrade) -> Response {
@@ -125,7 +132,7 @@ async fn ws_upgrade_player_join(
 {
 	if let Some(room_id) = app.find_room(&query.code) {
 		return Ok(ws.on_upgrade(move |socket| async move {
-			app.accept_player_join(socket, room_id, query.name).await
+			app.accept_player_join(socket, room_id, query.name, query.icon).await
 		}));
 	}
 	
@@ -140,7 +147,7 @@ async fn ws_upgrade_player_rejoin(
 {
 	if let Some(room_id) = app.find_room(&query.code) {
 		return Ok(ws.on_upgrade(move |socket| async move {
-			app.accept_player_rejoin(socket, room_id, query.name, query.id, query.token).await
+			app.accept_player_rejoin(socket, room_id, query.name, query.icon, query.id, query.token).await
 		}));
 	}
 	

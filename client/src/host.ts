@@ -1,25 +1,27 @@
-import './styles.css'
+import "./shared.css"
+import "./host.css"
 
-import Signal from "./modules/signal"
-import State from "./modules/state"
-import { Variant, unit, variant } from "./modules/variant"
-import Validate, { ReceiveIndex, SendIndex } from "./modules/validate"
-import client, { Connection } from "./modules/client"
-import * as Utils from "./modules/shared"
+import {
+	State, Variant, unit, variant,
+	Validate, ReceiveIndex, SendIndex,
+	client,
+	Shared,
+	PlayerIcons,
+	patchRoot, h, fragment, signaled, stateful
+} from "./modules/index"
+
 import * as Room from "./host/room"
-import Setting from "./host/setting"
-import { patchRoot, h, fragment, signaled, stateful } from "./modules/render"
 import * as Drawblins from "./host/drawblins"
+import Setting from "./host/setting"
 
 const INC = new ReceiveIndex({
-	"accepted": { joinCode: Validate.STRING },
+	
 	"terminated": Validate.NONE,
 	
 	"inLobby": Validate.NONE,
 	"gameStarting": Validate.NONE,
 	//"gameStarted": Validate.NONE,
-	"playerJoined": { playerId: Validate.NUMBER, playerName: Validate.STRING },
-	"playerLeft": { playerId: Validate.NUMBER }
+	
 
 	//"drawingSubmitted": { playerId: Validate.NUMBER, drawing: Validate.STRING },
 	//"voteSubmitted": { playerId: Validate.NUMBER, forId: Validate.NUMBER }
@@ -39,20 +41,13 @@ const OUT = new SendIndex({
 	)
 });
 
-INC.listen("accepted", ({ joinCode }) => {
-	Room.setJoinCode(joinCode);
-});
+
 INC.listen("terminated", () =>
 	page.set(unit("landing"))); // should maybe have an error code thing
 
 INC.listen("inLobby", () =>
 	page.set(unit("lobby")));
-INC.listen("playerJoined", ({ playerId, playerName }) =>
-	Room.handlePlayerJoined(playerId, playerName));
-INC.listen("playerLeft", ({ playerId }) =>
-	Room.handlePlayerLeft(playerId));
-client.disconnected.listen(() =>
-	Room.handleDisconnected());
+
 INC.listen("gameStarting", () => {
 	// here we relay the game settings and set the page accordingly
 	switch(game.get()) {
@@ -75,19 +70,23 @@ type Page =
 const page = new State<Page>(unit("landing"));
 const game = new Setting<"drawblins">("Game Mode", [ "drawblins" ]);
 
-window.addEventListener("DOMContentLoaded", () => {
+//window.addEventListener("DOMContentLoaded", () => {
+
+
+patchRoot(app());
+function app() {
 	client.use(INC, OUT);
-	client.connect(`${Utils.wsRoot}/host`);
+	client.connect(`${Shared.wsRoot}/host`);
 	
-	patchRoot(stateful(page, (curr) => {
+	return stateful(page, (curr) => {
 		switch (curr.key) {
 			case "landing": return landing();
 			case "lobby": return lobby();
 			case "drawblins": return Drawblins.view();
 			default: return h("div", {});
 		}
-	}));
-});
+	});
+}
 
 function landing() {
 	return h(
@@ -129,13 +128,22 @@ function modeSettings() {
 }
 function playerList() {
 	
-	return signaled([Room.playerJoined, Room.playerLeft], () => {
+	const signals = [
+		Room.playerJoined,
+		Room.playerLeft,
+		Room.playerIconChanged
+	];
+	return signaled(signals, () => {
 		if (Room.playerCount() === 0) {
 			return h("div.player-name", "No players yet!");
 		} else {
-			return fragment(Room.players.map((player) => 
-				h("div.player-name", player.name)
-			));
+			return fragment(Room.players.map((player) => {
+				console.log(player.color);
+				return h("div.player-name", [
+					PlayerIcons.view(player.icon, player.color),
+					player.name
+				]);
+			}));
 		}
 	});
 }
