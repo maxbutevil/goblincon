@@ -25,8 +25,8 @@ body {
     font-family: Arial;
     background-color: #eeeee8;
 }
-input {
-    padding: 2px;
+button {
+    color: black;
 }
 
 .status {

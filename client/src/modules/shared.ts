@@ -14,7 +14,7 @@ const CORE_COLORS = [
 	"#ffff00", // yellow
 	"#00ff00", // green
 	"#0099ff", // light blue
-	"#0000ff", // blue
+	"#2233ff", // blue
 	"#9900ff", // purple
 	"#ff88bb", // pink
 ];
@@ -25,8 +25,8 @@ export const COLORS = [
 export const PLAYER_COLORS = [
 	...CORE_COLORS,
 	"#880000", // dark red
-	"#007700", // dark green
-	"#000077", // dark blue
+	"#008800", // dark green
+	"#0000BB", // dark blue
 	"#dddddd", // light gray,
 	"#999999", // medium gray
 	"#555555", // dark gray

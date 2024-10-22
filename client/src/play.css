@@ -4,21 +4,42 @@
 .tab#landing {
 	justify-content: space-between;
 }
+.tab#landing .icon-row {
+	display: flex;
+	flex-flow: row nowrap;
+	font-size: 2em;
+}
+
+.tab#join-input {
+	font-size: 1.2em;
+}
 .tab#landing input {
 	margin-top: 2px;
+	width: 9em;
+	
+	font-size: 0.9em;
+	border: 2px solid #333;
+	border-radius: 4px;
 }
 .tab#landing button {
 	margin-top: 6px;
+	
+	font-size: 0.9em;
+	border: 2px solid #333;
+	border-radius: 4px;
 }
+
 
 #code-input {
 	text-transform: uppercase;
 }
 
+
 /* Lobby */
 .icon-select {
 	display: flex;
 	flex-flow: row wrap;
+	justify-content: center;
 	font-size: 2em;
 }
 

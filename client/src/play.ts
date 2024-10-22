@@ -70,7 +70,10 @@ INC.listen("inGame", () => {
 	page.set(unit("drawblins"));
 });
 INC.listen("error", (message) => {
-	statusError(message);
+	if (Globals.hasJoinCode())
+		statusError(message);
+	else
+		console.warn("Couldn't rejoin game: ", message);
 });
 
 function statusMessage() {
@@ -125,13 +128,16 @@ function landing() {
 	
 	const canHost = !Shared.isMobileClient;
 	
+	const rowIcons = ([0, 1, 2, 3, 4, 5, 6]).map(i => PlayerIcons.view(i, Shared.PLAYER_COLORS[i]));
+	
 	return h("div#landing.tab", [
 		h("div", [
 			h("h1", "GoblinCon"),
+			h("icon-row", rowIcons),
 			stateful(client.state, curr => {
 				const disabled = (curr !== Connection.CLOSED);
 				return h(
-					"div.tab.join-input",
+					"div#join-input.tab",
 					[
 						h("div.join-input-section", [
 							h("div", "Nickname"),
