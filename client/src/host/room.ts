@@ -1,12 +1,12 @@
 
-
-import Signal from "../modules/signal"
-import State from "../modules/state"
-import { Variant, unit, variant } from "../modules/variant"
-import Validate, { ReceiveIndex, SendIndex } from "../modules/validate"
-import client from "../modules/client"
-import * as Shared from "../modules/shared"
-
+import {
+	Signal, State, Variant, unit, variant,
+	Validate, ReceiveIndex, SendIndex,
+	client,
+	Shared,
+	PlayerIcons,
+	h
+} from "../modules/index"
 
 
 export const playerJoined = new Signal<{ playerId: number, player: Player }>();
@@ -18,6 +18,9 @@ export let players: Player[] = [];
 
 export function playerCount(): number {
 	return playerIds().length;
+}
+export function player(id: number): Player | undefined {
+	return players[id];
 }
 export function playerName(id: number): string | undefined {
 	return players[id].name;
@@ -77,4 +80,14 @@ export class Player {
 		this.name = name;
 		this.icon = icon;
 	}
+	static icon(player: Player) {
+		return PlayerIcons.view(player.icon, player.color);
+	}
+	static view(player: Player) {
+		return h("div.player-view", [
+			Player.icon(player),
+			player.name
+		]);
+	}
 }
+

@@ -11,13 +11,14 @@ import * as Utils from "../modules/shared"
 import { h, signaled, stateful, VNode } from "../modules/render"
 
 import * as Room from "./room"
+import { Player } from "./room"
 import Setting, { SettingsRemoteOf, toRemote } from "./setting"
 import * as PlayerIcons from "../modules/player_icons"
 
 //import { motion } from "framer-motion"
 
 const INC = new ReceiveIndex({
-	"gameStarted": Validate.NONE,
+	"gameStarted": Validate.NONE, // Kind of vestigial
 	"drawing": { goblinName: Validate.STRING },
 	"voting": Validate.NONE,
 	"results": Validate.NONE,
@@ -65,6 +66,7 @@ function addScore(playerId: number, amount: number) {
 	scores[playerId] = getScore(playerId) + amount;
 }
 
+INC.listen("gameStarted", () => {});
 INC.listen("drawing", ({ goblinName }) => {
 	rounds.push(new Round(goblinName));
 	page.set(unit("drawing"));
@@ -72,7 +74,7 @@ INC.listen("drawing", ({ goblinName }) => {
 INC.listen("voting", () => page.set(unit("voting")));
 INC.listen("results", () => {
 	
-	const DELAY_MS = 0.9 * 1000;
+	const DELAY_MS = 0.8 * 1000;
 	
 	let round = currentRound();
 	for (const id of Room.playerIds())
@@ -83,7 +85,7 @@ INC.listen("results", () => {
 	for (let i = 0; i < 100; i++) {
 		let anyLeft = false;
 		for (const [forId, votes] of round.votesReceived.entries()) {
-			if (votes.length > i) {
+			if (votes !== undefined && votes.length > i) {
 				voteQueue.push({ playerId: votes[i], forId })
 				anyLeft = true;
 			}
@@ -158,9 +160,8 @@ function voting() {
 		
 		let submissions: VNode[] = [];
 		for (const id of Room.playerIds()) {
-			let drawing = currentRound().drawings[id];
-			if (drawing !== null)
-				submissions.push(submission(Room.playerName(id)!, drawing, votes[id]));
+			if (currentRound().drawings[id] !== undefined)
+				submissions.push(submission(id, votes[id]));
 		}
 		
 		let aspectRatio = window.innerWidth / window.innerHeight;
@@ -220,40 +221,38 @@ function scoring() {
 		]
 	);
 }
-function submission(playerName: string, drawing: string, votes: number[] = []) {
+function submission(playerId: number, votes: number[] = []) {
 	
 	//const playerName = Room.playerName(playerId);
 	//const drawing = currentRound().drawings[playerId];
+	let player = Room.player(playerId)!;
+	let drawing = currentRound().drawings[playerId];
 	
 	return h(
 		"div.submission",
 		[
 			h("img", { attrs: { src: drawing }}),
-			h("div.player-name", playerName),
+			Player.view(player),
 			h("div.vote-ctr", votes.map(playerId => {
-				let player = Room.players[playerId];
-				let src = PlayerIcons.get(player.icon, player.color);
-				return h(
-					"img.player-icon.vote-icon",
-					{ attrs: { src } }
-				);
+				return Player.icon(Room.players[playerId]);
 			}))
 		]
 	);
 }
 function scoreEntry(playerId: number, rank: number) {
-	let name = Room.playerName(playerId);
+	//let name = Room.playerName(playerId);
+	let player = Room.players[playerId];
 	let score = getScore(playerId);
 	return h(
 		"div.score-entry",
 		[
-			h("span.name", `${rank}. ${name}`),
-			h("span.score", score)
+			h("div.player-view", [
+				Player.icon(player),
+				`${player.name} (${score}pts)`,
+			]),
+			//h("span.name", `${rank}. ${name}`),
 		]
 	);
-}
-function VoteIcon({ index }: { index: number }) {
-	return h("div.vote-icon.fade-in");
 }
 
 class Round {
@@ -274,8 +273,10 @@ class Round {
 		this.votesSent[playerId] = forId;
 		this.votesReceived[forId] ??= [];
 		this.votesReceived[forId].push(playerId);
-		//this.voteCounts[forId] = 1 + (this.voteCounts[forId] ?? 0);
 	}
+	/*drawing(playerId: number): string | undefined {
+		return this.drawings[playerId];
+	}*/
 }
 
 

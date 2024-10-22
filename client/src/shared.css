@@ -42,14 +42,17 @@ input {
 }
 
 .player-icon {
-    width: 2em;
-    height: 2em;
-    display: inline-block;
-    vertical-align: middle;
-    margin-left: 0.25em;
-    margin-right: 0.25em;
-    flex: 0 0 2em;
+    width: 2.4em;
+    height: 2.4em;
+    flex: 0 0 2.4em;
 }
+.player-view {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    gap: 0.3em;
+}
+
 
 .tab {
     display: flex;
@@ -60,48 +63,3 @@ input {
     gap: 10px;
     margin: 28px;
 }
-
-
-
-
-/*.submission-ctr {
-    display: flex;
-    flex-flow: row wrap;
-    justify-content: center;
-    gap: 0.6em;
-}*/
-
-/*.submission-ctr {
-    display: flex;
-    flex-flow: row wrap;
-    justify-content: center;
-}*/
-
-
-/*body {
-  margin: 0;
-  color: #fff;
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  background-image: linear-gradient(to bottom, #020917, #101725);
-}
-
-.content {
-  display: flex;
-  min-height: 100vh;
-  line-height: 1.1;
-  text-align: center;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.content h1 {
-  font-size: 3.6rem;
-  font-weight: 700;
-}
-
-.content p {
-  font-size: 1.2rem;
-  font-weight: 400;
-  opacity: 0.5;
-}*/
-

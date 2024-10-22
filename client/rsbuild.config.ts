@@ -3,7 +3,7 @@ import { defineConfig } from '@rsbuild/core';
 export default defineConfig({
 	source: {
 		entry: {
-			testing: "./src/testing.ts",
+			//testing: "./src/testing.ts",
 			host: "./src/host.ts",
 			play: "./src/play.ts",
 		}

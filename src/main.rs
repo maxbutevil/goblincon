@@ -48,13 +48,6 @@ async fn main() {
 		//.with_level(display_level)
 		//.init();
 	
-	/*env_logger::builder()
-		.filter_level(log::LevelFilter::Info)
-		//.filter_level(log::LevelFilter::Debug)
-		//.format_target(false)
-		.format_timestamp(None)
-		.init();*/
-	
 	use tokio::net::TcpListener;
 	use axum::{
 		Router,
@@ -65,14 +58,7 @@ async fn main() {
 		.route("/host", get(ws_upgrade_host))
 		.route("/play/join", get(ws_upgrade_player_join))
 		.route("/play/rejoin", get(ws_upgrade_player_rejoin));
-	/*let page_router = Router::new()
-		// ServeDir handles index.html already (but not the others)
-		.route("/", get(|| async { Redirect::to("/play") }))
-		.route_service("/host", ServeFile::new("client/dist/host.html"))
-		.route_service("/play", ServeFile::new("client/dist/play.html"))
-		.fallback(|| async { "Page Not Found" });*/
 	let static_service = ServeDir::new("client/dist/static")
-		//.fallback(page_router)
 		.append_index_html_on_directories(false);
 	let router = Router::new()
 		.nest("/ws", ws_router)

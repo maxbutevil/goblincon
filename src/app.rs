@@ -668,12 +668,12 @@ mod drawblins {
 	
 	use super::*;
 	
-	const MAX_PLAYER_COUNT: usize = 12;
+	const MAX_PLAYER_COUNT: usize = 16;
 	const START_DURATION: Duration = Duration::from_secs(3);
-	const DRAW_DURATION: Duration = Duration::from_secs(150);
+	const DRAW_DURATION: Duration = Duration::from_secs(120);
 	const VOTE_DURATION: DynamicDuration = DynamicDuration::from_secs(12, 2);
-	const RESULTS_DURATION: DynamicDuration = DynamicDuration::from_secs(8, 1);
-	const SCORE_DURATION: Duration = Duration::from_secs(10);
+	const RESULTS_DURATION: DynamicDuration = DynamicDuration::from_secs(6, 1);
+	const SCORE_DURATION: Duration = Duration::from_secs(6);
 	
 	#[derive(Serialize, Deserialize)]
 	#[serde(rename_all = "camelCase")]
@@ -713,7 +713,7 @@ mod drawblins {
 	#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 	enum PlayerMsgIn {
 		DrawingSubmission { drawing: String },
-		VoteSubmission { for_name: String } //for_id: PlayerId }
+		VoteSubmission { for_name: String },
 	}
 	
 	#[derive(Serialize, Clone)]

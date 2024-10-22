@@ -6,11 +6,12 @@ import {
 	Validate, ReceiveIndex, SendIndex,
 	client,
 	Shared,
-	PlayerIcons,
+	//PlayerIcons,
 	patchRoot, h, fragment, signaled, stateful
 } from "./modules/index"
 
 import * as Room from "./host/room"
+import { Player } from "./host/room"
 import * as Drawblins from "./host/drawblins"
 import Setting from "./host/setting"
 
@@ -134,17 +135,15 @@ function playerList() {
 		Room.playerIconChanged
 	];
 	return signaled(signals, () => {
-		if (Room.playerCount() === 0) {
+		if (Room.playerCount() === 0)
 			return h("div.player-name", "No players yet!");
-		} else {
-			return fragment(Room.players.map((player) => {
-				console.log(player.color);
-				return h("div.player-name", [
+		else
+			return fragment(Room.players.map((player) => Player.view(player)))
+				/*return h("div.player-name", [
 					PlayerIcons.view(player.icon, player.color),
 					player.name
-				]);
-			}));
-		}
+				]);*/
+			//}));
 	});
 }
 

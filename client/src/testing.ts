@@ -1,4 +1,5 @@
 import "./shared.css"
+import "./host.css"
 import State from './modules/state'
 import { h, patch, patchRoot, stateful, cleaned, fragment, VNode } from './modules/render';
 
@@ -24,9 +25,10 @@ function submission(): VNode {
 }
 
 
+
 patchRoot(
 	h(
-		"span",
+		"div",
 		[
 			PlayerIcon.view(2, "red"),
 			"Ok"

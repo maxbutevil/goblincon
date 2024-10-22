@@ -15,7 +15,6 @@ export default class Validate {
 	static NUMBER = Validate.simple<number>("number");
 	static STRING = Validate.simple<string>("string");
 	
-	
 	private static simple<T>(typeString: string): ValidatorMethod<T> {
 		return (value: any): value is T => typeof value === typeString;
 	}
