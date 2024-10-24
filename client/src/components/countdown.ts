@@ -1,8 +1,6 @@
 
 
-import State from "../modules/state"
-import { h, stateful, cleaned } from "../modules/render"
-
+import { State, h, stateful, cleaned } from "../modules/index"
 
 export default function countdown(endTime: number, onFinish?: () => void) {
 	

@@ -145,14 +145,6 @@ class Ref {
     //oldVnode = patch(oldVnode, h("!"));
     tail.node = patch(oldVnode, tail.node as VNode);
   }
-  /*static to(vnode: VNode, cleanup: Cleanup): Ref {
-    return new Ref(vnode, cleanup);
-    //vnode.data ??= {};
-    //vnode.data.props ??= {};
-    //console.log("old ref = ", vnode.data.props.ref)
-    //console.log(vnode.data.props.ref ?? vnode);
-    //return vnode.data.props.ref = new Ref(vnode.data.props.ref ?? vnode, cleanup);
-  }*/
   static consume(curr: Ref | VNode): VNode {
     if (curr instanceof Ref) {
       return curr.destroy();
@@ -184,12 +176,6 @@ class Ref {
     for (const child of this.children)
       child.destroy();
   }
-  /*patch(builder: () => VNode) {
-    let oldVnode = Ref.consume(this.node);
-    this.rebuild(builder);
-    let newVnode = patch(oldVnode, vnode);
-    this.node = ref ?? newVnode;
-  }*/
   tail(): Ref {
     if (this.node instanceof Ref)
       return this.node.tail();

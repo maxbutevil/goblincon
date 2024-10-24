@@ -4,11 +4,6 @@
 .tab#landing {
 	justify-content: space-between;
 }
-.tab#landing .icon-row {
-	display: flex;
-	flex-flow: row nowrap;
-	font-size: 2em;
-}
 
 .tab#join-input {
 	font-size: 1.2em;

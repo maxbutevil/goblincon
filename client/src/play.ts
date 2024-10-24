@@ -14,6 +14,8 @@ import {
 import Globals from "./play/globals"
 import * as Drawblins from "./play/drawblins"
 
+import logo from "./components/logo"
+
 const INC = new ReceiveIndex({
 	terminated: Validate.NONE,
 	error: Validate.STRING,
@@ -128,12 +130,9 @@ function landing() {
 	
 	const canHost = !Shared.isMobileClient;
 	
-	const rowIcons = ([0, 1, 2, 3, 4, 5, 6]).map(i => PlayerIcons.view(i, Shared.PLAYER_COLORS[i]));
-	
 	return h("div#landing.tab", [
 		h("div", [
-			h("h1", "GoblinCon"),
-			h("icon-row", rowIcons),
+			logo(),
 			stateful(client.state, curr => {
 				const disabled = (curr !== Connection.CLOSED);
 				return h(

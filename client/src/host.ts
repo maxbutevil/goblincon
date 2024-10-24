@@ -15,6 +15,8 @@ import { Player } from "./host/room"
 import * as Drawblins from "./host/drawblins"
 import Setting from "./host/setting"
 
+import logo from "./components/logo"
+
 const INC = new ReceiveIndex({
 	
 	"terminated": Validate.NONE,
@@ -98,24 +100,30 @@ function landing() {
 	);
 }
 function lobby() {
-	return h("div#host-lobby", {}, [
-		h("div.tab.overview", {}, [
-			h("h1", {}, "Lobby"),
-			h("div", {}, [
-				h("h2", {}, "Join Code"),
-				h("div#join-code", {}, Room.getJoinCode())
-			]),
-			h("div", {}, [
-				h("h2", {}, "Players"),
-				playerList()
-			]),
-		]),
-		h("div.tab.game-settings", {}, [
-			h("h1", {}, "Settings"),
-			Setting.view(game),
-			modeSettings()
-		])
-	]);
+	return h(
+		"div.tab",
+		[
+			logo(),
+			h("div#host-lobby", {}, [
+				h("div.tab.overview", {}, [
+					h("h1", {}, "Lobby"),
+					h("div", {}, [
+						h("h2", {}, "Join Code"),
+						h("div#join-code", {}, Room.getJoinCode())
+					]),
+					h("div", {}, [
+						h("h2", {}, "Players"),
+						playerList()
+					]),
+				]),
+				h("div.tab.game-settings", {}, [
+					h("h1", {}, "Settings"),
+					Setting.view(game),
+					modeSettings()
+				])
+			])
+		]
+	);
 }
 function modeSettings() {
 	

@@ -217,6 +217,7 @@ function scoring() {
 		"div.tab",
 		[
 			h("h1", "Scores"),
+			h("h2", `Round ${rounds.length}/${settings.roundCount.get()}`),
 			h("div.score-entry-ctr", entries)
 		]
 	);

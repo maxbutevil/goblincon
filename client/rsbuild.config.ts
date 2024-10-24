@@ -12,7 +12,7 @@ export default defineConfig({
 		title: "GoblinCon",
 		meta: {
 			charset: { charset: 'UTF-8' },
-			viewport: "width=device-width, user-scalable=no"
+			viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"
 		}
 	}
 });

@@ -63,7 +63,7 @@ async fn next_string(receiver: &mut WebSocketReceiver) -> Option<String> {
 				/* Ignore these, tungstenite handles them */
 			},
 			Ok(Message::Close(_)) => {
-				tracing::debug!("websocket connection closed");
+				//tracing::debug!("websocket connection closed");
 				return None;
 			},
 			Ok(message) => {

@@ -269,7 +269,7 @@ export default class Canvas {
 		this.ctx.beginPath();
 		let [sx, sy] = path.start()!;
 		
-		// shitty hack because some browsers won't draw anything if the start and end are identical
+		// mildly shitty hack because some browsers won't draw anything if the start and end are identical
 		this.ctx.moveTo(sx + 0.01, sy + 0.01);
 		for (const [x, y] of path.points())
 			this.ctx.lineTo(x, y);

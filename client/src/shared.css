@@ -41,6 +41,16 @@ button {
     font-size: 2em;
 }
 
+.tab {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    margin: 28px;
+}
+
 .player-icon {
     width: 2.4em;
     height: 2.4em;
@@ -53,13 +63,11 @@ button {
     gap: 0.3em;
 }
 
-
-.tab {
-    display: flex;
-    flex-flow: column nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    text-align: center;
-    gap: 10px;
-    margin: 28px;
+#icon-row {
+	display: flex;
+	flex-flow: row nowrap;
+	font-size: 1em;
 }
+
+
+
