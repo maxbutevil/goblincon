@@ -199,7 +199,7 @@ function voting() {
 }
 function scoring() {
 	
-	let sortedIds = Room.playerIds().sort((a, b) => {
+	let sortedIds = Array.from(Room.playerIds()).sort((a, b) => {
 		return getScore(b) - getScore(a);
 	});
 	
@@ -235,15 +235,17 @@ function submission(playerId: number, votes: number[] = []) {
 			h("img", { attrs: { src: drawing }}),
 			Player.view(player),
 			h("div.vote-ctr", votes.map(playerId => {
-				return Player.icon(Room.players[playerId]);
+				const player = Room.players.get(playerId);
+				return player === undefined ? null : Player.icon(player);
 			}))
 		]
 	);
 }
 function scoreEntry(playerId: number, rank: number) {
 	//let name = Room.playerName(playerId);
-	let player = Room.players[playerId];
-	let score = getScore(playerId);
+	const player = Room.players.get(playerId)!;
+	const score = getScore(playerId);
+	
 	return h(
 		"div.score-entry",
 		[
@@ -275,9 +277,6 @@ class Round {
 		this.votesReceived[forId] ??= [];
 		this.votesReceived[forId].push(playerId);
 	}
-	/*drawing(playerId: number): string | undefined {
-		return this.drawings[playerId];
-	}*/
 }
 
 

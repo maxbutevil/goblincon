@@ -3,6 +3,11 @@
 
 import { Shared } from "../modules/index"
 
+/*enum State {
+	REJOIN
+	CONNECTED
+}*/
+
 class Globals {
 	
 	static joinCode = new URLSearchParams(window.location.search).get("code") ?? "";

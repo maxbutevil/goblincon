@@ -9,34 +9,40 @@ import {
 } from "../modules/index"
 
 
-export const playerJoined = new Signal<{ playerId: number, player: Player }>();
-export const playerLeft = new Signal<{ playerId: number, player: Player }>()
-export const playerIconChanged = new Signal<{ playerId: number, player: Player }>();
+export const playerJoined = new Signal<Player>();
+export const playerLeft = new Signal<Player>()
+export const playerIconChanged = new Signal<Player>();
 
 export let joinCode = "";
-export let players: Player[] = [];
+//export let players: Player[] = [];
+export let players: Map<number, Player> = new Map();
 
-export function playerCount(): number {
-	return playerIds().length;
-}
-export function player(id: number): Player | undefined {
-	return players[id];
-}
-export function playerName(id: number): string | undefined {
-	return players[id].name;
-}
-export function playerIcon(id: number): number {
-	return players[id].icon;
-}
-export function playerIds(): number[] {
-	return Array.from(players.keys());
-}
 export function setJoinCode(code: string) {
 	joinCode = code;
 }
 export function getJoinCode(): string {
 	return joinCode;
 }
+
+export function playerCount() {
+	return players.size;
+}
+export function hasPlayer(id: number): boolean {
+	return players.has(id);
+}
+export function player(id: number): Player | undefined {
+	return players.get(id);
+}
+/*export function playerName(id: number): string | undefined {
+	return player(id)?.name;
+}
+export function playerIcon(id: number): number {
+	return players[id].icon;
+}*/
+export function playerIds(): IterableIterator<number> {
+	return players.keys();
+}
+
 
 const INC = new ReceiveIndex({
 	"accepted": { joinCode: Validate.STRING },
@@ -52,22 +58,30 @@ client.use(INC, OUT);
 INC.listen("accepted", ({ joinCode }) => setJoinCode(joinCode));
 INC.listen("playerJoined", ({ playerId, name, icon }) => {
 	const player = new Player(playerId, name, icon);
-	players[playerId] = player;
-	playerJoined.emit({ playerId, player });
+	players.set(playerId, player);
+	playerJoined.emit(player);
 });
 INC.listen("playerLeft", ({ playerId }) => {
-	const player = players[playerId];
-	delete players[playerId];
-	playerLeft.emit({ playerId, player });
+	const player = players.get(playerId);
+	if (player === undefined) {
+		console.warn("Received playerLeft for player that is not present.");
+	} else {
+		players.delete(playerId);
+		playerLeft.emit(player);
+	}
 });
 INC.listen("playerIconChanged", ({ playerId, icon }) => {
-	const player = players[playerId];
-	player.icon = icon;
-	playerIconChanged.emit({ playerId, player });
+	const player = players.get(playerId);
+	if (player === undefined) {
+		console.warn("Received playerIconChanged for player that is not present.");
+	} else {
+		player.icon = icon;
+		playerIconChanged.emit(player);
+	}
 });
 client.disconnected.listen(() => {
 	joinCode = "";
-	players = [];
+	players.clear();
 });
 
 export class Player {

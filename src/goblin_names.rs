@@ -198,6 +198,7 @@ const ROOT: StrTable = Table::new(&[
 		//"Londo Moneir",
 		//"Chin Steve",
 		"Chin",
+		"Chindle",
 		
 		"Fangle",
 		"Wilford",
@@ -210,8 +211,8 @@ const ROOT: StrTable = Table::new(&[
 		"Kilter",
 		"Kilbert",
 		"Dimples",
-		"Devio",
-		"Joe",
+		"Devious",
+		//"Joe",
 		//"Donny",
 		//"Kreibert",
 		//"Greeb",
@@ -289,7 +290,7 @@ const ROOT: StrTable = Table::new(&[
 		//"Yurn",
 		//"Agmor",
 		"Dimp",
-		"Tuggules",
+		//"Tuggules",
 		"Uncle Pete",
 		"Slobbo",
 		"Splunck",
@@ -374,10 +375,10 @@ const SUFFIX: FnTable = Table::new(&[
 	]),
 ]);
 const STANDARD_SUFFIX: StrTable = Table::new(&[
-	(4, &[
+	(8, &[
 		"Jr.",
 	]),
-	(2, &[
+	(4, &[
 		"Sr.",
 	]),
 	(1, &[

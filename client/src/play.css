@@ -5,7 +5,7 @@
 	justify-content: space-between;
 }
 
-.tab#join-input {
+.tab#join-input, .tab#lobby {
 	font-size: 1.2em;
 }
 .tab#landing input {
@@ -16,7 +16,7 @@
 	border: 2px solid #333;
 	border-radius: 4px;
 }
-.tab#landing button {
+.tab#landing button, .tab#lobby button {
 	margin-top: 6px;
 	
 	font-size: 0.9em;

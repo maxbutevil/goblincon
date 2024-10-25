@@ -72,10 +72,11 @@ INC.listen("inGame", () => {
 	page.set(unit("drawblins"));
 });
 INC.listen("error", (message) => {
-	if (Globals.hasJoinCode())
-		statusError(message);
-	else
+	/* This works, but isn't ideal */
+	if (!Globals.hasJoinCode() && page.get().key === "landing")
 		console.warn("Couldn't rejoin game: ", message);
+	else
+		statusError(message);
 });
 
 function statusMessage() {
@@ -220,6 +221,7 @@ function lobby(promoted: boolean) {
 		iconSelect(),
 		(!promoted) ? null :
 			fragment([
+				h("div", "Start the game when everybody's in!"),
 				h(
 					"button#start-game-button",
 					{	on: { click: startGame } },

@@ -143,15 +143,12 @@ function playerList() {
 		Room.playerIconChanged
 	];
 	return signaled(signals, () => {
-		if (Room.playerCount() === 0)
+		if (Room.playerCount() === 0) {
 			return h("div.player-name", "No players yet!");
-		else
-			return fragment(Room.players.map((player) => Player.view(player)))
-				/*return h("div.player-name", [
-					PlayerIcons.view(player.icon, player.color),
-					player.name
-				]);*/
-			//}));
+		} else {
+			const players = Array.from(Room.players.values());
+			return fragment(players.map((player) => Player.view(player)));
+		}
 	});
 }
 
