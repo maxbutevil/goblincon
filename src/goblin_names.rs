@@ -166,6 +166,7 @@ const ROOT: StrTable = Table::new(&[
 		//"Chrysanthorp",
 		"Graggle",
 		"Mindoid",
+		"Twisselton",
 		
 		/* Epithets */
 		"Kills People",
@@ -262,7 +263,7 @@ const ROOT: StrTable = Table::new(&[
 		"Wrangle",
 		"Gub",
 						
-		/* Carson's Contributions */
+		/* C's Contributions */
 		//"Jorm",
 		//"Klum",
 		"Lumpis",
@@ -314,7 +315,11 @@ const ROOT: StrTable = Table::new(&[
 		//"Gobbi Loach",
 		//"King Tundis",
 		
-		/* Charlie's Contributions */
+		/* P's */
+		"Loopus",
+		"Frundick",
+		
+		/* C's Contributions */
 		"Schplorples",
 		"Geeblesmorp",
 		"Bringlesnop",
