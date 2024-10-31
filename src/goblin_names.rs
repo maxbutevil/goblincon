@@ -122,7 +122,10 @@ const LEGENDARY: StrTable = Table::new(&[
 		"Steamroller Victim",
 		"The Great Worm",
 		"The Squinge",
-		
+		"Poboigh' Krakenstool",
+		"Her Majesty the Wumplord",
+		"Leopard Skin Clamatomorg",
+		"Herb Partridge-Toad",
 	]),
 ]);
 
@@ -156,6 +159,7 @@ const ROOT: StrTable = Table::new(&[
 		"Jobnis",
 		"Glarsom",
 		"Burger",
+		"Bibi Bano",
 		
 		/* Bicons */
 		"Mobi",
@@ -318,6 +322,8 @@ const ROOT: StrTable = Table::new(&[
 		/* P's */
 		"Loopus",
 		"Frundick",
+		
+		/* V's */
 		
 		/* C's Contributions */
 		"Schplorples",
