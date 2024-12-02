@@ -87,23 +87,25 @@ impl Display for FnTable {
 }
 
 const TEMPLATES: FnTable = Table::new(&[
-	(96, &[
+	/*(96, &[
+		
+	]),*/
+	(64, &[
 		|| format!("{PREFIX} {ROOT}"),
 		|| format!("{ROOT} the {ADJECTIVE}"),
-	]),
-	(64, &[
 		|| format!("{ROOT}{SUFFIX}"),
 	]),
-	(32, &[
+	/*(32, &[
+		
+	]),*/
+	(16, &[
 		|| format!("{ROOT}"),
 		|| format!("{PREFIX} {ROOT}, {COMMA_SUFFIX}"),
 		|| format!("{PREFIX} {ROOT} the {ADJECTIVE}"),
 	]),
-	(16, &[
-		|| format!("{PREFIX} {ROOT} {STANDARD_SUFFIX}"),
-	]),
 	(8, &[
 		|| format!("{ADJECTIVE} {ROOT}"),
+		|| format!("{PREFIX} {ROOT} {STANDARD_SUFFIX}"),
 	]),
 	(4, &[
 		|| format!("{ADJECTIVE} {ROOT}{SUFFIX}")
@@ -126,6 +128,7 @@ const LEGENDARY: StrTable = Table::new(&[
 		"Her Majesty the Wumplord",
 		"Leopard Skin Clamatomorg",
 		"Herb Partridge-Toad",
+		"Calamitous Wreak",
 	]),
 ]);
 
@@ -332,6 +335,8 @@ const ROOT: StrTable = Table::new(&[
 		"Pongel",
 		"Greegle",
 		"Lumpsucker",
+		
+		"Crunglespborp"
 	]),
 ]);
 const ADJECTIVE: StrTable = Table::new(&[
@@ -354,11 +359,12 @@ const ADJECTIVE: StrTable = Table::new(&[
 		//"Victorious",
 		//"Obnoxious",
 		//"Fierce",
-		//"Devious",
+		"Devious",
 		"Devilish",
 		"Beautiful",
 		"Repulsive",
 		"Sinister",
+		"Small",
 	]),
 	(2, &[
 		"Pompous",
@@ -379,7 +385,7 @@ const POST_TITLES: StrTable = Table::new(&[
 	]),
 ]);*/
 const SUFFIX: FnTable = Table::new(&[
-	(3, &[
+	(4, &[
 		|| format!(" {STANDARD_SUFFIX}")
 	]),
 	(1, &[
@@ -407,40 +413,42 @@ const COMMA_SUFFIX: StrTable = Table::new(&[
 	])
 ]);
 const PREFIX: StrTable = Table::new(&[
-	(16, &[
+	/*(16, &[
+		
+	]),*/
+	(8, &[
 		"Mr.",
 		"Dr."
 	]),
-	(8, &[
-		"Mrs.",
-		"Ms."
-	]),
 	(4, &[
-		"Professor",
+		"Mrs.",
+		"Ms.",
 		"Uncle",
 		"Aunt",
 	]),
 	(2, &[
+		"Professor",
 		"Senator",
 		"Captain",
 		"Mayor",
 		"Coach",
 		"Agent",
-		"Old Man",
 		
 		/* Gendered Pairs */
 		"King",
 		"Queen",
 		"Sir",
-		"Madame",
+		"Madam",
 		"Lord",
-		"Lady"
+		"Lady",
 	]),
 	(1, &[
 		"Major",
 		"Colonel",
 		"General",
-		"Admiral"
+		"Admiral",
+		"Old Man",
+		"Madame",
 	])
 ]);
 
@@ -453,25 +461,6 @@ pub fn generate_names(count: usize) -> Box<[String]> {
 }
 
 #[test]
-fn test() {
+fn name_dump() {
 	println!("{:?}", generate_names(100));
-	//assert!(false);
 }
-
-/*fn pick<T>(choices: &[T]) -> T {
-	if choices.is_empty() {
-		panic!();
-	}
-	use rand::Rng;
-	let mut rng = rand::thread_rng();
-	let idx = rand::thread_rng().gen_range(0..choices.len());
-	choices[idx]
-}*/
-/*pub fn generate(count: usize) -> Box<[&'static str]> {
-	let mut rng = rand::thread_rng();
-	rand::seq::index::sample(&mut rng, NAMES.len(), count)
-		.iter()
-		.filter_map(|i| NAMES.get(i).map(|i| *i))
-		.collect()
-}*/
-
