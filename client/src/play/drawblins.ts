@@ -100,12 +100,12 @@ function drawPad() {
 		BLANK,
 		IDLE,
 		DRAWING,
-		LOCKED,
+		LOCKED, // vestigial
 		SUBMITTED
 	};
 	
 	const state = new State(CanvasState.BLANK);
-	const submission = state.transitionTo(CanvasState.SUBMITTED);
+	//const submission = state.transitionTo(CanvasState.SUBMITTED);
 	
 	let undoStack: Array<DrawOperation> = [];
 	let redoStack: Array<DrawOperation> = [];
@@ -410,13 +410,13 @@ function drawPad() {
 	
 	return cleaned(
 		cleanup,
+		// This could probably avoid rerendering on every canvas state change
 		() => stateful(state, curr => {
 			
-			clearTimeout(submittingTimeout);
+			//clearTimeout(submittingTimeout);
 			const submitted = curr === CanvasState.SUBMITTED;
 			const canSubmit = curr === CanvasState.IDLE;
 			const disabled = submitted;
-			
 			
 			function startSubmit() {
 				clearTimeout(submittingTimeout);
@@ -454,9 +454,9 @@ function drawPad() {
 						"button#submit-btn" + (submitted ? ".submitted" : ""),
 						{
 							on: {
-								mousedown: startSubmit,
-								mouseup: cancelSubmit,
-								mouseleave: cancelSubmit
+								pointerdown: startSubmit,
+								pointerup: cancelSubmit,
+								pointerleave: cancelSubmit
 							},
 							attrs: { disabled: !canSubmit }
 						},
