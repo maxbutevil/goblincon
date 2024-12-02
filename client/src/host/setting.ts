@@ -54,37 +54,37 @@ export default class Setting<T = number> {
 	increment() {
 		this.set((this.current + 1) % this.choices.length);
 	}
-	get(): T {
-		return this.choices[this.current];
+	get(i = this.current): T {
+		return this.choices[i];
 	}
-	getString(): string {
-		return this.stringifier(this.get());
+	getString(i = this.current): string {
+		return this.stringifier(this.get(i));
 	}
 	
 	static view(setting: Setting<any>): VNode {
-		const click = (event: MouseEvent) => {
-			
-			let target = event.currentTarget as HTMLElement;
-			
-			let { left, right } = target.getBoundingClientRect();
-			let middle = (left + right)/2;
-			
-			if (event.clientX > middle)
-				setting.increment();
-			else
-				setting.decrement();
-		};
-		return h(
-			"div.setting-select",
-			{
-				key: setting.name,
-				on: { click }
-			},
-			[
-				h("div.name", {}, setting.name),
-				signaled(setting.changed, () => h("div.setting", {}, setting.getString()))
-			]
-		);
+		return h("div.setting-select", { key: setting.name }, [
+			h("div.name", {}, setting.name),
+			signaled(setting.changed, () => {
+				let choices = [];
+				for (let i = 0; i < setting.choices.length; i++) {
+					
+					let tag = (i == setting.current) ?
+						"button.choice.selected" :
+						"button.choice";
+					
+					choices.push(h(
+						tag,
+						{
+							on: {
+								click: () => setting.set(i)
+							}
+						},
+						setting.getString(i)
+					));
+				}
+				return h("div.choices", choices);
+			})
+		]);
 	}
 	static multiView(settings: SettingsMap): VNode {
 		let nodes = [];
@@ -92,7 +92,6 @@ export default class Setting<T = number> {
 			nodes.push(this.view(settings[key]));
 		return fragment(nodes);
 	}
-	
 }
 
 

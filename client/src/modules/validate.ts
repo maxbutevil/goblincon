@@ -23,7 +23,7 @@ export default class Validate {
 	}
 	static optional<T>(extractor: Validator<T>): ValidatorMethod<T | undefined> {
 		return (value: any): value is T | undefined => {
-			if (value == undefined)
+			if (value === undefined)
 				return true;
 			else
 				return Validate.is(extractor, value);

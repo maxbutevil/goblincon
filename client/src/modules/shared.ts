@@ -9,13 +9,13 @@ export const isMobileClient = (function(a) {
 
 // make sure colors are lowercase
 const CORE_COLORS = [
-	"#ff0000", // red
-	"#ff9900", // orange
-	"#ffff00", // yellow
-	"#00ff00", // green
+	"#ee0000", // red
+	"#ee9900", // orange
+	"#dddd00", // yellow
+	"#00ee00", // green
 	"#0099ff", // light blue
 	"#2233ff", // blue
-	"#9900ff", // purple
+	"#9900ee", // purple
 	"#ff88bb", // pink
 ];
 export const COLORS = [

@@ -1,4 +1,5 @@
-import "./shared.css"
+
+import "../shared.css"
 import "./host.css"
 
 import {
@@ -8,20 +9,21 @@ import {
 	Shared,
 	//PlayerIcons,
 	patchRoot, h, fragment, signaled, stateful
-} from "./modules/index"
+} from "../modules/index"
+import logo from "../components/logo"
 
-import * as Room from "./host/room"
-import { Player } from "./host/room"
-import * as Drawblins from "./host/drawblins"
-import Setting from "./host/setting"
+import * as Room from "./room"
+import { Player } from "./room"
+import * as Drawblins from "./drawblins"
+import Setting from "./setting"
 
-import logo from "./components/logo"
+
 
 const INC = new ReceiveIndex({
 	
 	"terminated": Validate.NONE,
 	
-	"inLobby": Validate.NONE,
+	"inLobby": { leaderId: Validate.NUMBER },
 	"gameStarting": Validate.NONE,
 	//"gameStarted": Validate.NONE,
 	
@@ -32,9 +34,10 @@ const INC = new ReceiveIndex({
 });
 const OUT = new SendIndex({
 	"terminate": Validate.NONE,
+	"kickPlayer": { "playerId": Validate.NUMBER },
 	"startGame": Validate.branch(
 		{
-			game: Validate.fixed<"drawblins">("drawblins"),
+			mode: Validate.fixed<"drawblins">("drawblins"),
 			settings: {
 				roundCount: Validate.NUMBER,
 				drawTimeFactor: Validate.NUMBER,
@@ -48,15 +51,17 @@ const OUT = new SendIndex({
 INC.listen("terminated", () =>
 	page.set(unit("landing"))); // should maybe have an error code thing
 
-INC.listen("inLobby", () =>
-	page.set(unit("lobby")));
+INC.listen("inLobby", ({ leaderId }) => {
+	Room.setLeaderId(leaderId);
+	page.set(unit("lobby"))
+});
 
 INC.listen("gameStarting", () => {
 	// here we relay the game settings and set the page accordingly
-	switch(game.get()) {
+	switch(mode.get()) {
 		case "drawblins":
 			OUT.send("startGame", {
-				game: "drawblins",
+				mode: "drawblins",
 				settings: Drawblins.getSettingsRemote()
 			});
 			page.set(unit("drawblins"));
@@ -71,7 +76,7 @@ type Page =
 	Variant<"drawblins">;
 
 const page = new State<Page>(unit("landing"));
-const game = new Setting<"drawblins">("Game Mode", [ "drawblins" ]);
+const mode = new Setting<"drawblins">("Game Mode", [ "drawblins" ]);
 
 //window.addEventListener("DOMContentLoaded", () => {
 
@@ -93,7 +98,7 @@ function app() {
 
 function landing() {
 	return h(
-		"div#host-landing.tab", {},
+		"div#landing.tab", {},
 		[
 			h("h1", {}, "Connecting...")
 		]
@@ -104,12 +109,12 @@ function lobby() {
 		"div.tab",
 		[
 			logo(),
-			h("div#host-lobby", {}, [
+			h("div#lobby", {}, [
 				h("div.tab.overview", {}, [
 					h("h1", {}, "Lobby"),
 					h("div", {}, [
 						h("h2", {}, "Join Code"),
-						h("div#join-code", {}, Room.getJoinCode())
+						h("div#join-code", {}, Room.joinCode)
 					]),
 					h("div", {}, [
 						h("h2", {}, "Players"),
@@ -118,7 +123,7 @@ function lobby() {
 				]),
 				h("div.tab.game-settings", {}, [
 					h("h1", {}, "Settings"),
-					Setting.view(game),
+					Setting.view(mode),
 					modeSettings()
 				])
 			])
@@ -129,7 +134,7 @@ function modeSettings() {
 	
 	let settingsMap;
 	
-	switch (game.get()) {
+	switch (mode.get()) {
 		case "drawblins": settingsMap = Drawblins.settings;
 	}
 	

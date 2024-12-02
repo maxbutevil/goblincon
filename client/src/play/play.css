@@ -1,29 +1,20 @@
 
+body {
+	position: fixed;
+}
 
 /* Landing */
-.tab#landing {
+.tab#landing, .tab#lobby {
 	justify-content: space-between;
 }
 
-.tab#join-input, .tab#lobby {
-	font-size: 1.2em;
-}
 .tab#landing input {
 	margin-top: 2px;
 	width: 9em;
-	
-	font-size: 0.9em;
-	border: 2px solid #333;
-	border-radius: 4px;
 }
 .tab#landing button, .tab#lobby button {
-	margin-top: 6px;
-	
-	font-size: 0.9em;
-	border: 2px solid #333;
-	border-radius: 4px;
+	margin-top: 0.4em;
 }
-
 
 #code-input {
 	text-transform: uppercase;
@@ -36,6 +27,10 @@
 	flex-flow: row wrap;
 	justify-content: center;
 	font-size: 2em;
+	margin-bottom: 1em;
+}
+#start-btn:disabled {
+	filter: brightness(0.6);
 }
 
 /* Drawing */
@@ -45,7 +40,6 @@
 	flex-flow: row wrap;
 	justify-content: center;
 	margin: auto;
-	
 }
 #goblin-name {
 	flex: 1 0;
@@ -78,6 +72,7 @@
 	flex: 1;
 	aspect-ratio: 1;
 	border: 0;
+	border-radius: 0;
 	margin: 0;
 	padding: 0;
 }
@@ -86,17 +81,28 @@
 	height: auto;
 }
 #drawpad .color-select-btn {
-	border: 0.6vmin solid;
+	border: 0.2em solid;
 }
 #drawpad #spacer-btn {
 	flex: 2;
 	aspect-ratio: 2 / 1;
 }
 #drawpad #submit-btn {
-	flex: 3;
-	aspect-ratio: 3 / 1;
-	background-color: green;
+	flex: 4;
+	aspect-ratio: 4 / 1;
+	
+	font-size: 1.2em;
+	background-color: gray;
+	transition: background-color 0.5s;
 }
-
-
+#drawpad #submit-btn:hover:enabled {
+	filter: brightness(0.9);
+}
+#drawpad #submit-btn:active:enabled {
+	transition: background-color ease-out 1s;
+	background-color: #0A0;
+}
+#drawpad #submit-btn.submitted {
+	background-color: #070;
+}
 

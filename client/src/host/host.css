@@ -2,37 +2,55 @@
 
 .setting-select {
 	margin: 6px;
-	cursor: pointer;
 }
 .setting-select .name {
-	font-size: 1em;
+	font-size: 1.1em;
 	margin-bottom: 4px;
 }
-.setting-select .setting {
-	font-size: 1.5em;
+.setting-select .choices {
+	display: flex;
+	flex-flow: row nowrap;
+	justify-content: center;
+	font-size: 1.0em;
+}
+.setting-select .choice.selected {
+	background-color: #AAA;
+}
+.setting-select .choice:not(:first-child) {
+	border-radius: 0;
+	border-left: none;
+}
+.setting-select .choice:first-child {
+	border-radius: 4px 0 0 4px;
+}
+.setting-select .choice:last-child {
+	border-radius: 0 4px 4px 0;
+}
+.setting-select .choice:only-child {
+	border-radius: 4px;
 }
 
 /* Lobby */
-#host-lobby {
+#lobby {
 	display: flex;
 	flex-flow: row nowrap;
 	align-items: flex-start;
 	justify-content: space-around;
 }
-#host-lobby #join-code {
+#lobby #join-code {
 	font-size: 3em;
 }
-#host-lobby .game-settings {
+#lobby .game-settings {
 	
 }
-#host-lobby .overview {
+#lobby .overview {
 	
 }
 
 
 
 /* Drawing */
-#host-drawing {
+#drawing {
 	
 }
 

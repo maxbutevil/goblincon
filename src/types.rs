@@ -48,6 +48,10 @@ pub enum GlobalPlayerMsgOut<'a> {
 pub enum GlobalHostMsgOut<'a> {
 	Accepted { join_code: &'a str },
 	Terminated,
+	
+	//PlayerLeft,
+	PlayerDisconnected { player_id: PlayerId },
+	PlayerReconnected { player_id: PlayerId },
 	//Error(&'a str),
 }
 

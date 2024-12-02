@@ -5,7 +5,7 @@ import {
 	Validate, ReceiveIndex, SendIndex,
 	Shared,
 	client,// Connection,
-	h, conditional, stateful, contained, cleaned
+	h, conditional, stateful, contained, cleaned, signaled
 } from "../modules/index"
 
 import Globals from "./globals"
@@ -100,10 +100,13 @@ function drawPad() {
 		BLANK,
 		IDLE,
 		DRAWING,
+		LOCKED,
 		SUBMITTED
 	};
 	
 	const state = new State(CanvasState.BLANK);
+	const submission = state.transitionTo(CanvasState.SUBMITTED);
+	
 	let undoStack: Array<DrawOperation> = [];
 	let redoStack: Array<DrawOperation> = [];
 	let backup: ImageData | undefined;
@@ -139,7 +142,7 @@ function drawPad() {
 	}
 	
 	function canChangeMode(): boolean {
-		return state.any(CanvasState.IDLE, CanvasState.BLANK) && canvas !== null;
+		return canvas !== null && state.any(CanvasState.IDLE, CanvasState.BLANK);
 	}
 	function selectErase() {
 		drawMode.type = "erase";
@@ -153,62 +156,6 @@ function drawPad() {
 	function toggleLineWeight() {
 		drawMode.weight = (drawMode.weight === "thin" ? "thick" : "thin");
 		applyMode();
-	}
-	
-	function colorSelect() {
-		
-		return contained(rerender => {
-			
-			function colorButton(color: string) {
-				const isSelected = drawMode.type === "draw" && drawMode.color === color;
-				let borderColor = isSelected ? "white" : color;
-				
-				return h("button.button.color-select-btn",
-					{
-						style: {
-							backgroundColor: color,
-							borderColor
-						},
-						on: {
-							click: () => {
-								if (canChangeMode()) {
-									selectColor(color);
-									rerender();
-								}
-							}
-						}
-					}
-				);
-			}
-			function eraseButton() {
-				const isSelected = drawMode.type === "erase";
-				let borderColor = isSelected ? "black" : "white";
-				return h(
-					"button.button.color-select-btn",
-					{
-						style: {
-							backgroundColor: "white",
-							borderColor
-						},
-						on: {
-							click: () => {
-								if (canChangeMode()) {
-									selectErase();
-									rerender();
-								}
-							}
-						}
-					},
-					icon(icons.erase)
-				);
-			}
-			
-			return h("div#color-select.btn-row", [
-				...Shared.COLORS.map(color => colorButton(color)),
-				eraseButton()
-			]);
-		});
-		
 	}
 	
 	function applyOperationRange(start: number, end = Infinity) {
@@ -229,7 +176,8 @@ function drawPad() {
 	}
 	function rebuildBackup(index: number) {
 		
-		if (!canvas) return;
+		if (!canvas)
+			return;
 		
 		if (index < 0)
 			index = 0;
@@ -269,9 +217,9 @@ function drawPad() {
 	
 	function undo() {
 		
-		if (state.get() !== CanvasState.IDLE)
-			return;
 		if (!canvas || undoStack.length === 0)
+			return;
+		if (!state.is(CanvasState.IDLE))
 			return;
 		
 		redoStack.push(undoStack.pop()!);
@@ -283,9 +231,9 @@ function drawPad() {
 	}
 	function redo() {
 		
-		if (state.get() === CanvasState.SUBMITTED || !canvas)
+		if (!canvas || redoStack.length === 0)
 			return;
-		if (redoStack.length === 0)
+		if (state.any(CanvasState.LOCKED, CanvasState.SUBMITTED))
 			return;
 		
 		state.set(CanvasState.IDLE);
@@ -297,10 +245,7 @@ function drawPad() {
 	
 	function draw(ev: PointerEvent) {
 		
-		if (state.get() !== CanvasState.DRAWING)
-			return;
-		if (!ev.isPrimary || !canvas)
-			return;
+		if (!canvas) return;
 		
 		let [x, y] = canvas.map(ev.offsetX, ev.offsetY);
 		
@@ -325,43 +270,28 @@ function drawPad() {
 		state.set(CanvasState.IDLE);
 		rebuildCanvas();
 	}
+	function handleDraw(ev: PointerEvent) {
+		if (!ev.isPrimary || !canvas)
+			return;
+		if (state.get() !== CanvasState.DRAWING)
+			return;
+		draw(ev);
+	}
 	function handleStartDraw(ev: PointerEvent) {
 		
 		if (!ev.isPrimary || !canvas)
 			return;
-		if (state.any(CanvasState.SUBMITTED, CanvasState.DRAWING))
+		if (state.any(CanvasState.LOCKED, CanvasState.SUBMITTED, CanvasState.DRAWING))
 			return;
 		
 		startDraw();
 		draw(ev);
 	}
 	function handleEndDraw(ev: PointerEvent) {
-		if (!ev.isPrimary)
-			return;
-		if (state.get() !== CanvasState.DRAWING)
+		if (!ev.isPrimary || state.get() !== CanvasState.DRAWING)
 			return;
 		draw(ev);
 		endDraw();
-	}
-	
-	function lineWidthBtn() {
-		return contained(rerender => {
-			const iconSrc = drawMode.weight === "thin" ? icons.thin : icons.thick;
-			return h(
-				"button#weight-btn",
-				{
-					on: {
-						click: () => {
-							if (canChangeMode()) {
-								toggleLineWeight();
-								rerender();
-							}
-						}
-					}
-				},
-				icon(iconSrc)
-			);
-		});
 	}
 	
 	function submit() {
@@ -376,8 +306,86 @@ function drawPad() {
 		
 		state.set(CanvasState.SUBMITTED);
 		OUT.send("drawingSubmission", { drawing });
-		page.set(unit("drawingSubmitted"));
+		//page.set(unit("drawingSubmitted"));
 	}
+	
+	function lineWidthBtn(disabled: boolean) {
+		return contained(rerender => {
+			const iconSrc = drawMode.weight === "thin" ? icons.thin : icons.thick;
+			return h(
+				"button#weight-btn",
+				{
+					on: {
+						click: () => {
+							if (canChangeMode()) {
+								toggleLineWeight();
+								rerender();
+							}
+						}
+					},
+					attrs: { disabled }
+				},
+				icon(iconSrc)
+			);
+		});
+	}
+	function colorSelect(disabled: boolean) {
+		
+		return contained(rerender => {
+			
+			function colorButton(color: string) {
+				const isSelected = drawMode.type === "draw" && drawMode.color === color;
+				let borderColor = isSelected ? "white" : color;
+				
+				return h("button.button.color-select-btn",
+					{
+						style: {
+							backgroundColor: color,
+							borderColor
+						},
+						on: {
+							click: () => {
+								if (canChangeMode()) {
+									selectColor(color);
+									rerender();
+								}
+							}
+						},
+						attrs: { disabled }
+					}
+				);
+			}
+			function eraseButton() {
+				const isSelected = drawMode.type === "erase";
+				let borderColor = isSelected ? "black" : "white";
+				return h(
+					"button.button.color-select-btn",
+					{
+						style: {
+							backgroundColor: "white",
+							borderColor
+						},
+						on: {
+							click: () => {
+								if (canChangeMode()) {
+									selectErase();
+									rerender();
+								}
+							}
+						}
+					},
+					icon(icons.erase)
+				);
+			}
+			
+			return h("div#color-select.btn-row", [
+				...Shared.COLORS.map(color => colorButton(color)),
+				eraseButton()
+			]);
+		});
+		
+	}
+	
 	function init(canvasElement: HTMLCanvasElement) {
 		let ctx = canvasElement.getContext("2d");
 		
@@ -393,48 +401,80 @@ function drawPad() {
 		canvas.setLineJoin("round");
 	}
 	
-	const cleanup = drawingAutoSubmit.subscribe(submit);
 	
 	function icon(src: string) {
 		return h("img", {  attrs: { src } });
 	}
+	let submittingTimeout: NodeJS.Timeout;
+	const cleanup = drawingAutoSubmit.subscribe(submit);
 	
 	return cleaned(
 		cleanup,
-		() => h("div#drawpad", [
-			colorSelect(),
-			h("canvas#canvas", {
-				attrs: {
-					width: 360,
-					height: 360
-				},
-				on: {
-					pointerdown: handleStartDraw,
-					pointerup: handleEndDraw,
-					pointerleave: handleEndDraw,
-					pointermove: draw
-				},
-				hook: {
-					create: (emptyVnode, vnode) => {
-						init(vnode.elm as HTMLCanvasElement)
+		() => stateful(state, curr => {
+			
+			clearTimeout(submittingTimeout);
+			const submitted = curr === CanvasState.SUBMITTED;
+			const canSubmit = curr === CanvasState.IDLE;
+			const disabled = submitted;
+			
+			
+			function startSubmit() {
+				clearTimeout(submittingTimeout);
+				submittingTimeout = setTimeout(submit, 1000);
+			}
+			function cancelSubmit() {
+				clearTimeout(submittingTimeout);
+			}
+			
+			return h("div#drawpad", [
+				colorSelect(disabled),
+				h("canvas#canvas", {
+					attrs: {
+						width: 360,
+						height: 360
+					},
+					on: {
+						pointerdown: handleStartDraw,
+						pointerup: handleEndDraw,
+						pointerleave: handleEndDraw,
+						pointermove: handleDraw
+					},
+					hook: {
+						create: (emptyVnode, vnode) => {
+							init(vnode.elm as HTMLCanvasElement)
+						}
 					}
-				}
-			}, "You don't have canvas support!"),
-			h("div#draw-utils.btn-row", [
-				h("button#undo-btn", { on: { click: undo }}, icon(icons.undo)),
-				h("button#redo-btn", { on: { click: redo }}, icon(icons.redo)),
-				lineWidthBtn(),
-				h("button#spacer-btn", { attrs: { disabled: true } }),
-				h("button#submit-btn", { on: { click: submit }}, "Submit")
+				}, "You don't have canvas support!"),
+				h("div#draw-utils.btn-row", [
+					h("button#undo-btn", { on: { click: undo }, attrs: { disabled } }, icon(icons.undo)),
+					h("button#redo-btn", { on: { click: redo }, attrs: { disabled } }, icon(icons.redo)),
+					lineWidthBtn(disabled),
+					h("button#spacer-btn", { attrs: { disabled: true } }),
+					h(
+						"button#submit-btn" + (submitted ? ".submitted" : ""),
+						{
+							on: {
+								mousedown: startSubmit,
+								mouseup: cancelSubmit,
+								mouseleave: cancelSubmit
+							},
+							attrs: { disabled: !canSubmit }
+						},
+						submitted ? "Submitted!" : "Hold to Submit"
+					)
+				])
 			])
-		])
+		})
 	);
 }
 function draw(endTime: number, goblinName: string) {
 	return h("div#draw.tab", [
-		h("div#goblin-name", goblinName),
+		h("div", [
+			h("div#goblin-name", goblinName),
+			countdown(endTime, () => drawingAutoSubmit.emit()),
+		]),
 		drawPad(),
-		countdown(endTime, () => drawingAutoSubmit.emit())
+		//h("div.spacer")
 	]);
 }
 function vote(endTime: number, choices: string[]) {

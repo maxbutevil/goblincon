@@ -25,8 +25,26 @@ body {
     font-family: Arial;
     background-color: #eeeee8;
 }
-button {
+
+
+button, input {
+	font-size: 0.9em;
+	border: 3px solid #333;
+	border-radius: 6px;
     color: black;
+}
+
+
+
+.tab {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    margin: 28px;
+    font-size: 1.2em;
 }
 
 .status {
@@ -38,23 +56,13 @@ button {
 }
 
 .countdown {
-    font-size: 2em;
-}
-
-.tab {
-    display: flex;
-    flex-flow: column nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    text-align: center;
-    gap: 10px;
-    margin: 28px;
+    font-size: 1.6em;
 }
 
 .player-icon {
-    width: 2.4em;
-    height: 2.4em;
-    flex: 0 0 2.4em;
+    width: 2.0em;
+    height: 2.0em;
+    flex: 0 0 2.0em;
 }
 .player-view {
     display: flex;

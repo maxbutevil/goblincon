@@ -15,13 +15,17 @@ export const playerIconChanged = new Signal<Player>();
 
 export let joinCode = "";
 //export let players: Player[] = [];
+export let leaderId = 255;
 export let players: Map<number, Player> = new Map();
 
 export function setJoinCode(code: string) {
 	joinCode = code;
 }
-export function getJoinCode(): string {
+/*export function getJoinCode(): string {
 	return joinCode;
+}*/
+export function setLeaderId(newLeaderId: number) {
+	leaderId = newLeaderId;
 }
 
 export function playerCount() {
@@ -44,10 +48,13 @@ export function playerIds(): IterableIterator<number> {
 }
 
 
+
 const INC = new ReceiveIndex({
 	"accepted": { joinCode: Validate.STRING },
 	"playerJoined": { playerId: Validate.NUMBER, name: Validate.STRING, icon: Validate.NUMBER },
 	"playerLeft": { playerId: Validate.NUMBER },
+	"playerDisconnected": { playerId: Validate.NUMBER },
+	"playerReconnected": { playerId: Validate.NUMBER },
 	"playerIconChanged": { playerId: Validate.NUMBER, icon: Validate.NUMBER }
 });
 const OUT = new SendIndex({
@@ -78,6 +85,13 @@ INC.listen("playerIconChanged", ({ playerId, icon }) => {
 		player.icon = icon;
 		playerIconChanged.emit(player);
 	}
+});
+INC.listen("playerReconnected", ({ playerId }) => {
+	// Don't need to do anything, but it shuts up warnings!
+	// (I may or may not have made those warnings myself)
+});
+INC.listen("playerDisconnected", ({ playerId }) => {
+	
 });
 client.disconnected.listen(() => {
 	joinCode = "";

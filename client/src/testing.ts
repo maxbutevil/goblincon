@@ -1,12 +1,33 @@
 import "./shared.css"
-import "./host.css"
 import State from './modules/state'
 import { h, patch, patchRoot, stateful, cleaned, fragment, VNode } from './modules/render';
 
 import * as icons from "./assets/drawpad/index"
 import * as PlayerIcon from "./modules/player_icons"
 
-const count = new State([1, 1]);
+const state = new State(0);
+
+/*patchRoot(
+	cleaned(
+		() => console.log("cleaning up!"),
+		() => stateful(state, () => h("div", String(state.get())))
+	)
+);*/
+
+patchRoot(
+	stateful(
+		state,
+		() => cleaned(
+			() => console.log("cleaning up!"),
+			() => h("div", String(state.get()))
+		)
+	)
+);
+
+state.set(1);
+state.set(2);
+
+/*const count = new State([1, 1]);
 
 function submission(): VNode {
 	
@@ -34,7 +55,7 @@ patchRoot(
 			"Ok"
 		]
 	)
-);
+);*/
 
 /*window.addEventListener("DOMContentLoaded", () => {
 	

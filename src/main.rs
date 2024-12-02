@@ -66,6 +66,7 @@ async fn main() {
 		.route("/", get(|| async { Redirect::to("/play") }))
 		.route_service("/host", ServeFile::new("client/dist/host.html"))
 		.route_service("/play", ServeFile::new("client/dist/play.html"))
+		//.route_service("/testing", ServeFile::new("client/dist/testing.html"))
 		.fallback(|| async { "Page Not Found" })
 		.with_state(App::new());
 	
@@ -95,15 +96,8 @@ struct RejoinQuery {
 	code: String,
 	id: PlayerId,
 	token: PlayerToken,
-	
-	name: String,
-	#[serde(default)]
-	icon: PlayerIcon,
 }
 
-//fn default_icon() -> u8 { 0 }
-
-//#[debug_handler]
 async fn ws_upgrade_host(State(app): State<App>, ws: WebSocketUpgrade) -> Response {
 	ws.on_upgrade(move |socket| async move {
 		app.accept_host(socket).await
@@ -133,7 +127,7 @@ async fn ws_upgrade_player_rejoin(
 {
 	if let Some(room_id) = app.find_room(&query.code) {
 		return Ok(ws.on_upgrade(move |socket| async move {
-			app.accept_player_rejoin(socket, room_id, query.name, query.icon, query.id, query.token).await
+			app.accept_player_rejoin(socket, room_id, query.id, query.token).await
 		}));
 	}
 	

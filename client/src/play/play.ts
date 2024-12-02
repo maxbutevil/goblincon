@@ -1,5 +1,5 @@
 
-import "./shared.css"
+import "../shared.css"
 import "./play.css"
 
 import {
@@ -9,29 +9,30 @@ import {
 	Shared,
 	PlayerIcons,
 	patchRoot, h, fragment, stateful, contained, VNode,
-} from "./modules/index"
+} from "../modules/index"
 
-import Globals from "./play/globals"
-import * as Drawblins from "./play/drawblins"
+import Globals from "./globals"
+import * as Drawblins from "./drawblins"
 
-import logo from "./components/logo"
+import logo from "../components/logo"
 
 const INC = new ReceiveIndex({
 	terminated: Validate.NONE,
 	error: Validate.STRING,
 	
 	accepted: { playerId: Validate.NUMBER, token: Validate.NUMBER },
-	inLobby: { promoted: Validate.BOOL },
+	inLobby: { playerCount: Validate.optional(Validate.NUMBER) }, //promoted: Validate.BOOL },
 	inGame: Validate.NONE, // eventually needs to hold the settings
 });
 const OUT = new SendIndex({
+	leave: Validate.NONE,
 	startGame: Validate.NONE,
 	changeIcon: { icon: Validate.NUMBER }
 });
 
 type Page = 
 	Variant<"landing"> |
-	Variant<"lobby", { promoted: boolean }> |
+	Variant<"lobby", { playerCount: number | undefined }> |
 	Variant<"drawblins">;
 
 const page = State.deep<Page>(unit("landing"));
@@ -46,10 +47,11 @@ client.pending.listen(() => {
 });
 client.connectionFailed.listen(() => {
 	// only show this status after a join attempt (not a rejoin)
-	if (Globals.hasJoinCode())
+	if (Globals.hasJoinCode()) {
 		statusError("Join failed; check your code");
-	else
+	} else {
 		statusNone();
+	}
 });
 client.disconnected.listen(() => {
 	page.set(unit("landing"));
@@ -64,9 +66,9 @@ INC.listen("accepted", ({ playerId, token }) => {
 	Globals.playerId = playerId;
 	Globals.storeRejoinInfo(token);
 });
-INC.listen("inLobby", ({ promoted }) => {
+INC.listen("inLobby", ({ playerCount }) => {
 	statusNone();
-	page.set(variant("lobby", { promoted }));
+	page.set(variant("lobby", { playerCount }));
 });
 INC.listen("inGame", () => {
 	page.set(unit("drawblins"));
@@ -118,6 +120,7 @@ function landing() {
 		if (name.length > Globals.MAX_NAME_LEN)
 			return statusError("Name too long");
 		
+		Globals.clearRejoinInfo();
 		Globals.storePlayerName();
 		
 		if (code.length !== Globals.CODE_LEN)
@@ -165,7 +168,7 @@ function landing() {
 								}
 							})
 						]),
-						h("button#join-button", {
+						h("button#join-btn", {
 							attrs: { disabled },
 							on: { click: joinGame }
 						}, "Join!"),
@@ -180,8 +183,13 @@ function landing() {
 			}, "Hosting a game? Click here")
 	]);
 }
-function lobby(promoted: boolean) {
+function lobby(playerCount: number | undefined) {
 	
+	const promoted = playerCount !== undefined;
+	
+	function leave() {
+		OUT.send("leave", undefined);
+	}
 	function startGame() {
 		OUT.send("startGame", undefined);
 	}
@@ -212,23 +220,48 @@ function lobby(promoted: boolean) {
 			
 			return h("div.icon-select", icons);
 		});
+	}
+	
+	let startInterface = null;
+	if (promoted) {
 		
+		let blurb;
+		if (playerCount <= 1) {
+			blurb = "1 player (not enough)";
+		} else if (playerCount == 2) {
+			blurb = "2 players (not recommended)";
+		} else {
+			blurb = `${playerCount} players`;
+		}
 		
+		startInterface = fragment([
+			fragment([
+				h("div", "Start the game when everybody's in!"),
+				h("div", blurb),
+				h(
+					"button#start-btn",
+					{
+						on: { click: startGame },
+						attrs: { disabled: playerCount <= 1 }
+					},
+					"Start"
+				),
+				//clearedStatusMessage() /* to say "Not Enough Players" */
+			])
+		]);
 	}
 	
 	return h("div#lobby.tab", [
-		h("h1", "Lobby!!"),
-		iconSelect(),
-		(!promoted) ? null :
-			fragment([
-				h("div", "Start the game when everybody's in!"),
-				h(
-					"button#start-game-button",
-					{	on: { click: startGame } },
-					"Start Game"
-				),
-				clearedStatusMessage() /* to say "Not Enough Players" */
-			])
+		h("div", [
+			h("h1", "Lobby!!"),
+			iconSelect(),
+			startInterface
+		]),
+		h(
+			"button#leave-btn",
+			{ on: { click: leave } },
+			"Leave Game",
+		)
 	]);
 }
 
@@ -241,7 +274,7 @@ function app() {
 	return stateful(page, (curr) => {
 		switch(curr.key) {
 			case "landing": return landing();
-			case "lobby": return lobby(curr.promoted);
+			case "lobby": return lobby(curr.playerCount);
 			case "drawblins": return Drawblins.view();
 		}
 	});

@@ -358,6 +358,7 @@ const ADJECTIVE: StrTable = Table::new(&[
 		"Devilish",
 		"Beautiful",
 		"Repulsive",
+		"Sinister",
 	]),
 	(2, &[
 		"Pompous",

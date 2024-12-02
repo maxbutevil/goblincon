@@ -13,7 +13,7 @@ class Globals {
 	static joinCode = new URLSearchParams(window.location.search).get("code") ?? "";
 	static playerName = localStorage.getItem("playerName") ?? "";
 	static playerIcon = parseInt(localStorage.getItem("playerIcon") ?? "2");
-	static playerId = -1;
+	static playerId = parseInt(localStorage.getItem("rejoinId") ?? "-1");
 	
 	static get playerColor() { return Shared.playerColor(this.playerId); }
 	
@@ -43,6 +43,7 @@ class Globals {
 		}
 	}
 	static clearRejoinInfo() {
+		
 		localStorage.removeItem("rejoinCode");
 		localStorage.removeItem("rejoinId");
 		localStorage.removeItem("rejoinToken");
