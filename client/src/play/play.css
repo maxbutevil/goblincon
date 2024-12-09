@@ -97,6 +97,7 @@ body {
 }
 #drawpad #submit-btn:hover:enabled {
 	filter: brightness(0.9);
+	background-color: #dd0;
 }
 #drawpad #submit-btn:active:enabled {
 	transition: background-color ease-out 1s;

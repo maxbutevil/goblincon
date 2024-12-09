@@ -47,7 +47,11 @@ const OUT = new SendIndex({
 	)
 });
 
-
+/*client.disconnected.listen(() => {
+	if (page.get().key !== "landing") {
+		page.set(unit("landing"));
+	}
+});*/
 INC.listen("terminated", () =>
 	page.set(unit("landing"))); // should maybe have an error code thing
 

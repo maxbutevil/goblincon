@@ -2,4 +2,6 @@
 /gd
 /dx
 /client/node_modules
+/tls
+config.toml
 # /client/dist

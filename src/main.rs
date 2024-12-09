@@ -31,24 +31,25 @@ use axum::{
 		ws::WebSocketUpgrade,
 	},
 };
+use axum_server::tls_rustls::RustlsConfig;
 use tower_http::services::{ServeFile, ServeDir};
 use serde::Deserialize;
 
 use crate::types::*;
 
 
-//const PORT: &str = "5050";
-const IP: &str = "0.0.0.0";
-
 #[tokio::main]
 async fn main() {
+	
+	
 	
 	tracing_subscriber::fmt::init();
 	//tracing_subscriber::fmt()
 		//.with_level(display_level)
 		//.init();
 	
-	use tokio::net::TcpListener;
+	//use tokio::net::TcpListener;
+	use std::path::PathBuf;
 	use axum::{
 		Router,
 		routing::get
@@ -70,16 +71,33 @@ async fn main() {
 		.fallback(|| async { "Page Not Found" })
 		.with_state(App::new());
 	
-	let port = std::env::var("PORT").unwrap_or("5050".to_string());
-	let listener = TcpListener::bind(format!("{IP}:{port}"))
+	
+	
+	/*let listener = TcpListener::bind(format!("{IP}:{port}"))
 		.await
-		.expect("server error");
+		.expect("tcp listener error");
 	axum::serve(listener, router)
 		.await
-		.expect("axum error");
+		.expect("axum error");*/
+	
+	/* SSL */
+	let manifest_dir = env!("CARGO_MANIFEST_DIR");
+	let tls_dir = option_env!("TLS_DIR").unwrap_or("tls");
+	let tls_dir = PathBuf::from(manifest_dir).join(tls_dir);
+	let rustls_config = RustlsConfig::from_pem_file(
+		tls_dir.join("cert.pem"),
+		tls_dir.join("key.pem")
+	).await.expect("TLS certificate configuration error");
+	
+	const IP: &str = "0.0.0.0";
+	let port: &str = option_env!("PORT").unwrap_or("5050");
+	let addr = format!("{IP}:{port}").parse().unwrap();
+	axum_server::bind_rustls(addr, rustls_config)
+		.serve(router.into_make_service())
+		.await
+		.expect("axum server error");
 	
 }
-
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
