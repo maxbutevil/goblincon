@@ -1,5 +1,7 @@
+#git clone git@github.com:maxbutevil/goblincon-plus
 #docker build -t goblincon .
 #docker run -p 5050:5050 --name goblincon goblincon
+
 
 FROM node:latest AS client
 WORKDIR /src/client
@@ -13,7 +15,8 @@ COPY --from=client /src/client/dist ./client/dist
 COPY ./src ./src
 COPY ./Cargo.lock ./Cargo.lock
 COPY ./Cargo.toml ./Cargo.toml
-COPY ./tls ./tls
+COPY ../.env ./.env
+COPY ../tls/ ./tls
 RUN cargo build --release
 
 EXPOSE 5050
