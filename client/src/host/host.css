@@ -39,6 +39,7 @@
 }
 #lobby #join-code {
 	font-size: 3em;
+	user-select: text;
 }
 #lobby .game-settings {
 	

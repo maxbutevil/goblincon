@@ -57,7 +57,7 @@ INC.listen("terminated", () =>
 
 INC.listen("inLobby", ({ leaderId }) => {
 	Room.setLeaderId(leaderId);
-	page.set(unit("lobby"))
+	page.set(unit("lobby"));
 });
 
 INC.listen("gameStarting", () => {
@@ -79,7 +79,7 @@ type Page =
 	Variant<"lobby"> |
 	Variant<"drawblins">;
 
-const page = new State<Page>(unit("landing"));
+const page = State.deep<Page>(unit("landing"));
 const mode = new Setting<"drawblins">("Game Mode", [ "drawblins" ]);
 
 //window.addEventListener("DOMContentLoaded", () => {
@@ -120,10 +120,7 @@ function lobby() {
 						h("h2", {}, "Join Code"),
 						h("div#join-code", {}, Room.joinCode)
 					]),
-					h("div", {}, [
-						h("h2", {}, "Players"),
-						playerList()
-					]),
+					playerList()
 				]),
 				h("div.tab.game-settings", {}, [
 					h("h1", {}, "Settings"),
@@ -151,13 +148,21 @@ function playerList() {
 		Room.playerLeft,
 		Room.playerIconChanged
 	];
+	
 	return signaled(signals, () => {
+		let children;
 		if (Room.playerCount() === 0) {
-			return h("div.player-name", "No players yet!");
+			children = [ h("div", "No players yet!") ];
 		} else {
 			const players = Array.from(Room.players.values());
-			return fragment(players.map((player) => Player.view(player)));
+			children = players.map((player) => Player.view(player));
 		}
+		
+		return h("div.player-list", {}, [
+			h("h2", {}, "Players"),
+			...children
+		]);
+		
 	});
 }
 
