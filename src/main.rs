@@ -48,8 +48,13 @@ async fn main() {
 		//.with_level(display_level)
 		//.init();
 	
+	if dotenvy::dotenv().is_err() {
+		tracing::warn!("proceeding without .env file");
+	}
+	
+	
 	//use tokio::net::TcpListener;
-	use std::path::PathBuf;
+	//use std::path::PathBuf;
 	use axum::{
 		Router,
 		routing::get
@@ -69,34 +74,44 @@ async fn main() {
 		.route_service("/play", ServeFile::new("client/dist/play.html"))
 		//.route_service("/testing", ServeFile::new("client/dist/testing.html"))
 		.fallback(|| async { "Page Not Found" })
-		.with_state(App::new());
+		.with_state(App::new())
+		.into_make_service();
 	
-	
-	
-	/*let listener = TcpListener::bind(format!("{IP}:{port}"))
-		.await
-		.expect("tcp listener error");
-	axum::serve(listener, router)
-		.await
-		.expect("axum error");*/
-	
-	/* SSL */
-	let manifest_dir = env!("CARGO_MANIFEST_DIR");
-	let tls_dir = option_env!("TLS_DIR").unwrap_or("tls");
-	let tls_dir = PathBuf::from(manifest_dir).join(tls_dir);
-	let rustls_config = RustlsConfig::from_pem_file(
-		tls_dir.join("cert.pem"),
-		tls_dir.join("key.pem")
-	).await.expect("TLS certificate configuration error");
-	
-	const IP: &str = "0.0.0.0";
 	let port: &str = option_env!("PORT").unwrap_or("5050");
-	let addr = format!("{IP}:{port}").parse().unwrap();
-	axum_server::bind_rustls(addr, rustls_config)
-		.serve(router.into_make_service())
-		.await
-		.expect("axum server error");
+	let addr = format!("0.0.0.0:{port}").parse().expect("address parsing error");
 	
+	if let Some(rustls_config) = rustls_config().await {
+		tracing::info!("opening with HTTPS");
+		axum_server::bind_rustls(addr, rustls_config)
+			.serve(router).await
+			.expect("axum server error (https)");
+	} else {
+		tracing::warn!("opening with HTTP");
+		axum_server::bind(addr)
+			.serve(router)
+			.await
+			.expect("axum server error (http)");
+	}
+}
+async fn rustls_config() -> Option<RustlsConfig> {
+	
+	use std::env;
+	
+	if let Ok(value) = env::var("USE_HTTPS") {
+		if value == "NO" {
+			return None;
+		}
+	}
+	
+	use std::path::PathBuf;
+	let cert = env::var("CERT_PATH").expect("CERT_PATH must be present if using HTTPS");
+	let key = env::var("KEY_PATH").expect("KEY_PATH must be present if using HTTPS");
+	let config = RustlsConfig::from_pem_file(
+		PathBuf::from(cert),
+		PathBuf::from(key)
+	).await;
+	
+	Some(config.expect("TLS certificate configuration error"))
 }
 
 #[derive(Deserialize)]

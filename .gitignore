@@ -3,5 +3,5 @@
 /dx
 /client/node_modules
 /tls
-config.toml
+.env
 # /client/dist
