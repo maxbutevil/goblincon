@@ -1,6 +1,8 @@
 #git clone git@github.com:maxbutevil/goblincon-plus
 #docker build -t goblincon .
 #docker run -p 443:5050 --name goblincon goblincon
+#git reset --hard HEAD && git pull
+
 
 
 FROM node:latest AS client

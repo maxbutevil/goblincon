@@ -1,4 +1,14 @@
 
+* {
+	/* scorched earth, iOS does not make this easy */
+	-webkit-touch-callout: none;
+	-webkit-user-callout: none;
+	-webkit-user-drag: none;
+	-webkit-user-modify: none;
+	-webkit-highlight: none;
+	/* somehow, despite all this, iOS still has a selection popup occasionally... */
+}
+
 body {
 	position: fixed;
 }

@@ -14,6 +14,7 @@
 pub mod types;
 pub mod goblin_names;
 pub mod app;
+//mod favicons;
 
 use app::App;
 //use std::sync::Arc;
@@ -66,12 +67,19 @@ async fn main() {
 		.route("/play/rejoin", get(ws_upgrade_player_rejoin));
 	let static_service = ServeDir::new("client/dist/static")
 		.append_index_html_on_directories(false);
+	//let icon_service = 
+	//let icon_service = Router::new()
+	//	.route("/fa")
 	let router = Router::new()
 		.nest("/ws", ws_router)
+		//.nest("/favicon.ico")
+		
 		.nest_service("/static", static_service)
 		.route("/", get(|| async { Redirect::to("/play") }))
 		.route_service("/host", ServeFile::new("client/dist/host.html"))
 		.route_service("/play", ServeFile::new("client/dist/play.html"))
+		.route_service("/01.ico", ServeFile::new("client/dist/01.ico"))
+		
 		//.route_service("/testing", ServeFile::new("client/dist/testing.html"))
 		.fallback(|| async { "Page Not Found" })
 		.with_state(App::new())
@@ -84,18 +92,19 @@ async fn main() {
 		tracing::info!("opening with HTTPS");
 		axum_server::bind_rustls(addr, rustls_config)
 			.serve(router).await
-			.expect("axum server error (https)");
+			.expect("axum server error");
 	} else {
 		tracing::warn!("opening with HTTP");
 		axum_server::bind(addr)
 			.serve(router)
 			.await
-			.expect("axum server error (http)");
+			.expect("axum server error");
 	}
 }
 async fn rustls_config() -> Option<RustlsConfig> {
 	
 	use std::env;
+	use std::path::PathBuf;
 	
 	if let Ok(value) = env::var("USE_HTTPS") {
 		if value == "NO" {
@@ -103,7 +112,6 @@ async fn rustls_config() -> Option<RustlsConfig> {
 		}
 	}
 	
-	use std::path::PathBuf;
 	let cert = env::var("CERT_PATH").expect("CERT_PATH must be present if using HTTPS");
 	let key = env::var("KEY_PATH").expect("KEY_PATH must be present if using HTTPS");
 	let config = RustlsConfig::from_pem_file(
@@ -131,6 +139,9 @@ struct RejoinQuery {
 	token: PlayerToken,
 }
 
+/*async fn random_icon() {
+	
+}*/
 async fn ws_upgrade_host(State(app): State<App>, ws: WebSocketUpgrade) -> Response {
 	ws.on_upgrade(move |socket| async move {
 		app.accept_host(socket).await

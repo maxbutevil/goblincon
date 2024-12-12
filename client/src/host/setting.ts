@@ -68,9 +68,7 @@ export default class Setting<T = number> {
 				let choices = [];
 				for (let i = 0; i < setting.choices.length; i++) {
 					
-					let tag = (i == setting.current) ?
-						"button.choice.selected" :
-						"button.choice";
+					let tag = (i == setting.current) ? "button.selected" : "button";
 					
 					choices.push(h(
 						tag,
@@ -82,7 +80,7 @@ export default class Setting<T = number> {
 						setting.getString(i)
 					));
 				}
-				return h("div.choices", choices);
+				return h("div.multi-btn", choices);
 			})
 		]);
 	}

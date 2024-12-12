@@ -109,6 +109,20 @@ function landing() {
 	);
 }
 function lobby() {
+	
+	function copy(text: string) {
+		navigator.clipboard.writeText(text).catch(() => {
+			console.error("Couldn't write to clipboard; check browser settings.");
+		});
+	}
+	function copyCode() {
+		copy(Room.joinCode);
+	}
+	function copyLink() {
+		//wss://${window.location.host}/ws
+		copy(`https://${window.location.host}/play?code=${Room.joinCode}`);
+	}
+	
 	return h(
 		"div.tab",
 		[
@@ -118,7 +132,11 @@ function lobby() {
 					h("h1", {}, "Lobby"),
 					h("div", {}, [
 						h("h2", {}, "Join Code"),
-						h("div#join-code", {}, Room.joinCode)
+						h("div#join-code", {}, Room.joinCode),
+						h("div.multi-btn", { style: { fontSize: "0.8em" } }, [
+							h("button", { on: { click: copyCode } }, "Copy Code"),
+							h("button", { on: { click: copyLink } }, "Copy Link")
+						]),
 					]),
 					playerList()
 				]),
