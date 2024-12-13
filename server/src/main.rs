@@ -36,19 +36,22 @@ use axum_server::tls_rustls::RustlsConfig;
 use tower_http::services::{ServeFile, ServeDir};
 use serde::Deserialize;
 
+use std::env;
+
 use crate::types::*;
+
+
 
 
 #[tokio::main]
 async fn main() {
 	
-	
+	use axum::{
+		Router,
+		routing::get
+	};
 	
 	tracing_subscriber::fmt::init();
-	//tracing_subscriber::fmt()
-		//.with_level(display_level)
-		//.init();
-	
 	if dotenvy::dotenv().is_err() {
 		tracing::warn!("proceeding without .env file");
 	}
@@ -56,16 +59,19 @@ async fn main() {
 	
 	//use tokio::net::TcpListener;
 	//use std::path::PathBuf;
-	use axum::{
-		Router,
-		routing::get
-	};
+	
+	//let dist_path = env::var("").expect();
+	//let dist_path = env::var("").expect("")//.unwrap_or_else(|_| "".to_string());
+	
+	let dist_path = "../client/dist";
+	let static_path = format!("{dist_path}/static");
+	
 	
 	let ws_router = Router::new()
 		.route("/host", get(ws_upgrade_host))
 		.route("/play/join", get(ws_upgrade_player_join))
 		.route("/play/rejoin", get(ws_upgrade_player_rejoin));
-	let static_service = ServeDir::new("client/dist/static")
+	let static_service = ServeDir::new(static_path)
 		.append_index_html_on_directories(false);
 	//let icon_service = 
 	//let icon_service = Router::new()
@@ -76,9 +82,9 @@ async fn main() {
 		
 		.nest_service("/static", static_service)
 		.route("/", get(|| async { Redirect::to("/play") }))
-		.route_service("/host", ServeFile::new("client/dist/host.html"))
-		.route_service("/play", ServeFile::new("client/dist/play.html"))
-		.route_service("/01.ico", ServeFile::new("client/dist/01.ico"))
+		.route_service("/host", ServeFile::new(format!("{dist_path}/host.html")))
+		.route_service("/play", ServeFile::new(format!("{dist_path}/play.html")))
+		.route_service("/01.ico", ServeFile::new(format!("{dist_path}/01.ico")))
 		
 		//.route_service("/testing", ServeFile::new("client/dist/testing.html"))
 		.fallback(|| async { "Page Not Found" })
@@ -103,7 +109,6 @@ async fn main() {
 }
 async fn rustls_config() -> Option<RustlsConfig> {
 	
-	use std::env;
 	use std::path::PathBuf;
 	
 	if let Ok(value) = env::var("USE_HTTPS") {

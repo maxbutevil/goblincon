@@ -1,33 +1,26 @@
+
+#164.90.245.50
 #git clone git@github.com:maxbutevil/goblincon-plus
+
+#git reset --hard HEAD && git pull
 #docker build -t goblincon .
 #docker run -p 443:5050 --name goblincon goblincon
-#git reset --hard HEAD && git pull
 
-
+#docker stop goblincon
+#docker remove goblincon
 
 FROM node:latest AS client
-WORKDIR /src/client
+WORKDIR /client
 COPY ./client .
 RUN npm install
 RUN npm run build
 
-FROM rust:latest AS server
-WORKDIR /src
-COPY --from=client /src/client/dist ./client/dist
-COPY ./src ./src
-COPY ./Cargo.lock ./Cargo.lock
-COPY ./Cargo.toml ./Cargo.toml
-COPY ./.env ./.env
-COPY ./tls ./tls
-RUN cargo build --release
+FROM rust:latest
+WORKDIR /goblincon
+COPY ./server .
+RUN cargo install --path .
 
+COPY --from=client /client/dist ../client/dist
 EXPOSE 5050
 
-CMD [ "cargo", "run", "--release" ]
-
-#FROM ubuntu:latest
-#WORKDIR /goblincon
-#COPY --from=client /src/client/dist ./client/dist
-#COPY --from=server /src/server/target/release/server.exe ./server
-#EXPOSE 5050
-#CMD ["./server"]
+CMD [ "server" ]

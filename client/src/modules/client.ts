@@ -14,11 +14,14 @@ export enum Connection {
 
 //const ADDR = "ws://localhost:5050";
 
+const HEARTBEAT_INTERVAL_MS = 45 * 1000;
+
 type Message = { type: string, data: any };
 class Client {
 	
 	//incoming = new Signal<string>();
 	private incoming = new Signal<Message>();
+	
 	//private paused?: Array<Message>;
 	
 	state = new State(Connection.CLOSED);
@@ -28,12 +31,15 @@ class Client {
 	connectionFailed = this.state.transition(Connection.PENDING, Connection.CLOSED);
 	
 	private ws: WebSocket | undefined;
+	private heartbeatTimeout: NodeJS.Timeout | undefined;
+	private heartbeatCallback = () => this.send(""); // for callback caching
 	
 	//constructor() {}
 	connect(addr: string) {
 		
 		this.ws = new WebSocket(addr);
 		this.state.set(Connection.PENDING);
+		this.resetHeartbeat();
 		
 		this.ws.onopen = () => {
 			console.log("WebSocket connection opened!");
@@ -48,14 +54,15 @@ class Client {
 			console.error("WebSocket error: ", ev);
 			this.state.set(Connection.CLOSED);
 		};
-		this.ws.onmessage = (ev: MessageEvent<string>) => {
+		this.ws.onmessage = (ev: MessageEvent<any>) => {
+			this.resetHeartbeat();
 			if (typeof ev.data != "string") {
 				console.error(`Non-String message received: ${ev.data}`);
 			} else {
 				try {
 					let raw = ev.data;
-					let message = JSON.parse(raw);
 					console.log(raw);
+					let message = JSON.parse(raw);
 					if (typeof message.type !== "string")
 						return console.error(`Unrecognized message: ${raw}`);
 					
@@ -83,29 +90,15 @@ class Client {
 		if (!handled)
 			console.warn(`Unhandled message: ${JSON.stringify(message)}`);
 	}
+	protected resetHeartbeat() {
+		clearTimeout(this.heartbeatTimeout);
+		this.heartbeatTimeout = setTimeout(this.heartbeatCallback, HEARTBEAT_INTERVAL_MS);
+	}
+	
 	send(data: string) {
+		this.resetHeartbeat();
 		this.ws?.send(data);
 	}
-	/*pause() {
-		if (this.paused === undefined)
-			this.paused = [];
-	}
-	unpause() {
-		if (this.paused === undefined)
-			return;
-		
-		let messages = this.paused;
-		this.paused = undefined;
-		for (const message of messages) {
-			if (this.paused !== undefined)
-				break;
-			this.handle(message);
-		}
-	}*/
-	/*subscribe() {
-		this.unpause();
-		return () => this.pause();
-	}*/
 	use(inc: ReceiveIndex<any>, out: SendIndex<any>): () => void {
 		//this.unpause();
 		return Signal.group(
@@ -114,6 +107,8 @@ class Client {
 			//() => this.pause()
 		);
 	}
+
+
 }
 
 const client = new Client();

@@ -24,6 +24,19 @@ pub const MAX_PLAYER_COUNT: usize = 12;
 pub const MIN_NAME_LEN: usize = 2;
 pub const MAX_NAME_LEN: usize = 16;
 
+/*
+Timeout if:
+ - Nobody submits anything for a round
+
+Timeout player if:
+ - 
+
+Also, add kicking
+*/
+
+//pub const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(45);
+//pub const PLAYER_TIMEOUT_DURATION: Duration = Duration::from_secs();
+
 //pub const ROOM_ID_LEN: usize = 5;
 //pub const ROOM_ID_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 //pub const ROOM_ID_CHARS: &[u8] = b"BCDFGHJKLMNPQRSTVWXZ"; // no vowels

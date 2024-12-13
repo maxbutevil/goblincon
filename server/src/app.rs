@@ -34,7 +34,6 @@ pub type WebSocketReceiver = SplitStream<WebSocket>;
 
 
 
-
 fn serialize(value: &impl Serialize) -> Result<String, ()> {
 	match serde_json::to_string(value) {
 		Ok(string) => Ok(string),
@@ -155,14 +154,15 @@ impl Player {
 }
 
 use std::pin::Pin;
-use tokio::time::{sleep, Sleep, Duration};
+use tokio::time::{sleep, Sleep, Instant, Duration};
 struct Timeout(pub Pin<Box<Sleep>>);
+//struct Heartbeat(Timeout);
 impl Timeout {
 	fn new(duration: Duration) -> Self {
 		Self(Box::pin(sleep(duration)))
 	}
-	fn replace(&mut self, duration: Duration) {
-		self.0.set(sleep(duration));
+	fn reset(&mut self, duration: Duration) {
+		self.0.as_mut().reset(Instant::now() + duration)
 	}
 	fn scaled(duration: Duration, scale_setting: f32) -> Duration {
 		Duration::from_secs_f32(scale_setting * duration.as_secs_f32())
@@ -184,8 +184,22 @@ impl Timeout {
 	fn future<'a>(&'a mut self) -> &'a mut Pin<Box<Sleep>> {
 		&mut self.0
 	}
-	
 }
+/*impl Heartbeat {
+	
+	const INTERVAL: Duration = Duration::from_secs(45);
+	
+	fn new() -> Self {
+		Self(Timeout::new(Self::INTERVAL))
+	}
+	fn reset(&mut self) {
+		self.0.reset(Self::INTERVAL)
+	}
+	async fn future<'a>(&'a mut self) {
+		self.0.future().await;
+		self.reset();
+	}
+}*/
 
 /* A duration that varies based on the number of players present */
 struct DynamicDuration {
@@ -252,7 +266,14 @@ mod client_index {
 				let sender = sender.clone();
 				let handle = tokio::spawn(async move {
 					while let Some(content) = super::next_string(&mut rx).await {
-						let result = sender.send(Event::Message(ClientId::Host, content)).await;
+						
+						if content.is_empty() {
+							/* This is an empty keep-alive message, ignore */
+							continue;
+						}
+						
+						let message = Event::Message(ClientId::Host, content);
+						let result = sender.send(message).await;
 						if result.is_err() {
 							break;
 						}
@@ -291,6 +312,12 @@ mod client_index {
 			let (tx, mut rx) = socket.split();
 			let handle = tokio::spawn(async move {
 				while let Some(content) = next_string(&mut rx).await {
+					
+					if content.is_empty() {
+						/* This is an empty keep-alive message, ignore */
+						continue;
+					}
+					
 					let id = ClientId::Player(player_id);
 					let event = Event::Message(id, content);
 					let result = sender.send(event).await;
@@ -508,20 +535,15 @@ mod lobby {
 		Drawblins(drawblins::Settings)
 	}
 	enum State {
-		//New,
 		Open { leader_id: PlayerId },
 		Starting,
 		Done(Result<Settings, ()>)
 	}
 	
 	pub struct Lobby<'a> {
-		//id: RoomId,
 		pub clients: &'a mut ClientIndex,
-		//pub settings: &'a mut game::Settings,
 		receiver: room::Receiver,
-		//timeout: Timeout,
 		state: State
-		//leader_id: PlayerId,
 	}
 	impl<'a> Lobby<'a> {
 		pub fn new(clients: &'a mut ClientIndex) -> (Self, room::Sender) {
@@ -569,14 +591,6 @@ mod lobby {
 				&PlayerMsgOut::InLobby { player_count: None }
 			).await;
 		}
-		/*async fn sync_player(&mut self, leader_id: PlayerId, player_id: PlayerId) {
-			if leader_id == player_id {
-				self.state = State::Open { leader_id };
-				self.sync_leader(leader_id).await;
-			} else {
-				self.sync_nonleader(player_id).await;
-			}
-		}*/
 		async fn sync_incoming(&mut self, leader_id: PlayerId, inc_id: PlayerId, is_joining: bool) {
 			
 			if self.has_player(leader_id) {
@@ -890,13 +904,14 @@ mod drawblins {
 	pub struct Game<'a> {
 		
 		clients: &'a mut ClientIndex,
-		//settings: &'a mut Settings,
-		settings: Settings,
 		receiver: room::Receiver,
+		settings: Settings,
+		
+		timeout: Timeout,
 		state: State,
 		round: usize,
 		names: Box<[String]>,
-		timeout: Timeout
+		
 	}
 	impl<'a> Game<'a> {
 		
@@ -907,10 +922,11 @@ mod drawblins {
 				receiver,
 				clients,
 				settings,
+				
+				timeout: Timeout::new(START_DURATION),
 				state: State::Start,
 				round: 0,
 				names: goblin_names::generate_names(round_count),
-				timeout: Timeout::new(START_DURATION)
 			};
 			(game, sender)
 		}
@@ -944,6 +960,19 @@ mod drawblins {
 				}
 			}
 		}
+		
+		fn vote_choices(&self, eligible: [bool; MAX_PLAYER_COUNT]) -> Box<[String]> {
+			self.clients.players.iter()
+				.filter_map(|(id, presence)| {
+					if let Some(true) = eligible.get(id) {
+						Some(presence.name.clone())
+					} else {
+						None
+					}
+				})
+				.collect()
+		}
+		
 		async fn handle_client_event(&mut self, event: client_index::Event) -> Result<(), ()> {
 			match event {
 				client_index::Event::Disconnect(client_id) => {
@@ -976,19 +1005,6 @@ mod drawblins {
 			}
 			return Ok(())
 		}
-		
-		fn vote_choices(&self, eligible: [bool; MAX_PLAYER_COUNT]) -> Box<[String]> {
-			self.clients.players.iter()
-				.filter_map(|(id, presence)| {
-					if let Some(true) = eligible.get(id) {
-						Some(presence.name.clone())
-					} else {
-						None
-					}
-				})
-				.collect()
-		}
-		
 		async fn handle_rejoin(&mut self, socket: WebSocket, player_id: PlayerId, token: PlayerToken) {
 			if let State::Done(_) = self.state {
 				return;
@@ -1042,6 +1058,7 @@ mod drawblins {
 				player_id
 			}).await;
 		}
+		
 		async fn advance(&mut self) {
 			match self.state {
 				State::Start => self.start_draw().await,
@@ -1054,8 +1071,6 @@ mod drawblins {
 				}
 			}
 		}
-		
-		
 		async fn start_draw(&mut self) {
 			/* Increment the round counter, unless we just started */
 			if !matches!(self.state, State::Start) {
@@ -1067,7 +1082,7 @@ mod drawblins {
 			};
 			
 			self.state = State::Draw { submitted: [false; MAX_PLAYER_COUNT] };
-			self.timeout.replace(Timeout::scaled(DRAW_DURATION, self.settings.draw_time_factor));
+			self.timeout.reset(Timeout::scaled(DRAW_DURATION, self.settings.draw_time_factor));
 			
 			self.clients.send_all(
 				&HostMsgOut::Drawing { goblin_name /*, secs_left*/ },
@@ -1079,7 +1094,7 @@ mod drawblins {
 		}
 		async fn start_vote(&mut self, eligible: [bool; MAX_PLAYER_COUNT]) {
 			let choices = self.vote_choices(eligible);
-			self.timeout.replace(Timeout::scaled_dynamic(VOTE_DURATION, self.settings.vote_time_factor, choices.len()));
+			self.timeout.reset(Timeout::scaled_dynamic(VOTE_DURATION, self.settings.vote_time_factor, choices.len()));
 			self.clients.send_all(
 				&HostMsgOut::Voting {},
 				&PlayerMsgOut::Voting {
@@ -1091,7 +1106,7 @@ mod drawblins {
 		}
 		async fn start_results(&mut self, choice_count: usize) {
 			self.state = State::Results;
-			self.timeout.replace(Timeout::dynamic(RESULTS_DURATION, choice_count));
+			self.timeout.reset(Timeout::dynamic(RESULTS_DURATION, choice_count));
 			//self.clients.send_host(&HostMsgOut::Results).await;
 			self.clients.send_all(
 				&HostMsgOut::Results,
@@ -1100,7 +1115,7 @@ mod drawblins {
 		}
 		async fn start_score(&mut self) {
 			self.state = State::Score;
-			self.timeout.replace(Timeout::scaled(SCORE_DURATION, self.settings.score_time_factor));
+			self.timeout.reset(Timeout::scaled(SCORE_DURATION, self.settings.score_time_factor));
 			self.clients.send_host(&HostMsgOut::Scoring).await;
 		}
 		async fn start_finale(&mut self) {

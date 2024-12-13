@@ -389,7 +389,7 @@ const ROOT: StrTable = Table::new(&[
 		"Bigfoot",
 		"Gimmsby",
 		"Wrangle",
-		"Gub",
+		//"Gub",
 		"Bluntus",
 		"Cowlick",
 		"Cupcake",
@@ -398,6 +398,7 @@ const ROOT: StrTable = Table::new(&[
 		"Crunglespborp",
 		"Crabs",
 		"Snart",
+		"Freaky",
 								
 		/* C's Contributions */
 		//"Jorm",
