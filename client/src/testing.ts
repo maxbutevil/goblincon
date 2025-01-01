@@ -1,31 +1,112 @@
 import "./shared.css"
 import State from './modules/state'
-import { h, patch, patchRoot, stateful, cleaned, fragment, VNode } from './modules/render';
+import { h, patch, patchRoot, stateful, signaled, cleaned, fragment, VNode } from './modules/render';
+import Signal from "./modules/signal"
 
 import * as icons from "./assets/drawpad/index"
 import * as PlayerIcon from "./modules/player_icons"
 
 const state = new State(0);
 
+const signal = new Signal();
+
 /*patchRoot(
-	cleaned(
-		() => console.log("cleaning up!"),
-		() => stateful(state, () => h("div", String(state.get())))
-	)
+	signaled(t2, () => {
+		return signaled(t1, () => {
+			//return h("div", String(state.get()));
+			if (state.get() === 1) {
+				return cleaned(
+					() => console.log("cleaning up!"),
+					() => stateful(state, () => h("div.a", String(state.get())))
+				);
+			} else {
+				return stateful(
+					state,
+					() => h("p.b", String(state.get()))
+				)
+				//return h("p.b", String(state.get()));
+			}
+		})
+	})
 );*/
 
 patchRoot(
 	stateful(
 		state,
-		() => cleaned(
-			() => console.log("cleaning up!"),
-			() => h("div", String(state.get()))
-		)
+		(curr) => signaled(signal, () => {
+			if (curr == 1) {
+				return cleaned(
+					() => console.log("cleaning up!"),
+					() => h("div.a", String(state.get()))
+				);
+			} else {
+				return h("div.a", String(state.get()));
+			}
+		})
 	)
 );
 
-state.set(1);
-state.set(2);
+/*patchRoot(
+	stateful(state, (curr) => {
+		if (state.get() === 1) {
+			return cleaned(
+				() => console.log("cleaning up!"),
+				() => stateful(state, () => h("div.a", String(state.get())))
+			);
+		} else {
+			return stateful(
+				state,
+				() => h("p.b", String(state.get()))
+			)
+			//return h("p.b", String(state.get()));
+		}
+	})
+);*/
+
+setInterval(() => {
+	console.log(state.get());
+	signal.emit();
+	state.set(1 - state.get())
+}, 2000);
+
+
+/*patchRoot(
+	stateful(state, (curr) => {
+		if (curr === 0) {
+			return cleaned(
+				() => console.log("cleaning up!"),
+				() => stateful(state, () => h("div#root.a", String(state.get())))
+			);
+		} else {
+			return stateful(
+				state,
+				() => h("div#root.b", String(state.get()))
+			)
+		}
+	})
+);*/
+
+/*patchRoot(
+	stateful(
+		state,
+		
+	)
+);*/
+
+/*patchRoot(
+	stateful(
+		state,
+		() => stateful(
+			state,
+			() => h("div#root.b", String(state.get()))
+		)
+	)
+);*/
+
+
+
+//state.set(1);
+//state.set(2);
 
 /*const count = new State([1, 1]);
 

@@ -3,7 +3,7 @@ import "../shared.css"
 import "./play.css"
 
 import {
-	State, Variant, unit, variant,
+	Signal, State, Variant, unit, variant,
 	Validate, ReceiveIndex, SendIndex,
 	client, Connection,
 	Shared,
@@ -31,6 +31,7 @@ const OUT = new SendIndex({
 });
 
 type Page = 
+	Variant<"syncing"> |
 	Variant<"landing"> |
 	Variant<"lobby", { playerCount: number | undefined }> |
 	Variant<"drawblins">;
@@ -40,6 +41,13 @@ const page = State.deep<Page>(unit("landing"));
 
 type StatusUpdate = null | { type: "info" | "error", message: string };
 const status = new State<StatusUpdate>(null);
+
+/*const enterPressed = new Signal();
+document.addEventListener("keydown", (ev) => {
+	if (ev.key == "Enter") {
+		enterPressed.emit();
+	}
+});*/
 
 client.use(INC, OUT);
 client.pending.listen(() => {
@@ -54,10 +62,11 @@ client.connectionFailed.listen(() => {
 	}
 });
 client.disconnected.listen(() => {
+	//page.set(unit("syncing"));
 	page.set(unit("landing"));
 });
 client.connectionFailed.listen(() => {
-	Globals.clearRejoinInfo();
+	//Globals.clearRejoinInfo();
 });
 INC.listen("terminated", () => {
 	Globals.clearRejoinInfo();
@@ -104,10 +113,13 @@ function statusError(message: string) {
 	status.set({ type: "error", message });
 }
 
+function syncing() {
+	return h("h1", "syncing...");
+}
 function landing() {
 	
 	//function joinGame(code: string, name: string) {
-	function joinGame() {
+	function attemptJoin() {
 	
 		if (!client.state.is(Connection.CLOSED))
 			return;
@@ -170,7 +182,7 @@ function landing() {
 						]),
 						h("button#join-btn", {
 							attrs: { disabled },
-							on: { click: joinGame }
+							on: { click: attemptJoin }
 						}, "Join!"),
 					]
 				);	
@@ -265,14 +277,20 @@ function lobby(playerCount: number | undefined) {
 	]);
 }
 
-patchRoot(app());
+
+function attemptRejoin() {
+	if (client.state.is(Connection.CLOSED)) {
+		let rejoinUrl = Globals.getRejoinUrl();
+		if (rejoinUrl) client.connect(rejoinUrl);
+	}
+}
 function app() {
-	/* Attempt rejoin */
-	let rejoinUrl = Globals.getRejoinUrl();
-	if (rejoinUrl) client.connect(rejoinUrl);
+	
+	attemptRejoin();
 	
 	return stateful(page, (curr) => {
 		switch(curr.key) {
+			case "syncing": return syncing();
 			case "landing": return landing();
 			case "lobby": return lobby(curr.playerCount);
 			case "drawblins": return Drawblins.view();
@@ -280,8 +298,18 @@ function app() {
 	});
 }
 
+/* misc event handling */
+//window.onbeforeunload = () => client.close();
 
-window.onbeforeunload = () => client.close();
-
+patchRoot(app());
+window.addEventListener("beforeunload", () => {
+	client.close();
+});
+window.addEventListener("focus", (event) => {
+	attemptRejoin();
+});
+window.addEventListener("touchstart", (event) => {
+	
+});
 
 

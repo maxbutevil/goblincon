@@ -78,6 +78,10 @@ export default class Signal<T = void> extends Set<Callback<T>> {
 		return Signal.UNHANDLED;
 	}
 	
+	/*public static keyDown(key): Signal {
+		document.addEventListener();
+	}*/
+	
 	/*public static register() {
 		
 	}

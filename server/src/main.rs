@@ -51,21 +51,24 @@ async fn main() {
 		routing::get
 	};
 	
-	tracing_subscriber::fmt::init();
+	//tracing_subscriber::fmt::init();
 	if dotenvy::dotenv().is_err() {
-		tracing::warn!("proceeding without .env file");
+		println!("proceeding without .env file");
 	}
 	
-	
-	//use tokio::net::TcpListener;
-	//use std::path::PathBuf;
+	tracing_subscriber::fmt::init();
+	/*
+	tracing::debug!("debug");
+	tracing::info!("info");
+	tracing::warn!("warn");
+	tracing::error!("error");
+	*/
 	
 	//let dist_path = env::var("").expect();
 	//let dist_path = env::var("").expect("")//.unwrap_or_else(|_| "".to_string());
 	
 	let dist_path = "../client/dist";
 	let static_path = format!("{dist_path}/static");
-	
 	
 	let ws_router = Router::new()
 		.route("/host", get(ws_upgrade_host))
@@ -85,8 +88,7 @@ async fn main() {
 		.route_service("/host", ServeFile::new(format!("{dist_path}/host.html")))
 		.route_service("/play", ServeFile::new(format!("{dist_path}/play.html")))
 		.route_service("/01.ico", ServeFile::new(format!("{dist_path}/01.ico")))
-		
-		//.route_service("/testing", ServeFile::new("client/dist/testing.html"))
+		//.route_service("/testing", ServeFile::new(format!("{dist_path}/testing.html")))
 		.fallback(|| async { "Page Not Found" })
 		.with_state(App::new())
 		.into_make_service();

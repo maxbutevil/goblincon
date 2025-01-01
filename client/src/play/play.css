@@ -1,16 +1,12 @@
 
 * {
-	/* scorched earth, iOS does not make this easy */
-	-webkit-touch-callout: none;
-	-webkit-user-callout: none;
-	-webkit-user-drag: none;
-	-webkit-user-modify: none;
-	-webkit-highlight: none;
-	/* somehow, despite all this, iOS still has a selection popup occasionally... */
+	/*touch-action: pinch-zoom;*/
+	touch-action: manipulation; /* ios safari ignores this, because of course it does */
 }
 
 body {
-	position: fixed;
+	/*position: fixed;*/
+	font-size: 16px;
 }
 
 /* Landing */
@@ -51,7 +47,7 @@ body {
 	justify-content: center;
 	margin: auto;
 }
-#goblin-name {
+.tab#draw #goblin-name {
 	flex: 1 0;
 	text-align: center;
 	font-size: 1.6em;
@@ -61,6 +57,7 @@ body {
 	text-align: center;
 }
 #drawpad {
+	touch-action: pinch-zoom;
 	width: min(96vw, 78vh);
 	display: flex;
 	flex-flow: column nowrap;
@@ -80,7 +77,7 @@ body {
 }
 #drawpad button {
 	flex: 1;
-	aspect-ratio: 1;
+	aspect-ratio: 1 / 1;
 	border: 0;
 	border-radius: 0;
 	margin: 0;
@@ -92,6 +89,7 @@ body {
 }
 #drawpad .color-select-btn {
 	border: 0.2em solid;
+	
 }
 #drawpad #spacer-btn {
 	flex: 2;
@@ -102,16 +100,15 @@ body {
 	aspect-ratio: 4 / 1;
 	
 	font-size: 1.2em;
-	background-color: gray;
-	transition: background-color 0.5s;
+	background-color: #4A5;
+	transition: background-color 0.8s;
 }
 #drawpad #submit-btn:hover:enabled {
-	filter: brightness(0.9);
-	background-color: #3e0;
+	filter: brightness(1.06);
 }
 #drawpad #submit-btn:active:enabled {
-	transition: background-color ease-out 1s;
-	background-color: #0A0;
+	/*transition: background-color 0.7s;*/
+	background-color: #090;
 }
 #drawpad #submit-btn.submitted {
 	background-color: #070;

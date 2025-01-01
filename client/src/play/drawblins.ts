@@ -215,20 +215,25 @@ function drawPad() {
 		
 	}
 	
-	function undo() {
+	function abort(redoable = false) {
 		
 		if (!canvas || undoStack.length === 0)
 			return;
 		if (!state.is(CanvasState.IDLE))
 			return;
 		
-		redoStack.push(undoStack.pop()!);
+		let op = undoStack.pop()!;
+		if (redoable) redoStack.push(op);
 		rebuildCanvas();
 		
 		let isBlank = (backupIndex === 0 && undoStack.length === 0);
 		if (isBlank)
 			state.set(CanvasState.BLANK);
 	}
+	function undo() {
+		abort(true);
+	}
+	
 	function redo() {
 		
 		if (!canvas || redoStack.length === 0)
@@ -256,7 +261,6 @@ function drawPad() {
 		
 		if (x < 0 || y < 0 || x > canvas.sourceWidth || y > canvas.sourceHeight)
 			endDraw();
-		
 	}
 	function startDraw() {
 		state.set(CanvasState.DRAWING);
@@ -279,9 +283,22 @@ function drawPad() {
 	}
 	function handleStartDraw(ev: PointerEvent) {
 		
+		if (state.is(CanvasState.DRAWING)) {
+			// multiple touches cancels drawing
+			endDraw();
+			
+			// if we try to pinch-zoom on the drawpad we leave a single point behind
+			// this fixes that
+			let op = undoStack.at(-1);
+			let isPoint = op != undefined && op.path.length() <= 1;
+			if (isPoint) abort();
+			
+			return;
+		}
+		
 		if (!ev.isPrimary || !canvas)
 			return;
-		if (state.any(CanvasState.LOCKED, CanvasState.SUBMITTED, CanvasState.DRAWING))
+		if (state.any(CanvasState.LOCKED, CanvasState.SUBMITTED))
 			return;
 		
 		startDraw();
@@ -420,7 +437,7 @@ function drawPad() {
 			
 			function startSubmit() {
 				clearTimeout(submittingTimeout);
-				submittingTimeout = setTimeout(submit, 1000);
+				submittingTimeout = setTimeout(submit, 0.7 * 1000);
 			}
 			function cancelSubmit() {
 				clearTimeout(submittingTimeout);

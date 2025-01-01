@@ -1,8 +1,9 @@
 
 #164.90.245.50
-#git clone git@github.com:maxbutevil/goblincon-plus
+#git clone git@github.com:maxbutevil/goblincon-plus .
 
-#git reset --hard HEAD && git pull
+#MAYBE: git reset --hard HEAD
+#git pull
 #docker build -t goblincon .
 #docker run -p 443:5050 --name goblincon goblincon
 

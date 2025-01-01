@@ -13,7 +13,8 @@ export default defineConfig({
 		//favicon: "./favicons/01.ico",
 		meta: {
 			charset: { charset: 'UTF-8' },
-			viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"
+			viewport: "width=device-width, initial-scale=1"
+			//viewport: "width=device-width, initial-scale=1, maximum-scale=1"
 		},
 		favicon: "./icons/01.ico",
 		/*appIcon: {

@@ -91,6 +91,8 @@ export function cleaned(cleanup: Cleanup, builder: () => VNode): VNode {
   return vnode;
 }
 
+const VERBOSE = false;
+
 class Ref {
   
   /* This is used to pass an evil secret argument to the stateful node functions */
@@ -99,7 +101,6 @@ class Ref {
   node: VNode | Ref;
   cleanup: Cleanup | null;
   children: Ref[] = [];
-  
   
   constructor(node: VNode | Ref, children: Ref[] = [], cleanup: Cleanup) {
     this.node = node;
@@ -156,10 +157,13 @@ class Ref {
     if (this.cleanup === null) {
       console.warn("ref destroyed after it has already cleaned up");
     } else {
-      if (this.node instanceof Ref)
-        console.log(`reference cleaning up (stacked)`);
-      else
-        console.log(`reference cleaning up (${this.node.sel})`);
+      
+      if (VERBOSE) {
+        if (this.node instanceof Ref)
+          console.log(`reference cleaning up (stacked)`);
+        else
+          console.log(`reference cleaning up (${this.node.sel})`);
+      }
       
       this.cleanup();
       this.cleanup = null;

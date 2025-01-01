@@ -77,5 +77,12 @@ class Globals {
 
 };
 
+/* strip out URL parameters */
+window.addEventListener("load", () => {
+	if(window.location.search.length > 0) {
+		window.history.replaceState({}, document.title, window.location.pathname);
+	}
+});
+
 export default Globals;
 
