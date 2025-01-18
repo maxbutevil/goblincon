@@ -8,13 +8,14 @@ import {
 	client, Connection,
 	Shared,
 	PlayerIcons,
-	patchRoot, h, fragment, stateful, contained, VNode,
+	patchRoot, h, stateful, contained, VNode,
 } from "../modules/index"
 
 import Globals from "./globals"
 import * as Drawblins from "./drawblins"
 
 import logo from "../components/logo"
+import { help as helpIcon } from "../assets/icons/index"
 
 const INC = new ReceiveIndex({
 	terminated: Validate.NONE,
@@ -55,10 +56,10 @@ client.pending.listen(() => {
 });
 client.connectionFailed.listen(() => {
 	// only show this status after a join attempt (not a rejoin)
-	if (Globals.hasJoinCode()) {
-		statusError("Join failed; check your code");
-	} else {
+	if (Globals.wasRejoining()) {
 		statusNone();
+	} else {
+		statusError("Join failed; check your code");
 	}
 });
 client.disconnected.listen(() => {
@@ -74,6 +75,7 @@ INC.listen("terminated", () => {
 INC.listen("accepted", ({ playerId, token }) => {
 	Globals.playerId = playerId;
 	Globals.storeRejoinInfo(token);
+	Globals.joinCode = ""; // make sure we see future rejoin attempts as rejoin attempts
 });
 INC.listen("inLobby", ({ playerCount }) => {
 	statusNone();
@@ -83,8 +85,7 @@ INC.listen("inGame", () => {
 	page.set(unit("drawblins"));
 });
 INC.listen("error", (message) => {
-	/* This works, but isn't ideal */
-	if (!Globals.hasJoinCode() && page.get().key === "landing")
+	if (page.get().key === "landing" && Globals.wasRejoining())
 		console.warn("Couldn't rejoin game: ", message);
 	else
 		statusError(message);
@@ -118,6 +119,8 @@ function syncing() {
 }
 function landing() {
 	
+	let helpOpen = new State(false);
+	
 	//function joinGame(code: string, name: string) {
 	function attemptJoin() {
 	
@@ -144,7 +147,75 @@ function landing() {
 		if (url) client.connect(url);
 	}
 	
-	const canHost = !Shared.isMobileClient;
+	function helpPopup() {
+		
+		function b(content: string): VNode {
+			return h("b", { style: { fontWeight: "bold" }}, content);
+		}
+		
+		function br(): VNode {
+			return h("br");
+		}
+		
+		return stateful(helpOpen, (curr) => {
+			if (!curr) {
+				return h("!");
+			} else {
+				return h("div.overlay",
+					h("div#help-popup.popup.vflow.vsplit", [
+						h("div", [
+							h("h2", "How to Play"),
+							h("div.section", [
+								b("Host"),
+								" on a PC or similar device",
+							]),
+							h("div.small", [
+								"(this device ",
+								b(Shared.isMobileClient ? "cannot" : "can"),
+								" be used to host)",
+							]),
+							h("div.section", [
+								b("Join"),
+								//" and ",
+								//b("Play"),
+								" from a mobile device",
+								br(),
+								h("div.small", "(other devices are ok too)")
+							]),
+							h("div.section", [
+								"Designed for 3-16 players"
+							]),
+							h("div.section", [
+								"Draw silly creatures & have fun!"
+							]),
+						]),
+						h("button",
+							{ on: { click: () => helpOpen.set(false) } },
+							"Back"
+						)
+					])
+				);
+			}
+		});
+	}
+	function helpPopupButton() {
+		return h("div.mounted-btn-vflow", [
+			h("button#help-popup-button",
+				{ on: { click: () => helpOpen.set(!helpOpen.get()) } },
+				h("img#help-popup-button-icon", { attrs: { src: helpIcon }})
+			)
+		]);
+	}
+	function hostLink() {
+		const canHost = !Shared.isMobileClient;
+		if (!canHost) {
+			return null
+		} else {
+			return h("a#footer", {
+				attrs: { href: "/host" }
+			}, "Hosting a game? Click here");
+		}
+	}
 	
 	return h("div#landing.tab", [
 		h("div", [
@@ -189,10 +260,9 @@ function landing() {
 			}),
 			clearedStatusMessage()
 		]),
-		(!canHost) ? null :
-			h("a#footer", {
-				attrs: { href: "/host" }
-			}, "Hosting a game? Click here")
+		hostLink(),
+		helpPopup(),
+		helpPopupButton(),
 	]);
 }
 function lobby(playerCount: number | undefined) {
@@ -220,10 +290,12 @@ function lobby(playerCount: number | undefined) {
 						attrs: { src },
 						on: {
 							click: () => {
-								Globals.playerIcon = i;
-								Globals.storePlayerIcon();
-								OUT.send("changeIcon", { icon: i });
-								rerender();
+								if (Globals.playerIcon !== i) {
+									Globals.playerIcon = i;
+									Globals.storePlayerIcon();
+									OUT.send("changeIcon", { icon: i });
+									rerender();
+								}
 							}
 						}
 					},
@@ -234,7 +306,7 @@ function lobby(playerCount: number | undefined) {
 		});
 	}
 	
-	let startInterface = null;
+	let startInterface: VNode[] = [];
 	if (promoted) {
 		
 		let blurb;
@@ -246,28 +318,25 @@ function lobby(playerCount: number | undefined) {
 			blurb = `${playerCount} players`;
 		}
 		
-		startInterface = fragment([
-			fragment([
-				h("div", "Start the game when everybody's in!"),
-				h("div", blurb),
-				h(
-					"button#start-btn",
-					{
-						on: { click: startGame },
-						attrs: { disabled: playerCount <= 1 }
-					},
-					"Start"
-				),
-				//clearedStatusMessage() /* to say "Not Enough Players" */
-			])
-		]);
+		startInterface = [
+			h("div", "Start the game when everybody's in!"),
+			h("div", blurb),
+			h(
+				"button#start-btn",
+				{
+					on: { click: startGame },
+					attrs: { disabled: playerCount <= 1 }
+				},
+				"Start"
+			),
+		];
 	}
 	
 	return h("div#lobby.tab", [
 		h("div", [
-			h("h1", "Lobby!!"),
+			h("h1", "Lobby"),
 			iconSelect(),
-			startInterface
+			...startInterface
 		]),
 		h(
 			"button#leave-btn",
@@ -302,14 +371,12 @@ function app() {
 //window.onbeforeunload = () => client.close();
 
 patchRoot(app());
+
 window.addEventListener("beforeunload", () => {
 	client.close();
 });
 window.addEventListener("focus", (event) => {
 	attemptRejoin();
-});
-window.addEventListener("touchstart", (event) => {
-	
 });
 
 

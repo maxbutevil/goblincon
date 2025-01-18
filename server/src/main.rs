@@ -12,7 +12,6 @@
 
 
 pub mod types;
-pub mod goblin_names;
 pub mod app;
 //mod favicons;
 
@@ -48,7 +47,8 @@ async fn main() {
 	
 	use axum::{
 		Router,
-		routing::get
+		routing::get,
+		routing::any
 	};
 	
 	//tracing_subscriber::fmt::init();
@@ -65,30 +65,25 @@ async fn main() {
 	*/
 	
 	//let dist_path = env::var("").expect();
-	//let dist_path = env::var("").expect("")//.unwrap_or_else(|_| "".to_string());
-	
 	let dist_path = "../client/dist";
-	let static_path = format!("{dist_path}/static");
 	
 	let ws_router = Router::new()
-		.route("/host", get(ws_upgrade_host))
-		.route("/play/join", get(ws_upgrade_player_join))
-		.route("/play/rejoin", get(ws_upgrade_player_rejoin));
-	let static_service = ServeDir::new(static_path)
-		.append_index_html_on_directories(false);
-	//let icon_service = 
-	//let icon_service = Router::new()
-	//	.route("/fa")
-	let router = Router::new()
-		.nest("/ws", ws_router)
-		//.nest("/favicon.ico")
-		
-		.nest_service("/static", static_service)
-		.route("/", get(|| async { Redirect::to("/play") }))
+		.route("/host", any(ws_upgrade_host))
+		.route("/play/join", any(ws_upgrade_player_join))
+		.route("/play/rejoin", any(ws_upgrade_player_rejoin));
+	let page_router = Router::new()
 		.route_service("/host", ServeFile::new(format!("{dist_path}/host.html")))
 		.route_service("/play", ServeFile::new(format!("{dist_path}/play.html")))
-		.route_service("/01.ico", ServeFile::new(format!("{dist_path}/01.ico")))
-		//.route_service("/testing", ServeFile::new(format!("{dist_path}/testing.html")))
+		.route_service("/howto", ServeFile::new(format!("{dist_path}/howto.html")));
+	let static_service = ServeDir::new(format!("{dist_path}/static"))
+		.append_index_html_on_directories(false);
+	
+	let router = Router::new()
+		.nest("/ws", ws_router)
+		.merge(page_router)
+		.nest_service("/static", static_service)
+		.route_service("/favicon.ico", ServeFile::new(format!("{dist_path}/favicon.ico")))
+		.route("/", get(|| async { Redirect::to("/play") }))
 		.fallback(|| async { "Page Not Found" })
 		.with_state(App::new())
 		.into_make_service();
@@ -102,7 +97,7 @@ async fn main() {
 			.serve(router).await
 			.expect("axum server error");
 	} else {
-		tracing::warn!("opening with HTTP");
+		tracing::warn!("opening without HTTPS");
 		axum_server::bind(addr)
 			.serve(router)
 			.await
@@ -162,13 +157,14 @@ async fn ws_upgrade_player_join(
 ) -> Result<Response, StatusCode>
 {
 	if let Some(room_id) = app.find_room(&query.code) {
-		return Ok(ws.on_upgrade(move |socket| async move {
+		let response = ws.on_upgrade(move |socket| async move {
 			app.accept_player_join(socket, room_id, query.name, query.icon).await
-		}));
+		});
+		Ok(response)
+	} else {
+		tracing::debug!("Room Not Found [{}]", query.code);
+		Err(StatusCode::BAD_REQUEST)
 	}
-	
-	tracing::debug!("Room Not Found [{}]", query.code);
-	Err(StatusCode::BAD_REQUEST)
 }
 async fn ws_upgrade_player_rejoin(
 	State(app): State<App>,
@@ -177,12 +173,13 @@ async fn ws_upgrade_player_rejoin(
 ) -> Result<Response, StatusCode>
 {
 	if let Some(room_id) = app.find_room(&query.code) {
-		return Ok(ws.on_upgrade(move |socket| async move {
+		let response = ws.on_upgrade(move |socket| async move {
 			app.accept_player_rejoin(socket, room_id, query.id, query.token).await
-		}));
+		});
+		Ok(response)
+	} else {
+		tracing::debug!("Room Not Found [{}]", query.code);
+		Err(StatusCode::BAD_REQUEST)
 	}
-	
-	tracing::debug!("Room Not Found [{}]", query.code);
-	Err(StatusCode::BAD_REQUEST)
 }
 

@@ -1,8 +1,8 @@
 
-import { Shared, PlayerIcons, h, fragment } from "../modules/index"
+import { Shared, PlayerIcons, h } from "../modules/index"
 
 export default function() {
-	return h("div", [
+	return h("div#logo", [
 		h("h1", "GoblinCon"),
 		h(
 			"div#icon-row",

@@ -11,28 +11,26 @@ export enum Connection {
 	CLOSED
 }
 
-
-//const ADDR = "ws://localhost:5050";
-
 const HEARTBEAT_INTERVAL_MS = 45 * 1000;
 
 type Message = { type: string, data: any };
 class Client {
 	
-	//incoming = new Signal<string>();
-	private incoming = new Signal<Message>();
-	
-	//private paused?: Array<Message>;
-	
+	// exposed state
 	state = new State(Connection.CLOSED);
 	pending = this.state.transitionTo(Connection.PENDING);
 	connected = this.state.transitionTo(Connection.OPEN);
 	disconnected = this.state.transitionFrom(Connection.OPEN);
 	connectionFailed = this.state.transition(Connection.PENDING, Connection.CLOSED);
 	
+	// how the client is told about incoming messages
+	// in practice, this is forwarded to a ReceiveIndex
+	private incoming = new Signal<Message>();
+	
+	// internal state
 	private ws: WebSocket | undefined;
 	private heartbeatTimeout: NodeJS.Timeout | undefined;
-	private heartbeatCallback = () => this.send(""); // for callback caching
+	private readonly heartbeatCallback = () => this.send(""); // cached callback
 	
 	//constructor() {}
 	connect(addr: string) {
@@ -52,6 +50,7 @@ class Client {
 		};
 		this.ws.onerror = (ev) => {
 			console.error("WebSocket error: ", ev);
+			this.ws = undefined;
 			this.state.set(Connection.CLOSED);
 		};
 		this.ws.onmessage = (ev: MessageEvent<any>) => {
@@ -66,21 +65,12 @@ class Client {
 					if (typeof message.type !== "string")
 						return console.error(`Unrecognized message: ${raw}`);
 					
-					//if (this.paused === undefined)
-						this.handle(message);
-					//else
-					//	this.paused.push(message);
-					
+					this.handle(message);
 				} catch(err) {
 					console.error(err);
 				}
 			}
 		};
-		
-		//setTimeout(() => this.close(), 3000);
-		//this.close();
-		//this.state.set(Connection.CLOSED);
-		
 	}
 	close() {
 		this.ws?.close();
@@ -99,20 +89,20 @@ class Client {
 		this.resetHeartbeat();
 		this.ws?.send(data);
 	}
+	
+	// these methods allow the client to feed into receive/send indices and
+	// have an easy escape hatch (since they all return cleanup functions)
 	use(inc: ReceiveIndex<any>, out: SendIndex<any>): () => void {
-		//this.unpause();
-		return Signal.group(
-			this.incoming.subscribe(({ type, data }) => inc.handle(type, data)),
-			out.outgoing.subscribe((data) => this.send(data)),
-			//() => this.pause()
-		);
+		return Signal.group(this.useInc(inc), this.useOut(out));
 	}
-
-
+	useInc(idx: ReceiveIndex<any>): () => void {
+		return this.incoming.subscribe(({ type, data }) => idx.handle(type, data));
+	}
+	useOut(idx: SendIndex<any>): () => void {
+		return idx.outgoing.subscribe((data) => this.send(data));
+	}
 }
 
 const client = new Client();
 export default client;
-
-//client.send("joinGame", { gameId: "yeah" });
 

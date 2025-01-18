@@ -8,7 +8,7 @@ import {
 	client,
 	Shared,
 	//PlayerIcons,
-	patchRoot, h, fragment, signaled, stateful
+	patchRoot, h, signaled, stateful
 } from "../modules/index"
 import logo from "../components/logo"
 
@@ -16,6 +16,8 @@ import * as Room from "./room"
 import { Player } from "./room"
 import * as Drawblins from "./drawblins"
 import Setting from "./setting"
+
+import { exit as exitIcon } from "../assets/icons/index" 
 
 
 
@@ -53,7 +55,7 @@ const OUT = new SendIndex({
 	}
 });*/
 INC.listen("terminated", () =>
-	page.set(unit("landing"))); // should maybe have an error code thing
+	page.set(unit("loading"))); // should maybe have an error code thing
 
 INC.listen("inLobby", ({ leaderId }) => {
 	Room.setLeaderId(leaderId);
@@ -75,11 +77,11 @@ INC.listen("gameStarting", () => {
 });
 
 type Page =
-	Variant<"landing"> |
+	Variant<"loading"> |
 	Variant<"lobby"> |
 	Variant<"drawblins">;
 
-const page = State.deep<Page>(unit("landing"));
+const page = State.deep<Page>(unit("loading"));
 const mode = new Setting<"drawblins">("Game Mode", [ "drawblins" ]);
 
 //window.addEventListener("DOMContentLoaded", () => {
@@ -92,7 +94,7 @@ function app() {
 	
 	return stateful(page, (curr) => {
 		switch (curr.key) {
-			case "landing": return landing();
+			case "loading": return loading();
 			case "lobby": return lobby();
 			case "drawblins": return Drawblins.view();
 			default: return h("div", {});
@@ -100,9 +102,9 @@ function app() {
 	});
 }
 
-function landing() {
+function loading() {
 	return h(
-		"div#landing.tab", {},
+		"div#loading.tab", {},
 		[
 			h("h1", {}, "Connecting...")
 		]
@@ -123,15 +125,24 @@ function lobby() {
 		copy(`https://${window.location.host}/play?code=${Room.joinCode}`);
 	}
 	
+	function exitBtn() {
+		return h("div.mounted-btn-vflow", [
+			h("button#exit-btn",
+				{ on: { click: () => location.href = "/" } },
+				h("img#exit-btn-icon", { attrs: { src: exitIcon }})
+			)
+		]);
+	}
+	
 	return h(
 		"div.tab",
 		[
 			logo(),
 			h("div#lobby", {}, [
-				h("div.tab.overview", {}, [
-					h("h1", {}, "Lobby"),
-					h("div", {}, [
-						h("h2", {}, "Join Code"),
+				h("div.vflow.overview", {}, [
+					h("h2", "Lobby"),
+					h("div", [
+						h("h3", "Join Code"),
 						h("div#join-code", {}, Room.joinCode),
 						h("div.multi-btn", { style: { fontSize: "0.8em" } }, [
 							h("button", { on: { click: copyCode } }, "Copy Code"),
@@ -140,12 +151,13 @@ function lobby() {
 					]),
 					playerList()
 				]),
-				h("div.tab.game-settings", {}, [
-					h("h1", {}, "Settings"),
+				h("div.vflow.game-settings", {}, [
+					h("h2", "Settings"),
 					Setting.view(mode),
-					modeSettings()
+					...modeSettings()
 				])
-			])
+			]),
+			exitBtn(),
 		]
 	);
 }
@@ -177,20 +189,27 @@ function playerList() {
 		}
 		
 		return h("div.player-list", {}, [
-			h("h2", {}, "Players"),
+			h("h3", {}, "Players"),
 			...children
 		]);
-		
 	});
 }
 
-window.onbeforeunload = (event) => {
+window.addEventListener("DOMContentLoaded", async () => {
+	try {
+		console.log("requesting wake lock");
+		await navigator.wakeLock.request();
+	} catch(err) {
+		console.error("error acquiring wake lock: ", err);
+	}
+});
+window.addEventListener("beforeunload", (event) => {
 	if (Room.playerCount() > 0) {
 		event.preventDefault();
 		return true;
 	}	else {
 		client.close();
 	}
-}
+});
 
 

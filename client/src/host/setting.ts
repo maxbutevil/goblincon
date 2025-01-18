@@ -1,6 +1,6 @@
 
 
-import { h, fragment, conditional, signaled, VNode } from "../modules/render";
+import { h, signaled, VNode } from "../modules/render";
 import Signal from "../modules/signal"
 //import * as Utils from "../utils"
 
@@ -84,11 +84,13 @@ export default class Setting<T = number> {
 			})
 		]);
 	}
-	static multiView(settings: SettingsMap): VNode {
-		let nodes = [];
+	static *multiView(settings: SettingsMap): Iterable<VNode> {
+		for (const key in settings)
+			yield this.view(settings[key]);
+		/*let nodes = [];
 		for (const key in settings)
 			nodes.push(this.view(settings[key]));
-		return fragment(nodes);
+		return fragment(nodes);*/
 	}
 }
 

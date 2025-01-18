@@ -5,86 +5,33 @@
 
 
 use std::sync::Arc;
-
-use slab::Slab;
 use dashmap::DashMap;
 
-use futures_util::{
-	SinkExt, StreamExt,
-	stream::{SplitSink, SplitStream}
-};
-
 use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
-use async_scoped::TokioScope;
-use serde::{Serialize, Deserialize};
+
+
 //use std::net::SocketAddr;
-use axum::extract::ws::{Message, WebSocket};
+
 
 use crate::types::*;
-use crate::goblin_names;
-use client_index::ClientIndex;
+
+mod goblin_names;
+mod timeout;
+mod client;
+
+use timeout::*;
+use client::*;
 
 //use tokio_tungstenite::WebSocketStream;
 //use tokio_tungstenite::tungstenite::Message;
 
 
-pub type WebSocketSender = SplitSink<WebSocket, Message>;
-pub type WebSocketReceiver = SplitStream<WebSocket>;
 
 
 
-fn serialize(value: &impl Serialize) -> Result<String, ()> {
-	match serde_json::to_string(value) {
-		Ok(string) => Ok(string),
-		Err(err) =>	{
-			tracing::error!("serialization: {err}");
-			Err(())
-		}
-	}
-}
-fn deserialize<'a, T: Deserialize<'a>>(str: &'a str) -> Result<T, ()> {
-	match serde_json::from_str::<T>(str) {
-		Ok(value) => Ok(value),
-		Err(_err) => {
-			//tracing::error!("deserialization: {err}");
-			Err(())
-		}
-	}
-}
-async fn next_string(receiver: &mut WebSocketReceiver) -> Option<String> {
-	while let Some(message) = receiver.next().await {
-		match message {
-			Ok(Message::Text(content)) => {
-				return Some(content);
-			},
-			Ok(Message::Ping(_)) => {
-				/* Ignore these, tungstenite handles them */
-			},
-			Ok(Message::Close(_)) => {
-				//tracing::debug!("websocket connection closed");
-				return None;
-			},
-			Ok(message) => {
-				tracing::warn!("invalid websocket message: {message:?}");
-			},
-			Err(err) => {
-				tracing::error!("{err}");
-				return None;
-			},
-		}
-	}
-	None
-}
-async fn send_raw(sender: &mut WebSocketSender, message: Message) -> Result<(), ()> {
-	match sender.send(message).await {
-		Ok(()) => Ok(()),
-		Err(err) => {
-			tracing::warn!("{err}");
-			Err(())
-		}
-	}
-}
+
+
+
 /*async fn send(sender: &mut WebSocketSender, message: impl Serialize) -> Result<(), ()> {
 	send_raw(sender, Message::Text(serialize(&message)?)).await
 }*/
@@ -92,136 +39,6 @@ async fn send_raw(sender: &mut WebSocketSender, message: Message) -> Result<(), 
 	let Ok(message) = serialize(&GlobalPlayerMsgOut::Error(message)) else { return };
 	let _ = socket.send(Message::Text(message)).await;
 }*/
-async fn reject_socket_custom(mut socket: WebSocket, message: &impl Serialize) {
-	let Ok(message) = serialize(message) else { return };
-	let _ = socket.send(Message::Text(message)).await;
-}
-async fn reject_socket(socket: WebSocket, error_message: &str) {
-	reject_socket_custom(socket, &GlobalPlayerMsgOut::Error(error_message)).await
-}
-
-struct Presence {
-	sender: WebSocketSender,
-	handle: JoinHandle<()>
-}
-struct Host {
-	presence: Presence,
-}
-struct Player {
-	presence: Presence,
-	token: PlayerToken,
-	//addr: SocketAddr,
-	name: String,
-	//icon: PlayerIcon,
-}
-impl Presence {
-	fn new(sender: WebSocketSender, handle: JoinHandle<()>) -> Self {
-		Self { sender, handle }
-	}
-	fn is_connected(&self) -> bool {
-		!self.handle.is_finished()
-	}
-	async fn disconnect(&mut self) {
-		if self.is_connected() {
-			//self.handle.abort();
-			let _ = self.sender.close().await;
-		}
-	}
-	async fn send_raw(&mut self, message: Message) -> bool {
-		// evil short-circuiting techniques
-		self.is_connected() && send_raw(&mut self.sender, message).await.is_ok()
-	}
-	async fn send(&mut self, message: &impl Serialize) -> bool {
-		let Ok(message) = serialize(message) else { return false };
-		self.send_raw(Message::Text(message)).await
-	}
-}
-impl Host {
-	async fn send(&mut self, message: &impl Serialize) -> bool {
-		self.presence.send(message).await
-		//send(&mut self.presence.sender, message).await
-	}
-}
-impl Player {
-	fn new(presence: Presence, token: PlayerToken, name: String ) -> Self {
-		Self { presence, token, name }
-	}
-	async fn send_raw(&mut self, message: Message) -> bool {
-		self.presence.send_raw(message).await
-	}
-	async fn send(&mut self, message: &impl Serialize) -> bool {
-		self.presence.send(message).await
-	}
-}
-
-use std::pin::Pin;
-use tokio::time::{sleep, Sleep, Instant, Duration};
-struct Timeout(pub Pin<Box<Sleep>>);
-//struct Heartbeat(Timeout);
-impl Timeout {
-	fn new(duration: Duration) -> Self {
-		Self(Box::pin(sleep(duration)))
-	}
-	fn reset(&mut self, duration: Duration) {
-		self.0.as_mut().reset(Instant::now() + duration)
-	}
-	fn scaled(duration: Duration, scale_setting: f32) -> Duration {
-		Duration::from_secs_f32(scale_setting * duration.as_secs_f32())
-	}
-	fn dynamic(duration: DynamicDuration, num_players: usize) -> Duration {
-		Duration::from_millis(duration.millis(num_players))
-	}
-	fn scaled_dynamic(duration: DynamicDuration, scale_factor: f32, num_players: usize) -> Duration {
-		let millis = scale_factor * (duration.millis(num_players) as f32);
-		Duration::from_millis(millis as u64)
-	}
-	
-	fn remaining(&self) -> Duration {
-		self.0.deadline() - tokio::time::Instant::now()
-	}
-	fn remaining_secs(&self) -> f32 {
-		self.remaining().as_secs_f32()
-	}
-	fn as_future<'a>(&'a mut self) -> &'a mut Pin<Box<Sleep>> {
-		&mut self.0
-	}
-}
-/*impl Heartbeat {
-	
-	const INTERVAL: Duration = Duration::from_secs(45);
-	
-	fn new() -> Self {
-		Self(Timeout::new(Self::INTERVAL))
-	}
-	fn reset(&mut self) {
-		self.0.reset(Self::INTERVAL)
-	}
-	async fn future<'a>(&'a mut self) {
-		self.0.future().await;
-		self.reset();
-	}
-}*/
-
-/* A duration that varies based on the number of players present */
-struct DynamicDuration {
-	base_millis: u64,
-	player_millis: u64
-}
-#[allow(dead_code)]
-impl DynamicDuration {
-	const fn from_secs(base_secs: u64, scaled_secs: u64) -> Self {
-		Self::from_millis(base_secs * 1000, scaled_secs * 1000)
-	}
-	const fn from_millis(base_millis: u64, player_millis: u64) -> Self {
-		Self { base_millis, player_millis }
-	}
-	const fn secs(&self, num_players: usize) -> u64 {
-		self.millis(num_players).div_ceil(1000)
-	}
-	const fn millis(&self, num_players: usize) -> u64 {
-		self.base_millis + (num_players as u64) * self.player_millis
-	}
-}
 
 mod room {
 	
@@ -235,265 +52,7 @@ mod room {
 	}
 	
 }
-mod client_index {
-	
-	use crate::types::*;
-	use super::*;
-	
-	pub type Sender = mpsc::Sender<Event>;
-	pub type Receiver = mpsc::Receiver<Event>;
-	pub enum Event {
-		Disconnect(ClientId),
-		Message(ClientId, String)
-		//HostDisconnect,
-		//HostMessage(String),
-		//PlayerDisconnect(PlayerId),
-		//PlayerMessage(PlayerId, String)
-	}
-	pub struct ClientIndex {
-		sender: Sender,
-		pub receiver: Receiver,
-		pub host: Host,
-		pub players: Slab<Box<Player>>
-	}
-	
-	#[allow(dead_code)]
-	impl ClientIndex {
-		
-		/*async fn reject_player(mut socket: WebSocket, message: &impl Serialize) {
-			let Ok(message) = serialize(message) else { return };
-			let _ = socket.send(Message::Text(message)).await;
-		}
-		async fn reject_player_error(socket: WebSocket, message: &str) {
-			Self::reject_player(socket, &GlobalPlayerMsgOut::Error(message)).await
-		}*/
-		
-		pub fn new(host_socket: WebSocket, capacity: PlayerId) -> Self {
-			let (sender, receiver) = mpsc::channel(EVENT_QUEUE_SIZE);
-			let host = {
-				let (tx, mut rx) = host_socket.split();
-				let sender = sender.clone();
-				let handle = tokio::spawn(async move {
-					while let Some(content) = super::next_string(&mut rx).await {
-						
-						if content.is_empty() {
-							/* This is an empty keep-alive message, ignore */
-							continue;
-						}
-						
-						let msg = Event::Message(ClientId::Host, content);
-						let result = sender.send(msg).await;
-						if result.is_err() {
-							break;
-						}
-					}
-					//tracing::debug!("host receiver closing");
-					let _ = sender.send(Event::Disconnect(ClientId::Host)).await;
-				});
-				let presence = Presence::new(tx, handle);
-				Host { presence }
-			};
-			
-			Self {
-				sender,
-				receiver,
-				host,
-				players: Slab::with_capacity(capacity as usize)
-			}
-		}
-		
-		pub fn player_count(&self) -> usize {
-			self.players.len()
-		}
-		pub fn is_full(&self) -> bool {
-			self.players.len() == self.players.capacity()
-		}
-		pub fn player_id_from_name(&self, name: &str) -> Option<PlayerId> {
-			self.players.iter().find_map(|(id, presence)| {
-				if presence.name == name {
-					Some(id as u8)
-				} else {
-					None
-				}
-			})
-		}
-		
-		pub async fn recv(&mut self) -> Option<Event> {
-			self.receiver.recv().await
-		}
-		
-		fn generate_token() -> PlayerToken {
-			use rand::Rng;
-			rand::thread_rng().gen::<PlayerToken>()
-		}
-		
-		fn player_presence(sender: Sender, socket: WebSocket, player_id: PlayerId) -> Presence {
-			let (tx, mut rx) = socket.split();
-			let handle = tokio::spawn(async move {
-				while let Some(content) = next_string(&mut rx).await {
-					
-					if content.is_empty() {
-						/* This is an empty keep-alive message, ignore */
-						continue;
-					}
-					
-					let id = ClientId::Player(player_id);
-					let event = Event::Message(id, content);
-					let result = sender.send(event).await;
-					if result.is_err() {
-						break;
-					}
-				}
-				let _ = sender.send(Event::Disconnect(ClientId::Player(player_id))).await;
-			});
-			Presence::new(tx, handle)
-		}
-		pub async fn connect_player(&mut self, socket: WebSocket, name: String) -> Result<(PlayerId, PlayerToken), ()> {
-			
-			if self.is_full() {
-				reject_socket(socket, "Lobby is full").await;
-				return Err(());
-			}
-			
-			let name_taken = self.players.iter().any(|(_, player)| name == player.name);
-			if name_taken {
-				reject_socket(socket, "Name is taken").await;
-				return Err(());
-			}
-			
-			let player_id = self.players.vacant_key() as PlayerId;
-			let token = Self::generate_token();
-			
-			let presence = Self::player_presence(self.sender.clone(), socket, player_id);
-			self.players.insert(Box::new(Player::new(presence, token, name)));
-			Ok((player_id, token))
-		}
-		pub async fn reconnect_player(&mut self, socket: WebSocket, player_id: PlayerId, player_token: PlayerToken) -> Result<(), ()> {
-			
-			let Some(player) = self.players.get_mut(player_id as usize) else {
-				tracing::debug!("game rejoin failed (no such player)");
-				reject_socket(socket, "Couldn't rejoin game").await;
-				return Err(());
-			};
-			
-			if player_token != player.token {
-				tracing::debug!("game rejoin failed (invalid token)");
-				reject_socket(socket, "Couldn't rejoin game").await;
-				return Err(());
-			}
-			
-			if player.presence.is_connected() {
-				tracing::debug!("game rejoin failed (already connected elsewhere)");
-				reject_socket(socket, "Already connected elsewhere").await;
-				return Err(());
-			}
-			
-			player.presence = Self::player_presence(self.sender.clone(), socket, player_id);
-			Ok(())
-		}
-		pub async fn disconnect_player(&mut self, player_id: PlayerId) -> bool {
-			if let Some(player) = self.players.get_mut(player_id as usize) {
-				if player.presence.is_connected() {
-					player.presence.disconnect().await;
-					return true;
-				} else {
-					tracing::debug!("attempted to disconnect player that is not connected");
-				}
-			}
-			false
-		}
-		pub async fn remove_player(&mut self, player_id: PlayerId) -> bool {
-			if self.players.contains(player_id as usize) {
-				let mut player = self.players.remove(player_id as usize);
-				player.presence.disconnect().await;
-				return true;
-			} else {
-				tracing::debug!("attempted to remove player that is not present");
-				return false;
-			}
-		}
-		pub fn remove_disconnected_players(&mut self) -> Vec<PlayerId> {
-			//self.players.retain(|_, player| player.presence.is_connected());
-			let mut removed_ids = Vec::new();
-			for (id, player) in self.players.iter() {
-				if !player.presence.is_connected() {
-					removed_ids.push(id as PlayerId);
-				}
-			}
-			for &id in removed_ids.iter() {
-				self.players.remove(id as usize);
-			}
-			removed_ids
-		}
-		//pub async fn 
-		pub async fn disconnect_all(&mut self) {
-			self.host.presence.disconnect().await;
-			for (_, player) in self.players.iter_mut() {
-				player.presence.disconnect().await;
-			}
-		}
-		pub async fn send_host(&mut self, message: &impl Serialize) -> bool {
-			self.host.send(message).await
-		}
-		pub async fn send_player(&mut self, id: PlayerId, message: &impl Serialize) -> bool {
-			if let Some(player) = self.players.get_mut(id as usize) {
-				//if player.presence.is_connected() {
-					player.send(message).await
-				//}
-			} else {
-				tracing::error!("attempted to send to nonexistent player");
-				false
-			}
-		}
-		pub async fn send_all(&mut self, host_message: &impl Serialize, player_message: &impl Serialize) -> bool {
-			let results = tokio::join!(
-				//self.send_host(host_message),
-				self.host.send(host_message),
-				Self::send_players(self.players.iter_mut(), player_message)
-			);
-			results.0 && results.1
-			//results.0.and(results.1).is_ok()
-		}
-		pub async fn send_all_except(&mut self, except_id: PlayerId, host_message: &impl Serialize, player_message: &impl Serialize) -> bool {
-			let results = tokio::join!(
-				self.host.send(host_message),
-				Self::send_players_except(self.players.iter_mut(), except_id, player_message)
-			);
-			results.0
-			//results.0.and(results.1)
-		}
-		pub async fn send_all_players(&mut self, message: &impl Serialize) -> bool {
-			Self::send_players(self.players.iter_mut(), message).await
-		}
-		pub async fn send_all_players_except(&mut self, except_id: PlayerId, message: &impl Serialize) -> bool {
-			Self::send_players_except(self.players.iter_mut(), except_id, message).await
-		}
-		async fn send_players<'a, I>(players: I, message: &impl Serialize) -> bool
-		where I: Iterator<Item=(usize, &'a mut Box<Player>)> {
-			let Ok(message) = serialize(message) else { return false };
-			let message = Message::Text(message);
-			let (_, results) = TokioScope::scope_and_block(|scope| {
-				for (_, player) in players {
-					scope.spawn(player.send_raw(message.clone()));
-				}
-			});
-			
-			for result in results {
-				let Ok(true) = result else { return false };
-			}
-			
-			true
-		}
-		async fn send_players_except<'a, I>(players: I, except_id: PlayerId, message: &impl Serialize) -> bool
-		where I: Iterator<Item=(usize, &'a mut Box<Player>)> {
-			let iter = players.enumerate()
-				.filter(|(id, _)| *id as PlayerId != except_id)
-				.map(|(_, player)| player);
-			Self::send_players(iter, message).await
-		}
-	}
-	
-}
+
 mod lobby {
 	
 	use super::*;
@@ -588,12 +147,13 @@ mod lobby {
 			self.clients.players.contains(player_id as usize)
 		}
 		fn has_connected_player(&self, player_id: PlayerId) -> bool {
-			let Some(player) = self.clients.players.get(player_id as usize) else { return false };
-			player.presence.is_connected()
+			let player = self.clients.players.get(player_id as usize);
+			let Some(player) = player else { return false };
+			player.is_connected()
 		}
 		fn new_leader_id(&self) -> Option<PlayerId> {
 			for (player_id, player) in self.clients.players.iter() {
-				if player.presence.is_connected() {
+				if player.is_connected() {
 					return Some(player_id as PlayerId);
 				}
 			}
@@ -643,10 +203,9 @@ mod lobby {
 						}
 					},
 					client_event = self.clients.recv() => {
-						use client_index::Event;
 						let Some(event) = client_event else { break Err(()) };
 						match event {
-							Event::Disconnect(client_id) => {
+							ClientEvent::Disconnect(client_id) => {
 								match client_id {
 									ClientId::Host =>
 										break Err(()),
@@ -654,7 +213,7 @@ mod lobby {
 										self.handle_player_disconnect(player_id).await
 								}
 							},
-							Event::Message(client_id, message) =>
+							ClientEvent::Message(client_id, message) =>
 								self.handle_client_message(client_id, message).await
 						}
 					}
@@ -965,7 +524,7 @@ mod drawblins {
 				}
 				
 				tokio::select! {
-					_ = &mut self.timeout.as_future() => self.advance().await,
+					_ = &mut *self.timeout => self.advance().await,
 					event = self.receiver.recv() => {
 						let Some(event) = event else { break Err(()) };
 						match event {
@@ -985,9 +544,9 @@ mod drawblins {
 		
 		fn vote_choices(&self, eligible: [bool; MAX_PLAYER_COUNT]) -> Box<[String]> {
 			self.clients.players.iter()
-				.filter_map(|(id, presence)| {
+				.filter_map(|(id, player)| {
 					if let Some(true) = eligible.get(id) {
-						Some(presence.name.clone())
+						Some(player.name.clone())
 					} else {
 						None
 					}
@@ -998,9 +557,9 @@ mod drawblins {
 			
 		}*/
 		
-		async fn handle_client_event(&mut self, event: client_index::Event) -> Result<(), ()> {
+		async fn handle_client_event(&mut self, event: ClientEvent) -> Result<(), ()> {
 			match event {
-				client_index::Event::Disconnect(client_id) => {
+				ClientEvent::Disconnect(client_id) => {
 					match client_id {
 						ClientId::Host =>
 							return Err(()),
@@ -1008,7 +567,7 @@ mod drawblins {
 							{ self.handle_player_disconnect(player_id).await; }
 					}
 				},
-				client_index::Event::Message(client_id, message) => {
+				ClientEvent::Message(client_id, message) => {
 					match client_id {
 						ClientId::Host => {
 							let Ok(message) = deserialize::<'_, HostMsgIn>(&message) else { return Ok(()) };
@@ -1411,14 +970,16 @@ impl App {
 	}
 	pub async fn accept_player_join(&self, socket: WebSocket, room_id: RoomId, name: String, icon: PlayerIcon) {
 		let Some(handle) = self.rooms.get(&room_id) else {
-			reject_socket(socket, "Room not found").await; // this should essentially never happen
+			// this should essentially never happen
+			ClientIndex::terminate_player(socket).await;
 			return;
 		};
 		let _ = handle.send(room::Event::PlayerJoin { socket, name, icon }).await;
 	}
 	pub async fn accept_player_rejoin(&self, socket: WebSocket, room_id: RoomId, player_id: PlayerId, token: PlayerToken) {
 		let Some(handle) = self.rooms.get(&room_id) else {
-			reject_socket(socket, "Room not found").await; // this should essentially never happen
+			// this should essentially never happen
+			ClientIndex::terminate_player(socket).await;
 			return;
 		};
 		let _ = handle.send(room::Event::PlayerRejoin { socket, player_id, token }).await;

@@ -19,7 +19,7 @@ const CORE_COLORS = [
 	"#9900ee", // purple
 	"#ff88bb", // pink
 ];
-export const COLORS = [
+export const DRAW_COLORS = [
 	...CORE_COLORS,
 	"#000000", // black
 ];

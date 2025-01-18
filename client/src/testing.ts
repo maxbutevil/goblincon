@@ -3,7 +3,7 @@ import State from './modules/state'
 import { h, patch, patchRoot, stateful, signaled, cleaned, fragment, VNode } from './modules/render';
 import Signal from "./modules/signal"
 
-import * as icons from "./assets/drawpad/index"
+import * as icons from "./assets/icons/index"
 import * as PlayerIcon from "./modules/player_icons"
 
 const state = new State(0);

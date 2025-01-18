@@ -13,7 +13,7 @@ import Globals from "./globals"
 import countdown from "../components/countdown"
 import Canvas, { Path } from "../modules/canvas"
 
-import * as icons from "../assets/drawpad/index"
+import * as icons from "../assets/icons/index"
 
 const INC = new ReceiveIndex({
 	waiting: Validate.choice<"start" | "draw" | "vote" | "results" | "score">("start", "draw", "vote", "results", "score"),
@@ -396,7 +396,7 @@ function drawPad() {
 			}
 			
 			return h("div#color-select.btn-row", [
-				...Shared.COLORS.map(color => colorButton(color)),
+				...Shared.DRAW_COLORS.map(color => colorButton(color)),
 				eraseButton()
 			]);
 		});

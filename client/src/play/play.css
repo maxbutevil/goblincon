@@ -1,7 +1,7 @@
 
 * {
 	/*touch-action: pinch-zoom;*/
-	touch-action: manipulation; /* ios safari ignores this, because of course it does */
+	/*touch-action: manipulation;*/ /* ios safari ignores this, because of course it does */
 }
 
 body {
@@ -25,6 +25,11 @@ body {
 #code-input {
 	text-transform: uppercase;
 }
+
+#help-popup .section {
+	margin-top: 0.6em;
+}
+
 
 
 /* Lobby */

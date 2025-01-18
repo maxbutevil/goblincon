@@ -1,7 +1,7 @@
 
+/* This is currently just a placeholder for if/when I decide to add randomized favicons */
 /*use std::fs;
 use std::path::PathBuf;
-
 
 fn get_icons() -> Box<[]> {
 	
@@ -9,5 +9,4 @@ fn get_icons() -> Box<[]> {
 	let Some(iter) = fs::read_dir(dir);
 	
 }*/
-
 

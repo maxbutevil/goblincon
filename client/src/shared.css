@@ -1,25 +1,25 @@
 
 
 * {
-    margin: 0;
-    /* lets player draw on mobile */
-    
-    user-select: none;
-    /*touch-action: none;*/
-    
-    /*user-select: none;
-    touch-action: none;*/
-    /* pointer-events: none; */
-    /* somehow, despite all this, iOS still has a selection popup occasionally... */
+	margin: 0;
+	/* lets player draw on mobile */
+	
+	user-select: none;
+	/*touch-action: none;*/
+	
+	/*user-select: none;
+	touch-action: none;*/
+	/* pointer-events: none; */
+	/* somehow, despite all this, iOS still has a selection popup occasionally... */
 }
 html, body, #root, #app {
-    height: 100%;
-    display: flex;
-    justify-content: center;
+	height: 100%;
+	display: flex;
+	justify-content: center;
 }
 body {
-    font-family: Arial;
-    background-color: #eeeee8;
+	font-family: Arial;
+	background-color: #eeeee0;
 }
 
 
@@ -27,44 +27,45 @@ button, input {
 	font-size: 0.9em;
 	border: 3px solid #333;
 	border-radius: 6px;
-    color: black;
+	color: black;
 }
 
-
-
-.tab {
-    display: flex;
-    flex-flow: column nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    text-align: center;
-    gap: 10px;
-    margin: 28px;
-    font-size: 1.2em;
+.tab, .vflow {
+	display: flex;
+	flex-flow: column nowrap;
+	justify-content: flex-start;
+	align-items: center;
+	text-align: center;
+	gap: 10px;
+	margin: 28px;
+	font-size: 1.2em;
+}
+.vsplit {
+	justify-content: space-between;
 }
 
 .status {
-    text-align: center;
-    font-weight: bold;
+	text-align: center;
+	font-weight: bold;
 }
 .status.error {
-    color: darkred;
+	color: darkred;
 }
 
 .countdown {
-    font-size: 1.6em;
+	font-size: 1.6em;
 }
 
 .player-icon {
-    width: 2.0em;
-    height: 2.0em;
-    flex: 0 0 2.0em;
+	width: 2.0em;
+	height: 2.0em;
+	flex: 0 0 2.0em;
 }
 .player-view {
-    display: flex;
-    flex-flow: row nowrap;
-    align-items: center;
-    gap: 0.3em;
+	display: flex;
+	flex-flow: row nowrap;
+	align-items: center;
+	gap: 0.3em;
 }
 
 #icon-row {
@@ -73,5 +74,58 @@ button, input {
 	font-size: 1em;
 }
 
+.overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+	
+	display: flex;
+	flex-flow: column nowrap;
+	align-items: center;
+	padding: none;
+	
+	border: none;
+	background-color: rgba(0, 0, 0, 0.36);
+}
+.popup {
+	
+	font-size: 1em;
+	
+	margin: 1.2em;
+	padding: 1em;
+	height: 100%;
+	
+	
+	border: 3px solid black;
+	border-radius: 8px;
+	
+	
+	background-color: #eeeee0;
+}
+.small {
+	font-size: 0.86em;
+}
 
+.mounted-btn-vflow {
+	position: fixed;
+	left: 0.5em;
+	bottom: 0.5em;
+}
+.mounted-btn-vflow button {
+	display: flex;
+	flex-flow: column nowrap;
+	gap: 0.5em;
+	
+	width: 2.2em;
+	height: 2.2em;
+	padding: 0.2em;
+	margin: none;
+}
+.mounted-btn-vflow button img {
+	margin: none;
+	width: 100%;
+	height: 100%;
+}
 

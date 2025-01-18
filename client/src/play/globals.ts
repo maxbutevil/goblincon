@@ -21,6 +21,9 @@ class Globals {
 	static readonly MAX_NAME_LEN = 16;
 	static readonly CODE_LEN = 5;
 	
+	static wasRejoining() {
+		return !this.hasJoinCode();
+	}
 	static storePlayerName() {
 		try { localStorage.setItem("playerName", this.playerName); }
 		catch(e) { console.log("localStorage error: ", e); }
@@ -43,7 +46,6 @@ class Globals {
 		}
 	}
 	static clearRejoinInfo() {
-		
 		localStorage.removeItem("rejoinCode");
 		localStorage.removeItem("rejoinId");
 		localStorage.removeItem("rejoinToken");
@@ -73,8 +75,6 @@ class Globals {
 			return null;
 		}
 	}
-	
-
 };
 
 /* strip out URL parameters */

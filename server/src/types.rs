@@ -11,6 +11,14 @@ pub type PlayerId = u8;
 pub type PlayerToken = u32; // can't use usize or javascript will throw a fit
 pub type PlayerIcon = u8;
 
+pub use futures_util::{
+	SinkExt, StreamExt,
+	stream::{SplitSink, SplitStream}
+};
+pub use axum::extract::ws::{Message, WebSocket};
+pub type WebSocketSender = SplitSink<WebSocket, Message>;
+pub type WebSocketReceiver = SplitStream<WebSocket>;
+
 pub enum ClientId {
 	Host,
 	Player(PlayerId)
