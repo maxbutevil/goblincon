@@ -10,14 +10,6 @@ const INDEX = { smily, heart, star, triangle, square, octagon, angry };
 
 export default INDEX;
 
-/*
-export { default as angry } from "./angry.png"
-export { default as heart } from "./heart.png"
-export { default as smily } from "./smily.png"
-export { default as star } from "./star.png"
-export { default as triangle } from "./triangle.png"
-*/
-
 
 
 

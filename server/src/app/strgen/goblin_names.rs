@@ -1,89 +1,8 @@
 
+use super::*;
 
-/*const PREFIXES: &[&str] = &[
-	"The Great",
-	"The Eponymous",
-	
-];
-const SUFFIXES: &[&str] = &[
-	""
-];*/
-
-use core::fmt;
-use core::fmt::Display;
-
-/*struct Table<T: Copy + 'static> {
-	//entries: Box<[T]>
-	entries: &'static [T]
-}
-impl<T: Copy + 'static> Table<T> {
-	const fn new(entries: &'static [T]) -> Self {
-		assert!(!entries.is_empty());
-		Self { entries }
-	}
-	fn pick(&self) -> T {
-		use rand::Rng;
-		let idx = rand::thread_rng().gen_range(0..self.entries.len());
-		self.entries[idx]
-	}
-}
-impl<T: Copy + 'static + Display> Display for Table<T> {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "{}", self.pick())
-	}
-}*/
-
-type FnTable = Table<fn() -> String>;
-type StrTable = Table<&'static str>;
-struct Table<T: Copy + 'static> {
-	entries: &'static [(usize, &'static [T])],
-	total_weight: usize,
-}
-impl<T: Copy + 'static> Table<T> {
-	const fn new(entries: &'static [(usize, &[T])]) -> Self {
-		let mut total_weight = 0_usize;
-		let mut i = 0;
-		loop {
-			if i >= entries.len() {
-				break;
-			}
-			let (weight, values) = entries[i];
-			assert!(weight > 0);
-			total_weight += weight * values.len();
-			i += 1;
-		}
-		assert!(total_weight > 0, "Table cannot be empty");
-		Self { total_weight, entries }
-	}
-	/*const fn unweighted(values: &'static [T]) -> Self {
-		Self::new([(1, values)])
-	}*/
-	fn pick(&self) -> T {
-		use rand::Rng;
-		self.pick_at(rand::thread_rng().gen_range(0..self.total_weight))
-	}
-	fn pick_at(&self, mut i: usize) -> T {
-		for &(weight, values) in self.entries.iter() {
-			let total_weight = weight * values.len();
-			if i < total_weight {
-				let idx = i / weight;
-				return values[idx];
-			}
-			i -= total_weight;
-		}
-		unreachable!();
-	}
-}
-
-impl Display for StrTable {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "{}", self.pick())
-	}
-}
-impl Display for FnTable {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "{}", self.pick()())
-	}
+pub fn generate(count: usize) -> Box<[String]> {
+	TEMPLATES.generate_count(count)
 }
 
 const TEMPLATES: FnTable = Table::new(&[
@@ -477,21 +396,18 @@ const ROOT: StrTable = Table::new(&[
 		"Pongel",
 		"Greegle",
 		"Lumpsucker", // N's
-		
 	]),
 ]);
 
-
-
-pub fn generate_names(count: usize) -> Box<[String]> {
-	fn generate(count: usize, table: &FnTable) -> Box<[String]> {
-		// Probably doesn't need to be its own function, so let's hide it in here!
-		(0..count).map(|_| format!("{table}")).collect()
-	}
-	return generate(count, &TEMPLATES);
+#[test]
+fn check_duplicates() {
+	[ROOT, LEGENDARY, ADJECTIVE, PREFIX, COMMA_SUFFIX, STANDARD_SUFFIX]
+		.iter()
+		.for_each(|t| t.check_duplicates())
 }
+
 
 #[test]
 fn name_dump() {
-	println!("{:?}", generate_names(100));
+	println!("{:?}", generate(100));
 }

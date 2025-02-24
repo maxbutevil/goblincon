@@ -25,6 +25,15 @@ await Promise.all(promises);
 
 function generate(icon: number, color: string): string {
 	//if (!bases[src].complete) await bases[src]?.decode();
+	
+	const base = bases[icon];
+	if (typeof base !== "object") {
+		console.error("Attempted to generate icon with invalid icon index:", icon);
+	}
+	if (typeof color !== "string") {
+		console.error("Attempted to generate icon with invalid color:", color);
+	}
+	
 	let canvas = Canvas.fromImage(bases[icon]);
 	canvas.setOperation("source-in");
 	canvas.wipeStyle(color);

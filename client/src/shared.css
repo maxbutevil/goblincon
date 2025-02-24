@@ -70,6 +70,7 @@ button, input {
 
 #icon-row {
 	display: flex;
+	justify-content: center;
 	flex-flow: row nowrap;
 	font-size: 1em;
 }

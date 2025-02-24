@@ -3,72 +3,69 @@ import "../shared.css"
 import "./play.css"
 
 import {
-	Signal, State, Variant, unit, variant,
-	Validate, ReceiveIndex, SendIndex,
+	Signal, State, Variant, variant,
+	Val, ReceiveIndex, SendIndex,
 	client, Connection,
 	Shared,
 	PlayerIcons,
-	patchRoot, h, stateful, contained, VNode,
+	h, s, projector, patchRoot, VNode,
 } from "../modules/index"
 
 import Globals from "./globals"
 import * as Drawblins from "./drawblins"
+import * as Dating from "./dating"
 
-import logo from "../components/logo"
+import {
+	logo,
+	mountedBtn
+} from "../components/index"
 import { help as helpIcon } from "../assets/icons/index"
 
 const INC = new ReceiveIndex({
-	terminated: Validate.NONE,
-	error: Validate.STRING,
+	terminated: Val.NONE,
+	error: Val.STR,
 	
-	accepted: { playerId: Validate.NUMBER, token: Validate.NUMBER },
-	inLobby: { playerCount: Validate.optional(Validate.NUMBER) }, //promoted: Validate.BOOL },
-	inGame: Validate.NONE, // eventually needs to hold the settings
+	accepted: { playerId: Val.NUM, token: Val.NUM },
+	inLobby: { playerCount: Val.optional(Val.NUM) }, //promoted: Val.BOOL },
+	//inGame: Val.NONE, // eventually needs to hold the settings
+	inDrawblins: Val.NONE,
+	inDating: Val.NONE,
 });
 const OUT = new SendIndex({
-	leave: Validate.NONE,
-	startGame: Validate.NONE,
-	changeIcon: { icon: Validate.NUMBER }
+	leave: Val.NONE,
+	startGame: Val.NONE,
+	changeIcon: { icon: Val.NUM }
 });
 
-type Page = 
-	Variant<"syncing"> |
-	Variant<"landing"> |
-	Variant<"lobby", { playerCount: number | undefined }> |
-	Variant<"drawblins">;
+//const page = State.deep<Page>(variant("landing"));
+const page = projector(landing);
+const status = projector(() => h("!"));
 
-const page = State.deep<Page>(unit("landing"));
-
-
-type StatusUpdate = null | { type: "info" | "error", message: string };
-const status = new State<StatusUpdate>(null);
-
-/*const enterPressed = new Signal();
-document.addEventListener("keydown", (ev) => {
-	if (ev.key == "Enter") {
-		enterPressed.emit();
-	}
-});*/
-
-client.use(INC, OUT);
 client.pending.listen(() => {
-	statusInfo("Connecting...");
-});
-client.connectionFailed.listen(() => {
-	// only show this status after a join attempt (not a rejoin)
-	if (Globals.wasRejoining()) {
-		statusNone();
-	} else {
-		statusError("Join failed; check your code");
-	}
+	status.put(info, "Connecting...");
 });
 client.disconnected.listen(() => {
-	//page.set(unit("syncing"));
-	page.set(unit("landing"));
+	page.put(landing);
 });
-client.connectionFailed.listen(() => {
-	//Globals.clearRejoinInfo();
+client.closed.listen((ev) => {
+	
+	if (ev.code === Shared.CUSTOM_ERROR) {
+		status.put(error, ev.reason);
+	} else if (ev.code === Shared.INVALID_JOIN) {
+		status.put(error, "Join failed; check your code");
+	} else if (ev.code === Shared.INVALID_REJOIN) {
+		console.warn("Rejoin failed");
+		Globals.clearRejoinInfo();
+		status.reset();
+	} else if (ev.reason) {
+		status.put(info, ev.reason);
+	} else if (!ev.wasClean) {
+		status.put(error, "Connection Error");
+	} else {
+		status.reset();
+	}
 });
+
 INC.listen("terminated", () => {
 	Globals.clearRejoinInfo();
 });
@@ -78,45 +75,28 @@ INC.listen("accepted", ({ playerId, token }) => {
 	Globals.joinCode = ""; // make sure we see future rejoin attempts as rejoin attempts
 });
 INC.listen("inLobby", ({ playerCount }) => {
-	statusNone();
-	page.set(variant("lobby", { playerCount }));
+	page.put(lobby, playerCount);
 });
-INC.listen("inGame", () => {
-	page.set(unit("drawblins"));
+INC.listen("inDrawblins", () => {
+	page.put(Drawblins.view);
 });
-INC.listen("error", (message) => {
+INC.listen("inDating", () => {
+	page.put(Dating.view);
+});
+/*INC.listen("error", (message) => {
 	if (page.get().key === "landing" && Globals.wasRejoining())
-		console.warn("Couldn't rejoin game: ", message);
+		console.warn("Couldn't rejoin game:", message);
 	else
 		statusError(message);
-});
+});*/
 
-function statusMessage() {
-	return stateful(status, (curr) => {
-		if (curr === null)
-			return h("div.status");
-		else
-			return h(`div.status.${curr.type}`, curr.message);
-	});
+function info(message: string) {
+	return h(`div.status.info`, message);
 }
-function clearedStatusMessage() {
-	//console.log("Clearing")
-	statusNone();
-	return statusMessage();
-}
-function statusNone() {
-	status.set(null);
-}
-function statusInfo(message: string) {
-	status.set({ type: "info", message });
-}
-function statusError(message: string) {
-	status.set({ type: "error", message });
+function error(message: string) {
+	return h(`div.status.error`, message);
 }
 
-function syncing() {
-	return h("h1", "syncing...");
-}
 function landing() {
 	
 	let helpOpen = new State(false);
@@ -131,15 +111,15 @@ function landing() {
 		let name = Globals.playerName;
 		
 		if (name.length < Globals.MIN_NAME_LEN)
-			return statusError("Name too short");
+			return status.put(error, "Name too short");
 		if (name.length > Globals.MAX_NAME_LEN)
-			return statusError("Name too long");
+			return status.put(error, "Name too long");
 		
 		Globals.clearRejoinInfo();
 		Globals.storePlayerName();
 		
 		if (code.length !== Globals.CODE_LEN)
-			return statusError("Invalid code");
+			return status.put(error, "Invalid code");
 		
 		//console.log(name, code);
 		//Globals.joinCode = code.toUpperCase();
@@ -157,7 +137,7 @@ function landing() {
 			return h("br");
 		}
 		
-		return stateful(helpOpen, (curr) => {
+		return s(helpOpen, (curr) => {
 			if (!curr) {
 				return h("!");
 			} else {
@@ -198,14 +178,6 @@ function landing() {
 			}
 		});
 	}
-	function helpPopupButton() {
-		return h("div.mounted-btn-vflow", [
-			h("button#help-popup-button",
-				{ on: { click: () => helpOpen.set(!helpOpen.get()) } },
-				h("img#help-popup-button-icon", { attrs: { src: helpIcon }})
-			)
-		]);
-	}
 	function hostLink() {
 		const canHost = !Shared.isMobileClient;
 		if (!canHost) {
@@ -216,11 +188,39 @@ function landing() {
 			}, "Hosting a game? Click here");
 		}
 	}
+	function pasteCode(ev: ClipboardEvent) {
+		
+		function extractUrlCode(content: string): string | undefined {
+			if (!content.toLowerCase().startsWith("https:")) return;
+			if (!URL.canParse(content)) return;
+			const url = new URL(content);
+			if (url.hostname !== window.location.hostname) return;
+			const code = url.searchParams.get("code");
+			if (!code) return;
+			if (code.length !== Globals.CODE_LEN) return;
+			return code;
+		}
+		
+		const content = ev.clipboardData?.getData("text");
+		if (!content || content.length === 5) return;
+		
+		const elm = document.querySelector("#code-input") as HTMLInputElement;
+		Globals.joinCode = elm.value = "";
+		ev.preventDefault();
+		
+		const code = extractUrlCode(content);
+		if (code) {
+			Globals.joinCode = elm.value = code;
+		} else {
+			status.put(error, "Clipboard does not contain a code");
+		}
+		
+	}
 	
 	return h("div#landing.tab", [
 		h("div", [
 			logo(),
-			stateful(client.state, curr => {
+			s(client.state, curr => {
 				const disabled = (curr !== Connection.CLOSED);
 				return h(
 					"div#join-input.tab",
@@ -247,7 +247,8 @@ function landing() {
 									value: Globals.joinCode ?? ""
 								},
 								on: {
-									change: ev => Globals.joinCode = (ev.currentTarget as HTMLInputElement).value
+									change: ev => Globals.joinCode = (ev.currentTarget as HTMLInputElement).value,
+									paste: pasteCode
 								}
 							})
 						]),
@@ -258,11 +259,11 @@ function landing() {
 					]
 				);	
 			}),
-			clearedStatusMessage()
+			s(status)
 		]),
 		hostLink(),
 		helpPopup(),
-		helpPopupButton(),
+		mountedBtn(helpIcon, () => helpOpen.set(!helpOpen.get()))
 	]);
 }
 function lobby(playerCount: number | undefined) {
@@ -278,7 +279,7 @@ function lobby(playerCount: number | undefined) {
 	
 	function iconSelect() {
 		
-		return contained(rerender => {
+		return s(rerender => {
 			
 			let icons: VNode[] = [];
 			for (let i = 0; i < PlayerIcons.count(); i++) {
@@ -346,7 +347,6 @@ function lobby(playerCount: number | undefined) {
 	]);
 }
 
-
 function attemptRejoin() {
 	if (client.state.is(Connection.CLOSED)) {
 		let rejoinUrl = Globals.getRejoinUrl();
@@ -354,24 +354,14 @@ function attemptRejoin() {
 	}
 }
 function app() {
-	
 	attemptRejoin();
-	
-	return stateful(page, (curr) => {
-		switch(curr.key) {
-			case "syncing": return syncing();
-			case "landing": return landing();
-			case "lobby": return lobby(curr.playerCount);
-			case "drawblins": return Drawblins.view();
-		}
-	});
+	client.use(INC, OUT);
+	return s(page);
 }
-
-/* misc event handling */
-//window.onbeforeunload = () => client.close();
 
 patchRoot(app());
 
+/* misc event handling */
 window.addEventListener("beforeunload", () => {
 	client.close();
 });

@@ -1,7 +1,7 @@
 
 import {
-	Signal, State, Variant, unit, variant,
-	Validate, ReceiveIndex, SendIndex,
+	Signal, State, Variant, variant,
+	Val, ReceiveIndex, SendIndex,
 	client,
 	Shared,
 	PlayerIcons,
@@ -50,12 +50,12 @@ export function playerIds(): IterableIterator<number> {
 
 
 const INC = new ReceiveIndex({
-	"accepted": { joinCode: Validate.STRING },
-	"playerJoined": { playerId: Validate.NUMBER, name: Validate.STRING, icon: Validate.NUMBER },
-	"playerLeft": { playerId: Validate.NUMBER },
-	"playerDisconnected": { playerId: Validate.NUMBER },
-	"playerReconnected": { playerId: Validate.NUMBER },
-	"playerIconChanged": { playerId: Validate.NUMBER, icon: Validate.NUMBER }
+	"accepted": { joinCode: Val.STR },
+	"playerJoined": { playerId: Val.NUM, name: Val.STR, icon: Val.NUM },
+	"playerLeft": { playerId: Val.NUM },
+	"playerDisconnected": { playerId: Val.NUM },
+	"playerReconnected": { playerId: Val.NUM },
+	"playerIconChanged": { playerId: Val.NUM, icon: Val.NUM }
 });
 const OUT = new SendIndex({
 	
@@ -117,5 +117,82 @@ export class Player {
 			player.name
 		]);
 	}
+	static scoredView(player: Player, score: number) {
+		return h("div.player-view", [
+			Player.icon(player),
+			`${player.name} (${score}pts)`,
+		]);
+	}
 }
+
+export class ScoreMap {
+	scores = new Map<number, number>();
+	
+	constructor(playerIds: Iterable<number> = []) {
+		this.reset(playerIds);
+	}
+	reset(playerIds: Iterable<number>) {
+		this.scores.clear();
+		for (const id of playerIds)
+			this.scores.set(id, 0);
+	}
+	get(playerId: number): number {
+		if (!this.scores.has(playerId)) {
+			console.warn("attempted to retrieve score for player that is not present in ScoreMap:", playerId);
+			return 0;
+		}
+		return this.scores.get(playerId)!;
+	}
+	add(playerId: number, amount: number): number {
+		let newScore = this.get(playerId) + amount;
+		this.scores.set(playerId, newScore);
+		return newScore;
+	}
+	
+	ids(): IterableIterator<number> {
+		return this.scores.keys();
+	}
+	sortedIds(): number[] {
+		return Array.from(this.ids()).sort((a, b) => {
+			return this.get(b) - this.get(a);
+		});
+	}
+	*sorted(): IterableIterator<{ id: number, score: number }> {
+		for (const id of this.sortedIds())
+			yield { id, score: this.get(id) };
+	}
+	*rankings(): IterableIterator<{ id: number, score: number, rank: number  }> {
+		let i = 0, rank = 1, prevScore;
+		for (const { score, id } of this.sorted()) {
+			if (!prevScore) {
+				prevScore = score;
+			} else {
+				// If score is tied with that of the previous player, their rank is the same
+				// Otherwise, increase it
+				if (score !== prevScore)
+					rank = i + 1;
+			}
+			yield { rank, score, id };
+			prevScore = score;
+		}
+	}
+	static view(scores: ScoreMap) {
+		
+		let entries = Array.from(scores.sorted()).map(({ id, score }) => {
+			const player = players.get(id)!;
+			return h(
+				"div.score-entry",
+				Player.scoredView(player, score)
+			);
+		});
+		
+		return h("div.score-entry-ctr", entries);
+	}
+}
+class Rounds<R> {
+	rounds: R[] = [];
+}
+
+
+
 

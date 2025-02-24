@@ -7,8 +7,8 @@ impl Timeout {
 	pub fn new(duration: Duration) -> Self {
 		Self(Box::pin(sleep(duration)))
 	}
-	pub fn reset(&mut self, duration: Duration) {
-		self.as_mut().reset(Instant::now() + duration)
+	pub fn reset(&mut self, duration: &Duration) {
+		self.as_mut().reset(Instant::now() + *duration)
 	}
 	pub fn scaled(duration: Duration, scale_factor: f32) -> Duration {
 		duration.mul_f32(scale_factor)

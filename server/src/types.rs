@@ -1,7 +1,8 @@
 
 
-use serde::{Serialize, Deserialize};
+
 pub use tokio::time::Duration;
+pub use serde::{Serialize, Deserialize, Deserializer};
 
 //use std::net::SocketAddr;
 //use internment::ArcIntern;
@@ -15,20 +16,15 @@ pub use futures_util::{
 	SinkExt, StreamExt,
 	stream::{SplitSink, SplitStream}
 };
+
+pub use rand::prelude::*;
 pub use axum::extract::ws::{Message, WebSocket};
 pub type WebSocketSender = SplitSink<WebSocket, Message>;
 pub type WebSocketReceiver = SplitStream<WebSocket>;
 
-pub enum ClientId {
-	Host,
-	Player(PlayerId)
-}
-
-pub const EVENT_QUEUE_SIZE: usize = 2;
-
 pub const MIN_PLAYER_COUNT: usize = 2;
 pub const MAX_PLAYER_COUNT: usize = 12;
-//pub const ROUND_COUNT: usize = 3;
+
 pub const MIN_NAME_LEN: usize = 2;
 pub const MAX_NAME_LEN: usize = 16;
 
@@ -42,45 +38,31 @@ Timeout player if:
 Also, add kicking
 */
 
-//pub const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(45);
-//pub const PLAYER_TIMEOUT_DURATION: Duration = Duration::from_secs();
-
-//pub const ROOM_ID_LEN: usize = 5;
-//pub const ROOM_ID_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-//pub const ROOM_ID_CHARS: &[u8] = b"BCDFGHJKLMNPQRSTVWXZ"; // no vowels
-
-/*#[derive(Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub enum StatusKind {
-	Ok,
-	Err
-}*/
 #[derive(Serialize, Clone)]
 #[serde(tag = "type", content = "data")]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum GlobalPlayerMsgOut<'a> {
-	Terminated,
+	//Terminated,
 	Error(&'a str),
-}
-
-#[derive(Serialize, Clone)]
-#[serde(tag = "type", content = "data")]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum GlobalHostMsgOut<'a> {
-	Accepted { join_code: &'a str },
-	Terminated,
 	
-	//PlayerLeft,
-	PlayerDisconnected { player_id: PlayerId },
-	PlayerReconnected { player_id: PlayerId },
-	//Error(&'a str),
+	InLobby {
+		/* player_count sent to the leader so they know if they can start the game */
+		#[serde(skip_serializing_if = "Option::is_none")]
+		player_count: Option<usize>
+	},
+	InDrawblins,
+	InDating,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize)]
 #[serde(tag = "type", content = "data")]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum GlobalHostMsgIn {
-	Terminate
+pub enum GlobalHostMsgOut {
+	//Terminated,
+	
+	InLobby { leader_id: PlayerId },
+	//InDrawblins,
+	//InDating,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -91,9 +73,8 @@ impl RoomId {
 	const CHARS: &'static [u8] = b"BCDFGHJKLMNPQRSTVWXZ";
 	
 	pub fn generate() -> Self {
-		use rand::Rng;
-		let mut rng = rand::thread_rng();
-		let inner = [(); 5].map(|_| Self::CHARS[rng.gen_range(0..Self::CHARS.len())]);
+		let rng = &mut rand::thread_rng();
+		let inner = [(); 5].map(|_| *Self::CHARS.choose(rng).unwrap());
 		Self(inner)
 	}
 	pub fn parse(join_code: &str) -> Option<Self> {
@@ -113,3 +94,56 @@ impl RoomId {
 		unsafe { std::str::from_utf8_unchecked(&self.0) }
 	}
 }
+impl std::ops::Deref for RoomId {
+	type Target = [u8; Self::LEN];
+	fn deref(&self) -> &[u8; Self::LEN] { &self.0 }
+}
+
+//macro_rules! require {
+	
+//}
+
+/*macro_rules! expect {
+	
+}
+
+pub trait SoftExpect {
+	fn is_unexpected(&self) -> bool;
+	
+	fn info_expect(&self, what: &str) { if self.is_unexpected() { tracing::info!(what) } }
+	fn debug_expect(&self, what: &str) { if self.is_unexpected() { tracing::debug!(what) } }
+	fn warn_expect(&self, what: &str) { if self.is_unexpected() { tracing::warn!(what) } }
+	fn error_expect(&self, what: &str) { if self.is_unexpected() { tracing::error!(what) } }
+}
+impl<T> SoftExpect for Option<T> {
+	fn is_unexpected(&self) -> bool { self.is_none() }
+}
+impl<T, E> SoftExpect for Result<T, E> {
+	fn is_unexpected(&self) -> bool { self.is_err() }
+}*/
+
+/*impl std::ops::DerefMut for RoomId {
+	fn deref_mut(&mut self) -> &mut [u8; Self::LEN] { &mut self.0 }
+}*/
+
+
+/*#[derive(Serialize, Deserialize)]
+pub struct PlayerId(u8);
+impl PlayerId {
+	pub fn new(id: u8) {
+		if id > MAX_PLAYER_COUNT {
+			
+		}
+		Self(id)
+	}
+	pub fn usize(&self) -> usize {
+		self.0 as usize
+	}
+}
+impl std::ops::Deref for PlayerId {
+	type Target = u8;
+	fn deref(&self) -> &Self::Target { &self.0 }
+}*/
+
+//pub struct PlayerIcon(u8);
+

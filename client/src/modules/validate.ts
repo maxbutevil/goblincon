@@ -7,13 +7,13 @@ type ValidatorMap<T> = { [key in keyof T]: Validator<T[key]> };
 export type Validator<T> = ValidatorMethod<T> | ValidatorMap<T>;
 export type Validated<T> = T extends Validator<infer X> ? X : never;
 
-export default class Validate {
+export default class Val {
 	
 	static NONE: ValidatorMethod<undefined> = (value: any): value is undefined => value == undefined;
 	static ANY: ValidatorMethod<any> = (value: any): value is any => true;
-	static BOOL = Validate.simple<boolean>("boolean");
-	static NUMBER = Validate.simple<number>("number");
-	static STRING = Validate.simple<string>("string");
+	static BOOL = Val.simple<boolean>("boolean");
+	static NUM = Val.simple<number>("number");
+	static STR = Val.simple<string>("string");
 	
 	private static simple<T>(typeString: string): ValidatorMethod<T> {
 		return (value: any): value is T => typeof value === typeString;
@@ -26,7 +26,7 @@ export default class Validate {
 			if (value === undefined)
 				return true;
 			else
-				return Validate.is(extractor, value);
+				return Val.is(extractor, value);
 		};
 	}
 	static choice<T>(...choices: Array<T>): ValidatorMethod<T> {
@@ -35,7 +35,7 @@ export default class Validate {
 	static branch<T>(...branches: Array<Validator<T>>): ValidatorMethod<T> {
 		return (value: any): value is T => {
 			for (const branch of branches)
-				if (Validate.is(branch, value))
+				if (Val.is(branch, value))
 					return true;
 			return false;
 		}
@@ -44,16 +44,21 @@ export default class Validate {
 		return (value: any): value is Array<T> => {
 			if (Array.isArray(value)) {
 				for (const element of value)
-					if (!Validate.is(extractor, element))
+					if (!Val.is(extractor, element))
 						return false;
 				return true;
 			}
 			return false;
 		}
 	}
-	static validate<T>(extractor: Validator<T>, validator: (value: T) => boolean): ValidatorMethod<T> {
+	static unchecked<T>(): ValidatorMethod<T> {
+		return this.ANY;
+	}
+	
+	
+	static Val<T>(extractor: Validator<T>, validator: (value: T) => boolean): ValidatorMethod<T> {
 		return (value: any): value is T => {
-			return Validate.is(extractor, value) && validator(value);
+			return Val.is(extractor, value) && validator(value);
 		}
 	}
 	
@@ -62,13 +67,13 @@ export default class Validate {
 			return extractor(value);
 		} else {
 			for (const key in extractor)
-				if (!Validate.is(extractor[key], value[key]))
+				if (!Val.is(extractor[key], value[key]))
 					return false;
 			return true;
 		}
 	}
 	static get<T>(extractor: Validator<T>, value: any): T | undefined {
-		return Validate.is(extractor, value) ? value : undefined;
+		return Val.is(extractor, value) ? value : undefined;
 	}
 }
 
@@ -109,22 +114,27 @@ export class ReceiveIndex<I extends Index> {
 		if (!(type in this.extractors))
 			return Signal.UNHANDLED;
 		if (!(type in this.signals)) {
-			console.error(`Unhandled message type: ${String(type)} | ${data}`);
+			console.error(`Unhandled message type: ${String(type)} | `, data);
 			return Signal.HANDLED;
 		}
 		
-		if (Validate.is(this.extractors[type], data)) {
-			console.log(`Message received: ${String(type)} | ${JSON.stringify(data)}`);
+		if (Val.is(this.extractors[type], data)) {
+			if (data) {
+				console.log(`${String(type)} | ${JSON.stringify(data)}`);
+			} else {
+				console.log(`${String(type)}`);	
+			}
+			
 			this.signals[type]!.emit(data);
 		} else {
-			console.error(`Invalid message data: ${String(type)} | ${String(data)}`);
+			console.error(`Invalid message data: ${String(type)} | `, data);
 			return Signal.HANDLED;
 		}
 		return Signal.HANDLED;
 		
 		/*let extracted;
 		try {
-			extracted = Validate.unsafe(this.extractors[type], data);
+			extracted = Val.unsafe(this.extractors[type], data);
 		} catch(err) {
 			console.error(`Invalid message data: ${String(type)} | ${data} | ${err}`);
 			return Signal.HANDLED;
@@ -153,7 +163,11 @@ export class SendIndex<I extends Index> {
 	}
 	send<K extends keyof I>(type: K, data: Validated<I[K]>) {
 		//this.sender(this.encode(type, data));
-		this.outgoing.emit(this.encode(type, data));
+		const handled = this.outgoing.handle(this.encode(type, data));
+		if (!handled)
+			console.warn(`unsent outgoing message: ${String(type)} |`, data);
+		else
+			console.info(`sent: ${String(type)} |`, data);
 		//this.outgoing.emit(data);
 	}
 	/*sendUnit<K extends keyof I: Validated<I[K]> extends undefined ? K : never) {

@@ -3,105 +3,74 @@ import "../shared.css"
 import "./host.css"
 
 import {
-	State, Variant, unit, variant,
-	Validate, ReceiveIndex, SendIndex,
+	Val, ReceiveIndex, SendIndex,
 	client,
 	Shared,
-	//PlayerIcons,
-	patchRoot, h, signaled, stateful
+	h, s, projector, patchRoot, VNode
 } from "../modules/index"
-import logo from "../components/logo"
+import {
+	logo,
+	mountedBtn
+} from "../components/index"
+import { exit as exitIcon } from "../assets/icons/index"
 
 import * as Room from "./room"
 import { Player } from "./room"
-import * as Drawblins from "./drawblins"
-import Setting from "./setting"
-
-import { exit as exitIcon } from "../assets/icons/index" 
-
-
+import { Setting } from "./mode"
+import Drawblins from "./drawblins"
+import Dating from "./dating"
 
 const INC = new ReceiveIndex({
-	
-	"terminated": Validate.NONE,
-	
-	"inLobby": { leaderId: Validate.NUMBER },
-	"gameStarting": Validate.NONE,
-	//"gameStarted": Validate.NONE,
-	
-
-	//"drawingSubmitted": { playerId: Validate.NUMBER, drawing: Validate.STRING },
-	//"voteSubmitted": { playerId: Validate.NUMBER, forId: Validate.NUMBER }
-	
+	"inLobby": { leaderId: Val.NUM },
+	"gameStarting": Val.NONE,
 });
+
 const OUT = new SendIndex({
-	"terminate": Validate.NONE,
-	"kickPlayer": { "playerId": Validate.NUMBER },
-	"startGame": Validate.branch(
-		{
-			mode: Validate.fixed<"drawblins">("drawblins"),
-			settings: {
-				roundCount: Validate.NUMBER,
-				drawTimeFactor: Validate.NUMBER,
-				voteTimeFactor: Validate.NUMBER
-			}
-		}
-	)
+	"terminate": Val.NONE,
+	"kickPlayer": { "playerId": Val.NUM },
+	
+	"startGame": Val.unchecked<
+		ReturnType<typeof Drawblins.remote> |
+		ReturnType<typeof Dating.remote>
+	>(),
 });
 
-/*client.disconnected.listen(() => {
-	if (page.get().key !== "landing") {
-		page.set(unit("landing"));
+client.closed.listen((ev) => {
+	if (ev.reason) {
+		page.put(error, `${ev.reason}`);
+	} else {
+		page.put(error, "Fatal connection error");
 	}
-});*/
-INC.listen("terminated", () =>
-	page.set(unit("loading"))); // should maybe have an error code thing
+});
 
 INC.listen("inLobby", ({ leaderId }) => {
 	Room.setLeaderId(leaderId);
-	page.set(unit("lobby"));
+	page.put(lobby);
 });
 
 INC.listen("gameStarting", () => {
 	// here we relay the game settings and set the page accordingly
-	switch(mode.get()) {
-		case "drawblins":
-			OUT.send("startGame", {
-				mode: "drawblins",
-				settings: Drawblins.getSettingsRemote()
-			});
-			page.set(unit("drawblins"));
-			break;
-		default: /* Something went wrong somehow, handle */
-	}
+	OUT.send("startGame", mode.get().remote());
+	page.put(mode.get().view);
 });
 
-type Page =
-	Variant<"loading"> |
-	Variant<"lobby"> |
-	Variant<"drawblins">;
+const page = projector(loading);
+//const mode = new Setting<"drawblins" | "dating">("Game Mode", [ "drawblins", "dating" ], 0);
 
-const page = State.deep<Page>(unit("loading"));
-const mode = new Setting<"drawblins">("Game Mode", [ "drawblins" ]);
+const mode = new Setting<typeof Dating | typeof Drawblins>(
+	"Game Mode",
+	[ Drawblins, Dating ],
+	1,
+	(m) => m.name
+);
 
-//window.addEventListener("DOMContentLoaded", () => {
-
-
-patchRoot(app());
-function app() {
-	client.use(INC, OUT);
-	client.connect(`${Shared.wsRoot}/host`);
-	
-	return stateful(page, (curr) => {
-		switch (curr.key) {
-			case "loading": return loading();
-			case "lobby": return lobby();
-			case "drawblins": return Drawblins.view();
-			default: return h("div", {});
-		}
-	});
+function error(message: string) {
+	return h("div.tab", [
+		h("h1", "Error :("),
+		h("h3", message),
+		h("button", { on: { click: connect } }, "Reconnect"),
+	]);
 }
-
 function loading() {
 	return h(
 		"div#loading.tab", {},
@@ -121,18 +90,10 @@ function lobby() {
 		copy(Room.joinCode);
 	}
 	function copyLink() {
-		//wss://${window.location.host}/ws
 		copy(`https://${window.location.host}/play?code=${Room.joinCode}`);
 	}
 	
-	function exitBtn() {
-		return h("div.mounted-btn-vflow", [
-			h("button#exit-btn",
-				{ on: { click: () => location.href = "/" } },
-				h("img#exit-btn-icon", { attrs: { src: exitIcon }})
-			)
-		]);
-	}
+	
 	
 	return h(
 		"div.tab",
@@ -151,25 +112,17 @@ function lobby() {
 					]),
 					playerList()
 				]),
-				h("div.vflow.game-settings", {}, [
-					h("h2", "Settings"),
-					Setting.view(mode),
-					...modeSettings()
-				])
+				s(mode.changed, () => {
+					return h("div.vflow.game-settings", [
+						h("h2", "Settings"),
+						mode.view(),
+						...mode.get().settingViews()
+					]);
+				})
 			]),
-			exitBtn(),
+			mountedBtn(exitIcon, () => location.href = "/")
 		]
 	);
-}
-function modeSettings() {
-	
-	let settingsMap;
-	
-	switch (mode.get()) {
-		case "drawblins": settingsMap = Drawblins.settings;
-	}
-	
-	return Setting.multiView(settingsMap);
 }
 function playerList() {
 	
@@ -179,8 +132,8 @@ function playerList() {
 		Room.playerIconChanged
 	];
 	
-	return signaled(signals, () => {
-		let children;
+	return s(signals, () => {
+		let children: VNode[];
 		if (Room.playerCount() === 0) {
 			children = [ h("div", "No players yet!") ];
 		} else {
@@ -195,12 +148,23 @@ function playerList() {
 	});
 }
 
+function connect() {
+	client.connect(`${Shared.wsRoot}/host`);
+}
+function app() {
+	client.use(INC, OUT);
+	connect();
+	return s(page);
+}
+
+patchRoot(app());
+
 window.addEventListener("DOMContentLoaded", async () => {
 	try {
 		console.log("requesting wake lock");
 		await navigator.wakeLock.request();
 	} catch(err) {
-		console.error("error acquiring wake lock: ", err);
+		console.error("error acquiring wake lock:", err);
 	}
 });
 window.addEventListener("beforeunload", (event) => {

@@ -14,7 +14,7 @@ export default class Signal<T = void> extends Set<Callback<T>> {
 	static readonly UNHANDLED = false;
 	static readonly HANDLED = true;
 	
-	public static group(...callbacks: Array<() => void>): () => void {
+	public static bundle(...callbacks: Array<() => void>): () => void {
 		return () => {
 			for (const callback of callbacks)
 				callback();

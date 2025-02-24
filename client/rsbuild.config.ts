@@ -25,5 +25,8 @@ export default defineConfig({
 				
 			],
 		},*/
-	}
+	},
+	output: {
+		//minify: false,
+	},
 });

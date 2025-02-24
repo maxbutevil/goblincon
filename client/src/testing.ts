@@ -1,13 +1,13 @@
 import "./shared.css"
 import State from './modules/state'
-import { h, patch, patchRoot, stateful, signaled, cleaned, fragment, VNode } from './modules/render';
+import { h, patchRoot, s, cleanup, defer, cleaned, VNode } from './modules/render';
 import Signal from "./modules/signal"
 
 import * as icons from "./assets/icons/index"
 import * as PlayerIcon from "./modules/player_icons"
 
+let c = false;
 const state = new State(0);
-
 const signal = new Signal();
 
 /*patchRoot(
@@ -31,19 +31,31 @@ const signal = new Signal();
 );*/
 
 patchRoot(
-	stateful(
-		state,
-		(curr) => signaled(signal, () => {
-			if (curr == 1) {
+	s(state, (curr) => {
+		return s(signal, () => {
+			
+			/*return cleaned(
+				() => console.log("splendid!"),
+				() => h("div", String(state.get()))
+			);*/
+			
+			if (curr === 0) {
+				defer(() => console.log("splendid!"));
+				//cleanup(() => console.log("splendid!"))
+			}
+			
+			return h("div", String(state.get()));
+			
+			/*if (curr == 1) {
 				return cleaned(
 					() => console.log("cleaning up!"),
 					() => h("div.a", String(state.get()))
 				);
 			} else {
 				return h("div.a", String(state.get()));
-			}
-		})
-	)
+			}*/
+		});
+	})
 );
 
 /*patchRoot(
@@ -64,9 +76,17 @@ patchRoot(
 );*/
 
 setInterval(() => {
-	console.log(state.get());
-	signal.emit();
-	state.set(1 - state.get())
+	
+	if (c) {
+		console.log(state.get());
+		state.set(1 - state.get())
+	} else {
+		signal.emit();
+		signal.emit();
+		signal.emit();
+	}
+	
+	c = !c;
 }, 2000);
 
 

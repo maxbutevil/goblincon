@@ -21,20 +21,20 @@ class Globals {
 	static readonly MAX_NAME_LEN = 16;
 	static readonly CODE_LEN = 5;
 	
-	static wasRejoining() {
+	/*static wasRejoining() {
 		return !this.hasJoinCode();
-	}
+	}*/
 	static storePlayerName() {
 		try { localStorage.setItem("playerName", this.playerName); }
-		catch(e) { console.log("localStorage error: ", e); }
+		catch(e) { console.log("localStorage error:", e); }
 	}
 	static storePlayerIcon() {
 		try { localStorage.setItem("playerIcon", this.playerIcon.toString()); }
-		catch(e) { console.log("localStorage error: ", e); }
+		catch(e) { console.log("localStorage error:", e); }
 	}
 	/*static storePlayerId() {
 		try { localStorage.setItem("playerId", this.playerId.toString()); }
-		catch(e) { console.log("localStorage error: ", e); }
+		catch(e) { console.log("localStorage error:", e); }
 	}*/
 	static storeRejoinInfo(token: number) {
 		try {
@@ -42,7 +42,7 @@ class Globals {
 			localStorage.setItem("rejoinId", this.playerId.toString());
 			localStorage.setItem("rejoinToken", token.toString());
 		} catch(e) {
-			console.error("Error saving rejoinInfo to localStorage: ", e);
+			console.error("Error saving rejoinInfo to localStorage:", e);
 		}
 	}
 	static clearRejoinInfo() {

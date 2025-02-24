@@ -10,7 +10,7 @@ export * as Shared from "./shared"
 export * from "./render"
 export * as PlayerIcons from "./player_icons"
 
-export { default as Validate } from "./validate"
+export { default as Val } from "./validate"
 export * from "./validate"
 
 export { default as client } from "./client"

@@ -57,12 +57,6 @@ async fn main() {
 	}
 	
 	tracing_subscriber::fmt::init();
-	/*
-	tracing::debug!("debug");
-	tracing::info!("info");
-	tracing::warn!("warn");
-	tracing::error!("error");
-	*/
 	
 	//let dist_path = env::var("").expect();
 	let dist_path = "../client/dist";
@@ -70,7 +64,7 @@ async fn main() {
 	let ws_router = Router::new()
 		.route("/host", any(ws_upgrade_host))
 		.route("/play/join", any(ws_upgrade_player_join))
-		.route("/play/rejoin", any(ws_upgrade_player_rejoin));
+		.route("/play/rejoin", any(ws_upgrade_player_reconnect));
 	let page_router = Router::new()
 		.route_service("/host", ServeFile::new(format!("{dist_path}/host.html")))
 		.route_service("/play", ServeFile::new(format!("{dist_path}/play.html")))
@@ -145,9 +139,7 @@ struct RejoinQuery {
 	
 }*/
 async fn ws_upgrade_host(State(app): State<App>, ws: WebSocketUpgrade) -> Response {
-	ws.on_upgrade(move |socket| async move {
-		app.accept_host(socket).await
-	})
+	ws.on_upgrade(async move |socket| app.accept_host(socket).await)
 }
 
 async fn ws_upgrade_player_join(
@@ -156,30 +148,28 @@ async fn ws_upgrade_player_join(
 	ws: WebSocketUpgrade
 ) -> Result<Response, StatusCode>
 {
-	if let Some(room_id) = app.find_room(&query.code) {
-		let response = ws.on_upgrade(move |socket| async move {
-			app.accept_player_join(socket, room_id, query.name, query.icon).await
-		});
-		Ok(response)
-	} else {
+	let Some(room_id) = RoomId::parse(&query.code) else { //app.find_room(&query.code) {
 		tracing::debug!("Room Not Found [{}]", query.code);
-		Err(StatusCode::BAD_REQUEST)
-	}
+		return Err(StatusCode::BAD_REQUEST);
+	};
+	
+	Ok(ws.on_upgrade(async move |socket| {
+		app.accept_player_join(socket, room_id, query.name, query.icon).await
+	}))
 }
-async fn ws_upgrade_player_rejoin(
+async fn ws_upgrade_player_reconnect(
 	State(app): State<App>,
 	Query(query): Query<RejoinQuery>,
 	ws: WebSocketUpgrade
 ) -> Result<Response, StatusCode>
 {
-	if let Some(room_id) = app.find_room(&query.code) {
-		let response = ws.on_upgrade(move |socket| async move {
-			app.accept_player_rejoin(socket, room_id, query.id, query.token).await
-		});
-		Ok(response)
-	} else {
+	let Some(room_id) = RoomId::parse(&query.code) else {
 		tracing::debug!("Room Not Found [{}]", query.code);
-		Err(StatusCode::BAD_REQUEST)
-	}
+		return Err(StatusCode::BAD_REQUEST);
+	};
+	
+	Ok(ws.on_upgrade(async move |socket| {
+		app.accept_player_reconnect(socket, room_id, query.id, query.token).await
+	}))
 }
 

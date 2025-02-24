@@ -23,6 +23,7 @@ class Client {
 	disconnected = this.state.transitionFrom(Connection.OPEN);
 	connectionFailed = this.state.transition(Connection.PENDING, Connection.CLOSED);
 	
+	closed = new Signal<CloseEvent>();
 	// how the client is told about incoming messages
 	// in practice, this is forwarded to a ReceiveIndex
 	private incoming = new Signal<Message>();
@@ -35,6 +36,10 @@ class Client {
 	//constructor() {}
 	connect(addr: string) {
 		
+		if (!this.state.is(Connection.CLOSED)) {
+			return;
+		}
+		
 		this.ws = new WebSocket(addr);
 		this.state.set(Connection.PENDING);
 		this.resetHeartbeat();
@@ -43,37 +48,37 @@ class Client {
 			console.log("WebSocket connection opened!");
 			this.state.set(Connection.OPEN);
 		};
-		this.ws.onclose = () => {
-			console.warn("WebSocket connection closed.");
+		this.ws.onclose = (ev) => {
+			console.warn("WebSocket connection closed:", ev);
 			this.ws = undefined;
 			this.state.set(Connection.CLOSED);
+			this.closed.emit(ev);
 		};
 		this.ws.onerror = (ev) => {
-			console.error("WebSocket error: ", ev);
-			this.ws = undefined;
-			this.state.set(Connection.CLOSED);
+			console.error("WebSocket error:", ev);
+			//this.ws = undefined;
+			//this.state.set(Connection.CLOSED);
 		};
 		this.ws.onmessage = (ev: MessageEvent<any>) => {
 			this.resetHeartbeat();
 			if (typeof ev.data != "string") {
-				console.error(`Non-String message received: ${ev.data}`);
+				console.error("Non-String message received:", ev.data);
 			} else {
+				let raw = ev.data, message;
 				try {
-					let raw = ev.data;
-					console.log(raw);
-					let message = JSON.parse(raw);
+					message = JSON.parse(raw);
 					if (typeof message.type !== "string")
-						return console.error(`Unrecognized message: ${raw}`);
-					
-					this.handle(message);
+						return console.error("Unrecognized message:", raw);
 				} catch(err) {
-					console.error(err);
+					console.error("Error parsing message:", raw, err);
+					return;
 				}
+				this.handle(message);
 			}
 		};
 	}
-	close() {
-		this.ws?.close();
+	close(code?: number, reason?: string) {
+		this.ws?.close(code, reason);
 	}
 	protected handle(message: Message) {
 		let handled = this.incoming.handle(message);
@@ -93,13 +98,16 @@ class Client {
 	// these methods allow the client to feed into receive/send indices and
 	// have an easy escape hatch (since they all return cleanup functions)
 	use(inc: ReceiveIndex<any>, out: SendIndex<any>): () => void {
-		return Signal.group(this.useInc(inc), this.useOut(out));
+		return Signal.bundle(this.useInc(inc), this.useOut(out));
 	}
 	useInc(idx: ReceiveIndex<any>): () => void {
 		return this.incoming.subscribe(({ type, data }) => idx.handle(type, data));
 	}
 	useOut(idx: SendIndex<any>): () => void {
-		return idx.outgoing.subscribe((data) => this.send(data));
+		return idx.outgoing.subscribe((data) => {
+			this.send(data);
+			return Signal.HANDLED;
+		});
 	}
 }
 
