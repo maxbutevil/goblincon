@@ -5,10 +5,10 @@ use strgen::bachelor_themes;
 const SUITOR_COUNT: usize = 2;
 const START_TIME: Duration = Duration::from_secs(3);
 const DRAW_BACHELOR_TIME: Duration = Duration::from_secs(75);
-const DRAW_SUITOR_TIME: Duration = Duration::from_secs(10);
-const VOTE_TIME: Duration = Duration::from_secs(16);
-const SHOW_VOTES_TIME: DynamicDuration = DynamicDuration::from_secs(8, 1);
-const SHOW_SCORES_TIME: Duration = Duration::from_secs(10);
+const DRAW_SUITOR_TIME: Duration = Duration::from_secs(75);
+const VOTE_TIME: Duration = Duration::from_secs(30);
+const SHOW_VOTES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
+const SHOW_SCORES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
 
 
 #[derive(Serialize, Deserialize)]
@@ -79,14 +79,6 @@ enum PlayerMsgOut<'a> {
 }
 
 type PlayerMap<T> = [T; MAX_PLAYER_COUNT];
-//type Bachelors = PlayerMap<Option<String>>;
-//type Assignments = PlayerMap<Option<[PlayerId; SUITOR_COUNT]>>;
-//struct Assignment { drawing: String, bachelors:  };
-//type Assignment = (String, [PlayerId; SUITOR_COUNT]);//Box<[PlayerId]>);
-//type Assignments = PlayerMap<Option<Assignment>>;
-//type Assignments = PlayerMap<Option<(String, [PlayerId; SUITOR_COUNT])>>;
-//struct Assignment { bachelor_drawing: String, bachelor_ids: [PlayerId; SUITOR_COUNT] }
-//struct Assignments(Box<[Option<Assignment>]>);
 type VotingRound = (PlayerId, [PlayerId; SUITOR_COUNT]);
 type Assignment = (PlayerId, String);
 struct Assignments(Box<[Assignment]>);
@@ -508,7 +500,15 @@ impl<'a> Game<'a> {
 		
 		let all_submitted = self.clients.players
 			.ids()
-			.all(|id| matches!(votes.get(id as usize), Some(Some(_))));
+			.all(|id| {
+				if suitor_ids.contains(&id) {
+					true
+				} else if matches!(votes.get(id as usize), Some(Some(_))) {
+					true
+				} else {
+					false
+				}
+			});
 		if all_submitted {
 			self.advance().await;
 		}
@@ -549,17 +549,17 @@ impl<'a> Game<'a> {
 			return State::Done(Ok(()));
 		};
 		
-		let submissions = Box::new([const { None }; MAX_PLAYER_COUNT]);
-		
-		let duration = DRAW_BACHELOR_TIME.mul_f32(self.settings.bachelor_draw_time_factor);
-		let secs_left = duration.as_secs_f32();
-		self.timeout.reset(&duration);
+		let secs_left = self.timeout.reset_scaled(
+			DRAW_BACHELOR_TIME,
+			self.settings.bachelor_draw_time_factor
+		);
 		
 		self.clients.send_all(
 			&PlayerMsgOut::DrawingBachelor { theme, secs_left },
 			&HostMsgOut::DrawingBachelors { theme }
 		).await;
 		
+		let submissions = Box::new([const { None }; MAX_PLAYER_COUNT]);
 		State::DrawBachelors { submissions }
 	}
 	async fn start_draw_suitors(&mut self, submissions: PlayerMap<Option<String>>) -> State {
@@ -579,9 +579,10 @@ impl<'a> Game<'a> {
 			return self.start_vote(&assignments).await;
 		}
 		
-		let duration = DRAW_SUITOR_TIME.mul_f32(self.settings.suitor_draw_time_factor);
-		let secs_left = duration.as_secs_f32();
-		self.timeout.reset(&duration);
+		let secs_left = self.timeout.reset_scaled(
+			DRAW_SUITOR_TIME,
+			self.settings.suitor_draw_time_factor
+		);
 		
 		/* Tell host */
 		self.clients.host.send(&HostMsgOut::DrawingSuitors).await;
@@ -614,9 +615,10 @@ impl<'a> Game<'a> {
 		let choices = self.vote_choices(suitor_ids);
 		let choices = choices.as_ref();
 		
-		let duration = VOTE_TIME.mul_f32(self.settings.vote_time_factor);
-		let secs_left = duration.as_secs_f32();
-		self.timeout.reset(&duration);
+		let secs_left = self.timeout.reset_scaled(
+			VOTE_TIME,
+			self.settings.vote_time_factor
+		);
 		
 		self.clients.host.send(&HostMsgOut::Voting { bachelor_id }).await;
 		for (id, player) in self.clients.players.iter_mut() {
@@ -635,14 +637,21 @@ impl<'a> Game<'a> {
 	}
 	async fn start_show_votes(&mut self, remaining: Vec<VotingRound>, votes: &[Option<PlayerId>; MAX_PLAYER_COUNT]) -> State {
 		
+		self.clients.send_all(
+			&PlayerMsgOut::ShowingVotes,
+			&HostMsgOut::ShowingVotes
+		).await;
+		
 		let num_votes = votes
 			.iter()
 			.filter(|v| v.is_some())
 			.count();
+		self.timeout.reset_dynamic_scaled(
+			SHOW_VOTES_TIME,
+			num_votes,
+			self.settings.score_time_factor
+		);
 		
-		let duration = SHOW_VOTES_TIME.duration(num_votes);
-		let duration = duration.mul_f32(self.settings.score_time_factor);
-		self.timeout.reset(&duration);
 		State::ShowVotes { remaining }
 	}
 	async fn start_show_scores(&mut self) -> State {
@@ -652,9 +661,12 @@ impl<'a> Game<'a> {
 			&HostMsgOut::ShowingScores,
 		).await;
 		
-		let duration = SHOW_SCORES_TIME.mul_f32(self.settings.score_time_factor);
-		self.timeout.reset(&duration);
+		self.timeout.reset_dynamic_scaled(
+			SHOW_SCORES_TIME,
+			self.clients.player_count(),
+			self.settings.score_time_factor
+		);
+		
 		State::ShowScores
 	}
-	
 }

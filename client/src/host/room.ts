@@ -1,11 +1,12 @@
 
 import {
-	Signal, State, Variant, variant,
+	Signal, //State,
 	Val, ReceiveIndex, SendIndex,
 	client,
 	Shared,
 	PlayerIcons,
-	h
+	h, defer,
+	VNode
 } from "../modules/index"
 
 
@@ -46,8 +47,14 @@ export function playerIcon(id: number): number {
 export function playerIds(): IterableIterator<number> {
 	return players.keys();
 }
-
-
+export function playerView(id: number): VNode | undefined {
+	const _player = player(id);
+	return _player && Player.view(_player)
+}
+export function iconView(id: number): VNode | undefined {
+	const _player = player(id);
+	return _player && Player.iconView(_player)
+}
 
 const INC = new ReceiveIndex({
 	"accepted": { joinCode: Val.STR },
@@ -108,32 +115,109 @@ export class Player {
 		this.name = name;
 		this.icon = icon;
 	}
-	static icon(player: Player) {
+	/*iconView() {
+		return PlayerIcons.view(this.icon, this.color);
+	}
+	view() {
+		return h("div.player-view", [
+			this.iconView,
+			this.name
+		]);
+	}
+	scoredView(score: number) {
+		return h("div.player-view", [
+			this.iconView(),
+			`${this.name} (${score}pts)`,
+		]);
+	}*/
+	static iconView(player: Player) {
 		return PlayerIcons.view(player.icon, player.color);
 	}
 	static view(player: Player) {
 		return h("div.player-view", [
-			Player.icon(player),
+			Player.iconView(player),
 			player.name
 		]);
 	}
 	static scoredView(player: Player, score: number) {
 		return h("div.player-view", [
-			Player.icon(player),
+			Player.iconView(player),
 			`${player.name} (${score}pts)`,
 		]);
+	}
+}
+
+export class VoteQueue {
+	update = new Signal();
+	votes: number[][] = [];
+	private queue: Array<[number, number]> = [];
+	
+	private build(votes: number[][]) {
+		
+		function shuffle<T>(array: T[]) {
+			let swapIdx, temp;
+			for (let i = 0; i < array.length - 1; i++) {
+				swapIdx = i + Math.random() * (array.length - i);
+				temp = array[i];
+				array[i] = array[swapIdx];
+				array[swapIdx] = temp;
+			}
+			//return array;
+		}
+		
+		// shuffle the vote arrays?
+		// we *do* need the undefined checks; vote arrays may be sparse!
+		for (const voteArray of votes)
+			if (voteArray)
+				shuffle(voteArray);
+		
+		this.queue = [];
+		
+		// just picking a really big number that prevents looping forever
+		for (let i = 0; i < 1000; i++) {
+			let anyLeft = false;
+			for (const [forId, voters] of votes.entries()) {
+				if (voters !== undefined && voters.length > i) {
+					this.queue.push([forId, voters[i]]);
+					anyLeft = true;
+				}
+			}
+			if (!anyLeft) break;
+		}
+		this.queue.reverse();
+		
+	}
+	start(votes: number[][]) {
+		
+		if (this.queue.length > 0 || this.votes.length > 0) {
+			console.warn("started VoteQueue multiple times");
+		}
+		
+		this.build(votes);
+		
+		const DELAY_MS = 0.8 * 1000;
+		const interval = setInterval(() => {
+			const nextVote = this.queue.pop();
+			if (nextVote === undefined) {
+				clearInterval(interval);
+			} else {
+				let [forId, playerId] = nextVote;
+				(this.votes[forId] ??= []).push(playerId);
+				this.update.emit();
+			}
+		}, DELAY_MS);
 	}
 }
 
 export class ScoreMap {
 	scores = new Map<number, number>();
 	
-	constructor(playerIds: Iterable<number> = []) {
-		this.reset(playerIds);
+	constructor() {
+		//this.reset();
 	}
-	reset(playerIds: Iterable<number>) {
+	reset(/*playerIds: Iterable<number> = players.keys()*/) {
 		this.scores.clear();
-		for (const id of playerIds)
+		for (const id of playerIds())
 			this.scores.set(id, 0);
 	}
 	get(playerId: number): number {
@@ -176,9 +260,8 @@ export class ScoreMap {
 			prevScore = score;
 		}
 	}
-	static view(scores: ScoreMap) {
-		
-		let entries = Array.from(scores.sorted()).map(({ id, score }) => {
+	view() {
+		let entries = Array.from(this.sorted()).map(({ id, score }) => {
 			const player = players.get(id)!;
 			return h(
 				"div.score-entry",

@@ -2,7 +2,6 @@
 
 import {
 	Shared,
-	Signal, State, Variant, variant,
 	Val, ReceiveIndex, SendIndex,
 	client,
 	h, s, defer, projector,
@@ -10,12 +9,12 @@ import {
 
 import Globals from "./globals"
 
+import Drawpad from "./drawpad"
 import {
-	Drawpad,
 	countdown,
 	idlePage,
 	voteButtons
-} from "../components/index"
+} from "../components"
 
 //import * as icons from "../assets/icons/index"
 
@@ -42,7 +41,7 @@ export function view() {
 	
 	page.put(starting);
 	
-	defer(Signal.bundle(
+	defer(
 		client.use(INC, OUT),
 		INC.subscribe("drawing", ({ goblinName, secsLeft }: { goblinName: string, secsLeft: number }) => {
 			page.put(drawing, Shared.endTime(secsLeft, 4), goblinName);
@@ -55,7 +54,7 @@ export function view() {
 		INC.subscribe("doneVoting", () => page.put(doneVoting)),
 		INC.subscribe("showingVotes", () => page.put(showingResults)),
 		INC.subscribe("showingScores", () => page.put(showingResults)),
-	));
+	);
 	
 	return s(page);
 }

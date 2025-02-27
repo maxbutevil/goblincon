@@ -1,9 +1,4 @@
 
-* {
-	/*touch-action: pinch-zoom;*/
-	/*touch-action: manipulation;*/ /* ios safari ignores this, because of course it does */
-}
-
 body {
 	/*position: fixed;*/
 	font-size: 16px;
@@ -26,11 +21,37 @@ body {
 	text-transform: uppercase;
 }
 
+.popup {
+	font-size: 1em;
+	
+	margin: 1.2em;
+	padding: 1em;
+	/*min-width: 36vw;*/
+	
+	border: 3px solid black;
+	border-radius: 8px;
+	
+	background-color: #eeeee0;
+}
+#help-popup {
+	justify-content: space-between;
+	/*height: 100%;*/
+}
 #help-popup .section {
 	margin-top: 0.6em;
 }
-
-
+#help-popup .small {
+	font-size: 0.86em;
+}
+#bachelor-popup .bachelor-ctr {
+	border: 3px solid black;
+	border-radius: 8px;
+	background-color: #ddd;
+}
+#bachelor-popup .bachelor-ctr img {
+	aspect-ratio: 1;
+	width: 100%;
+}
 
 /* Lobby */
 .icon-select {
@@ -61,6 +82,8 @@ body {
 	flex: 1 0;
 	text-align: center;
 }
+
+/* Drawpad */
 #drawpad {
 	touch-action: pinch-zoom;
 	width: min(96vw, 78vh);

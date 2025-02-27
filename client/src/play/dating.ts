@@ -1,6 +1,6 @@
 
 import {
-	Signal, State, Variant, variant,
+	State,
 	Val, ReceiveIndex, SendIndex,
 	//Shared,
 	client,// Connection,
@@ -13,17 +13,17 @@ import {
 import {
 	showBachelor as showBachelorIcon
 } from "../assets/icons"
+
+import Drawpad from "./drawpad"
 import {
 	idlePage,
 	mountedBtn,
 	
-	img,
 	countdown,
 	
-	voteButtons,
-	
-	Drawpad
-} from "../components/index"
+	voteButtons
+} from "../components"
+
 
 const INC = new ReceiveIndex({
 	//gameStarted: Val.NONE,
@@ -48,9 +48,10 @@ const OUT = new SendIndex({
 
 const page = projector(starting);
 
+
 export function view() {
 	
-	defer(Signal.bundle(
+	defer(
 		client.use(INC, OUT),
 		INC.subscribe("drawingBachelor", ({ secsLeft, theme }) => {
 			page.put(drawingBachelor, Shared.endTime(secsLeft, 4), theme);
@@ -66,7 +67,7 @@ export function view() {
 		INC.subscribe("doneDrawingBachelor", () => page.put(doneDrawing)),
 		INC.subscribe("doneDrawingSuitor", () => page.put(doneDrawing)),
 		INC.subscribe("doneVoting", () => page.put(doneVoting)),
-	));
+	);
 	
 	return s(page);
 }
@@ -109,9 +110,16 @@ function drawingSuitor(endTime: number, bachelorId: number, bachelorDrawing: str
 			if (!curr) {
 				return h("!");
 			} else {
-				return h("div.overlay", [
-					h("div#help-popup.popup.vflow.vsplit", [
-						img(bachelorDrawing)
+				return h("div.overlay", { on: { click: toggle } }, [
+					h("div#bachelor-popup.popup.vflow", [
+						h("div", [
+							h("h2", "Your Bachelor"),
+							h("div", "Use this as inspiration for your suitor drawing!"),
+							h("div.bachelor-ctr", [
+								h("img", { attrs: { src: bachelorDrawing }}),
+							])
+						]),
+						h("button", { on: { click: toggle } }, "Start Drawing!")
 					])
 				]);
 			}

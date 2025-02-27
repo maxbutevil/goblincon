@@ -487,7 +487,6 @@ impl ClientIndex {
 	
 }
 
-
 pub fn serialize(value: &impl Serialize) -> Result<String, ()> {
 	match serde_json::to_string(value) {
 		Ok(string) => Ok(string),

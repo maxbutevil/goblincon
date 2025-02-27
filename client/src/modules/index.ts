@@ -1,9 +1,6 @@
 
 export { default as Signal } from "./signal"
 export { default as State } from "./state"
-//export { variant, unit } from "./variant"
-//export type { Variant } from "./variant"
-export * from "./variant"
 
 export * as Shared from "./shared"
 

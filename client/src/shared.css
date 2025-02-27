@@ -2,15 +2,7 @@
 
 * {
 	margin: 0;
-	/* lets player draw on mobile */
-	
 	user-select: none;
-	/*touch-action: none;*/
-	
-	/*user-select: none;
-	touch-action: none;*/
-	/* pointer-events: none; */
-	/* somehow, despite all this, iOS still has a selection popup occasionally... */
 }
 html, body, #root, #app {
 	height: 100%;
@@ -39,9 +31,6 @@ button, input {
 	gap: 10px;
 	margin: 28px;
 	font-size: 1.2em;
-}
-.vsplit {
-	justify-content: space-between;
 }
 
 .status {
@@ -84,29 +73,12 @@ button, input {
 	
 	display: flex;
 	flex-flow: column nowrap;
+	justify-content: center;
 	align-items: center;
 	padding: none;
 	
 	border: none;
-	background-color: rgba(0, 0, 0, 0.36);
-}
-.popup {
-	
-	font-size: 1em;
-	
-	margin: 1.2em;
-	padding: 1em;
-	height: 100%;
-	
-	
-	border: 3px solid black;
-	border-radius: 8px;
-	
-	
-	background-color: #eeeee0;
-}
-.small {
-	font-size: 0.86em;
+	background-color: rgba(0, 0, 0, 0.45);
 }
 
 .mounted-btn-vflow {

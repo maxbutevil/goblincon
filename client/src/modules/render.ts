@@ -131,7 +131,7 @@ function multiSignaled<T>(signals: Signal<T>[], builder: Builder<[T | undefined]
   let ref: Ref, vnode: VNode;
   const rebuild = (arg: T) => ref.rebuild(() => builder(arg));
   [ref, vnode] = Ref.build(
-    builder as () => VNode,
+    builder as Builder,
     Signal.bundle(...signals.map(signal => signal.subscribe(rebuild)))
   );
   return vnode;
@@ -161,15 +161,15 @@ export function cleaned(cleanup: Cleanup, builder: () => VNode): VNode {
 }
 
 
-export function defer(callback: Cleanup) {
+export function defer(...callbacks: Cleanup[]) {
   /* Registers a callback to be executed when the containing ref is destroyed OR RERENDERS!! */
-  Ref.addDeferred(callback);
+  Ref.addDeferred(...callbacks);
 }
-export function cleanup(callback: Cleanup) {
+export function cleanup(...callbacks: Cleanup[]) {
   /* Registers a callback to be executed when the containing ref is destroyed */
   // Will NOT be registered after the initial build, to avoid re-registering the same cleanup callback
   // For this reason, conditionally registering cleanup functions is an anti-pattern
-  Ref.addCleanup(callback);
+  Ref.addCleanup(...callbacks);
 }
 
 function dump(vnode: VNode, err = false) {
@@ -215,16 +215,16 @@ class Ref {
   /*private static empty(cleanup: Cleanup): Ref {
     return new Ref(null as unknown as VNode, [], cleanup);
   }*/
-  static addDeferred(callback: Cleanup) {
+  static addDeferred(...callbacks: Cleanup[]) {
     let ref = this.stack.at(-1);
     if (ref === undefined) {
       console.error("attempted to register deferred callback while ref stack empty");
       return;
     }
     
-    ref.addDeferred(callback);
+    ref.addDeferred(...callbacks);
   }
-  static addCleanup(callback: Cleanup) {
+  static addCleanup(...callbacks: Cleanup[]) {
     let ref = this.stack.at(-1);
     if (ref === undefined) {
       console.error("attempted to register cleanup callback while ref stack empty");
@@ -233,7 +233,7 @@ class Ref {
     
     if (Ref.isInitialBuild) {
       // cleanup callbacks should only be added on the initial build, NOT on rebuilds
-      ref.addCleanup(callback);
+      ref.addCleanup(...callbacks);
     }
   }
   static build(builder: () => VNode, cleanup: Cleanup | null): [Ref, VNode] {
@@ -251,14 +251,14 @@ class Ref {
     return [ref, vnode];
   }
   
-  addDeferred(callback: Cleanup) {
-    (this.deferreds ??= []).push(callback);
+  addDeferred(...callbacks: Cleanup[]) {
+    (this.deferreds ??= []).push(...callbacks);
   }
-  addCleanup(callback: Cleanup) {
+  addCleanup(...callbacks: Cleanup[]) {
     if (this.cleanups === null) {
       console.error("added cleanup to destroyed ref");
     } else {
-      (this.cleanups ??= []).push(callback);
+      (this.cleanups ??= []).push(...callbacks);
     }
   }
   

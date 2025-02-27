@@ -52,6 +52,8 @@ impl StrTable {
 	fn generate_count(&self, count: usize) -> Box<[String]> {
 		(0..count).map(|_| self.generate()).collect()
 	}
+	
+	#[cfg(test)]
 	fn check_duplicates(&self) {
 		for (_, lha) in self.entries.iter() {
 			for (_, rha) in self.entries.iter() {

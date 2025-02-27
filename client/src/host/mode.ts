@@ -63,22 +63,14 @@ export class Setting<T = number> {
 		return h("div.setting-select", { key: this.name }, [
 			h("div.name", {}, this.name),
 			signaled(this.changed, () => {
-				let choices = [];
-				for (let i = 0; i < this.choices.length; i++) {
-					
-					let tag = (i == this.current) ? "button.selected" : "button";
-					
-					choices.push(h(
+				return h("div.multi-btn", this.choices.map((_, i) => {
+					const tag = (i === this.current) ? "button.selected" : "button";
+					return h(
 						tag,
-						{
-							on: {
-								click: () => this.set(i)
-							}
-						},
+						{ on: { click: () => this.set(i) } },
 						this.getString(i)
-					));
-				}
-				return h("div.multi-btn", choices);
+					);
+				}));
 			})
 		]);
 	}
@@ -114,13 +106,14 @@ export class Settings<M extends SettingMap> {
 export class Mode<S extends SettingMap> {
 	
 	name: string;
-	view: () => VNode;
 	settings: Settings<S>;
+	
+	view: () => VNode;
 	
 	constructor(name: string, view: () => VNode, settingMap: S) {
 		this.name = name;
-		this.view = view;
 		this.settings = new Settings(settingMap);
+		this.view = view;
 	}
 	setting<K extends keyof S>(setting: K): SettingRemote<S[K]> {
 		return this.settings.get(setting);
@@ -131,5 +124,4 @@ export class Mode<S extends SettingMap> {
 	remote(): { mode: string, settings: SettingMapRemote<S> } {
 		return { mode: this.name, settings: this.settings.remote() };
 	}
-	
 }

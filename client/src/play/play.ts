@@ -3,7 +3,7 @@ import "../shared.css"
 import "./play.css"
 
 import {
-	Signal, State, Variant, variant,
+	State,
 	Val, ReceiveIndex, SendIndex,
 	client, Connection,
 	Shared,
@@ -18,7 +18,7 @@ import * as Dating from "./dating"
 import {
 	logo,
 	mountedBtn
-} from "../components/index"
+} from "../components"
 import { help as helpIcon } from "../assets/icons/index"
 
 const INC = new ReceiveIndex({
@@ -37,7 +37,6 @@ const OUT = new SendIndex({
 	changeIcon: { icon: Val.NUM }
 });
 
-//const page = State.deep<Page>(variant("landing"));
 const page = projector(landing);
 const status = projector(() => h("!"));
 
@@ -136,13 +135,16 @@ function landing() {
 		function br(): VNode {
 			return h("br");
 		}
+		function close() {
+			helpOpen.set(false);
+		}
 		
 		return s(helpOpen, (curr) => {
 			if (!curr) {
 				return h("!");
 			} else {
-				return h("div.overlay",
-					h("div#help-popup.popup.vflow.vsplit", [
+				return h("div.overlay", { on: { click: close } },
+					h("div#help-popup.popup.vflow", [
 						h("div", [
 							h("h2", "How to Play"),
 							h("div.section", [
@@ -170,7 +172,7 @@ function landing() {
 							]),
 						]),
 						h("button",
-							{ on: { click: () => helpOpen.set(false) } },
+							{ on: { click: close } },
 							"Back"
 						)
 					])

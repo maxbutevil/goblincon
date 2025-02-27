@@ -282,10 +282,11 @@ impl<'a> Game<'a> {
 		
 		self.state = State::Draw { submitted: [false; MAX_PLAYER_COUNT] };
 		
-		let duration = DRAW_TIME.mul_f32(self.settings.draw_time_factor);
-		self.timeout.reset(&duration);
+		let secs_left = self.timeout.reset_scaled(
+			DRAW_TIME,
+			self.settings.draw_time_factor
+		);
 		
-		let secs_left = self.timeout.remaining_secs();
 		self.clients.send_all(
 			&PlayerMsgOut::Drawing { goblin_name, secs_left },
 			&HostMsgOut::Drawing { goblin_name /*, secs_left*/ },
@@ -302,23 +303,25 @@ impl<'a> Game<'a> {
 			return;
 		}
 		
-		let duration = Timeout::scaled_dynamic(VOTE_TIME, self.settings.vote_time_factor, choices.len());
-		self.timeout.reset(&duration);
+		let secs_left = self.timeout.reset_dynamic_scaled(
+			VOTE_TIME,
+			choices.len(),
+			self.settings.vote_time_factor
+		);
 		
 		self.clients.send_all(
-			&PlayerMsgOut::Voting {
-				choices: &choices,
-				secs_left: self.timeout.remaining_secs()
-			},
+			&PlayerMsgOut::Voting { choices: &choices, secs_left },
 			&HostMsgOut::Voting {},
 		).await;
 		self.state = State::Vote { eligible, choices, votes: [None; MAX_PLAYER_COUNT] };	
 	}
 	async fn start_show_votes(&mut self, choice_count: usize) {
-		self.state = State::ShowVotes;
 		
-		let duration = SHOW_VOTES_TIME.duration(choice_count);
-		self.timeout.reset(&duration);
+		self.state = State::ShowVotes;
+		self.timeout.reset_dynamic(
+			SHOW_VOTES_TIME,
+			choice_count
+		);
 		
 		self.clients.send_all(
 			&PlayerMsgOut::ShowingVotes,
@@ -326,11 +329,13 @@ impl<'a> Game<'a> {
 		).await;
 	}
 	async fn start_show_scores(&mut self) {
-		self.state = State::ShowScores;
 		
-		let duration = SHOW_SCORES_TIME.duration(self.clients.player_count());
-		let duration = duration.mul_f32(self.settings.score_time_factor);
-		self.timeout.reset(&duration);
+		self.state = State::ShowScores;
+		self.timeout.reset_dynamic_scaled(
+			SHOW_SCORES_TIME,
+			self.clients.player_count(),
+			self.settings.score_time_factor
+		);
 		
 		self.clients.send_all(
 			&PlayerMsgOut::ShowingScores,

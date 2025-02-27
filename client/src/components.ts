@@ -1,19 +1,10 @@
 
-import Drawpad from "./drawpad"
-export {
-	Drawpad
-};
-
 import {
 	State,
 	h, s, defer,
 	Shared, PlayerIcons,
 	VNodeChildren
-} from "../modules/index"
-
-/*import {
-	ScoreMap
-} from "../host/room"*/
+} from "./modules/index"
 
 export function logo() {
 	return h("div#logo", [
@@ -86,5 +77,6 @@ export function mountedBtnFlow(btnArgs: Array<[string, () => any]>) {
 	const btns = btnArgs.map(data => iconBtn(...data));
 	return h("div.mounted-btn-vflow", btns);
 }
+
 
 

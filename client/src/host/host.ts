@@ -11,7 +11,7 @@ import {
 import {
 	logo,
 	mountedBtn
-} from "../components/index"
+} from "../components"
 import { exit as exitIcon } from "../assets/icons/index"
 
 import * as Room from "./room"
@@ -36,10 +36,12 @@ const OUT = new SendIndex({
 });
 
 client.closed.listen((ev) => {
-	if (ev.reason) {
-		page.put(error, `${ev.reason}`);
-	} else {
-		page.put(error, "Fatal connection error");
+	if (!unloading) {
+		if (ev.reason) {
+			page.put(error, `${ev.reason}`);
+		} else {
+			page.put(error, "Fatal connection error");
+		}
 	}
 });
 
@@ -55,6 +57,7 @@ INC.listen("gameStarting", () => {
 });
 
 const page = projector(loading);
+let unloading = false; // not the most elegant solution, but this stops the error page from showing when we click a link
 //const mode = new Setting<"drawblins" | "dating">("Game Mode", [ "drawblins", "dating" ], 0);
 
 const mode = new Setting<typeof Dating | typeof Drawblins>(
@@ -92,8 +95,6 @@ function lobby() {
 	function copyLink() {
 		copy(`https://${window.location.host}/play?code=${Room.joinCode}`);
 	}
-	
-	
 	
 	return h(
 		"div.tab",
@@ -172,6 +173,7 @@ window.addEventListener("beforeunload", (event) => {
 		event.preventDefault();
 		return true;
 	}	else {
+		unloading = true;
 		client.close();
 	}
 });
