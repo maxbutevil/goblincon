@@ -97,12 +97,6 @@ impl Presence {
 		self.send_raw(Message::Close(Some(close_frame))).await
 	}
 }
-/*impl MsgDest for Presence {
-	async fn send_raw(&mut self, msg: Message) -> bool {
-		// evil short-circuiting techniques
-		self.is_connected() && send_raw(&mut self.sender, msg).await.is_ok()
-	}
-}*/
 
 impl Deref for Host {
 	type Target = Presence;
@@ -201,8 +195,6 @@ impl Players {
 	where P: FnMut(&(usize, &mut Box<Player>)) -> bool {
 		Self::send_players(self.iter_mut().filter(predicate), msg).await
 	}
-	
-	
 	pub async fn send_all_except_one(&mut self, except_id: PlayerId, msg: &impl Serialize) -> bool {
 		self.send_all_except(|&(id, _)| id as PlayerId != except_id, msg).await
 	}
@@ -242,7 +234,7 @@ pub struct ClientIndex {
 	pub host: Host,
 	pub players: Players
 }
-#[allow(dead_code)]
+//#[allow(dead_code)]
 impl ClientIndex {
 	
 	pub async fn new(host_socket: WebSocket, id: RoomId) -> Self {

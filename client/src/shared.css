@@ -29,8 +29,10 @@ button, input {
 	align-items: center;
 	text-align: center;
 	gap: 10px;
-	margin: 28px;
+}
+.tab {
 	font-size: 1.2em;
+	margin: 28px;
 }
 
 .status {

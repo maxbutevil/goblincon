@@ -6,10 +6,12 @@ const SUITOR_COUNT: usize = 2;
 const START_TIME: Duration = Duration::from_secs(3);
 const DRAW_BACHELOR_TIME: Duration = Duration::from_secs(75);
 const DRAW_SUITOR_TIME: Duration = Duration::from_secs(75);
-const VOTE_TIME: Duration = Duration::from_secs(30);
+const VOTE_TIME: Duration = Duration::from_secs(10);
+//const NO_SUBMISSIONS_VOTE_TIME: Duration = Duration::from_secs(4);
+
+
 const SHOW_VOTES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
 const SHOW_SCORES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
-
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -358,7 +360,6 @@ impl<'a> Game<'a> {
 						PlayerMsgOut::DoneVoting
 					}
 				}
-				
 			}
 		};
 		
@@ -608,7 +609,7 @@ impl<'a> Game<'a> {
 		
 		let Some(current) = remaining.pop() else {
 			/* No votes left, show scores instead */
-			return self.start_show_scores().await
+			return self.start_show_scores().await;
 		};
 		
 		let (bachelor_id, suitor_ids) = current;

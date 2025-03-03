@@ -80,21 +80,20 @@ function starting() {
 function drawingBachelor(endTime: number, bachelorTheme: string) {
 	
 	const drawpad = new Drawpad();
-	function onSubmit(drawing: string) {
-		OUT.send("bachelorSubmission", { drawing });
-	};
 	
 	return h("div#draw-bachelor.tab", [
-		h("div#bachelor-theme", bachelorTheme),
-		drawpad.view(onSubmit),
+		h("div", [
+			h("div#bachelor-theme", `Theme: ${bachelorTheme}`),
+			countdown(endTime, () => drawpad.submit()),
+		]),
+		drawpad.view((drawing) => {
+			OUT.send("bachelorSubmission", { drawing });
+		}),
 	]);
 }
 function drawingSuitor(endTime: number, bachelorId: number, bachelorDrawing: string) {
 	
 	const drawpad = new Drawpad();
-	function onSubmit(drawing: string) {
-		OUT.send("suitorSubmission", { bachelorId, drawing });
-	};
 	
 	const overlayOpen = new State(true);
 	function toggle() {
@@ -102,19 +101,23 @@ function drawingSuitor(endTime: number, bachelorId: number, bachelorDrawing: str
 	};
 	
 	return h("div#draw-suitor.tab", [
-		h("h2", "Draw a suitor for your bachelor(ette)"),
+		h("div", "Draw a suitor for your bachelor(ette)"),
 		countdown(endTime, () => drawpad.submit()),
-		drawpad.view(onSubmit),
+		drawpad.view((drawing) => {
+			OUT.send("suitorSubmission", { bachelorId, drawing });
+		}),
 		//h("button", { on: { click: toggle } }, "See Bachelor"),
 		s(overlayOpen, curr => {
 			if (!curr) {
 				return h("!");
 			} else {
-				return h("div.overlay", { on: { click: toggle } }, [
+				return h("div.overlay",/* { on: { click: toggle } }, */ [
 					h("div#bachelor-popup.popup.vflow", [
-						h("div", [
-							h("h2", "Your Bachelor"),
-							h("div", "Use this as inspiration for your suitor drawing!"),
+						h("div.vflow", [
+							h("div", [
+								h("h2", "Your Bachelor(ette)"),
+								h("div", "Use this as inspiration for your suitor drawing!"),
+							]),
 							h("div.bachelor-ctr", [
 								h("img", { attrs: { src: bachelorDrawing }}),
 							])
