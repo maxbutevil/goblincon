@@ -41,7 +41,6 @@ use crate::types::*;
 
 
 
-
 #[tokio::main]
 async fn main() {
 	
@@ -82,23 +81,29 @@ async fn main() {
 		.with_state(App::new())
 		.into_make_service();
 	
-	let port: &str = option_env!("PORT").unwrap_or("5050");
+	let port: String = env::var("PORT").unwrap_or("5050".to_string());
 	let addr = format!("0.0.0.0:{port}").parse().expect("address parsing error");
 	
-	if let Some(rustls_config) = rustls_config().await {
-		tracing::info!("opening with HTTPS");
+	if let Some(rustls_config) = init_rustls_config().await {
+		tracing::info!("opening with HTTPS on port {port}");
 		axum_server::bind_rustls(addr, rustls_config)
 			.serve(router).await
 			.expect("axum server error");
 	} else {
-		tracing::warn!("opening without HTTPS");
+		tracing::warn!("opening without HTTPS on port {port}");
 		axum_server::bind(addr)
 			.serve(router)
 			.await
 			.expect("axum server error");
 	}
 }
-async fn rustls_config() -> Option<RustlsConfig> {
+/*fn init_tracing() {
+	let file = std::fs::OpenOptions::new()
+		.create(true)
+		.open()
+		.expect("failed to open ");
+}*/
+async fn init_rustls_config() -> Option<RustlsConfig> {
 	
 	use std::path::PathBuf;
 	
