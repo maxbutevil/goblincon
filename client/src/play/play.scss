@@ -1,0 +1,131 @@
+
+@use "../styles/index.scss" as *;
+
+body {
+	/*position: fixed;*/
+	font-size: 16px;
+}
+
+#help-popup {
+	@include popup;
+	justify-content: space-between;
+	/*height: 100%;*/
+	
+	.section { margin-top: 0.6em; }
+	.small { font-size: 0.86em; }
+}
+#bachelor-popup {
+	@include popup;
+}
+
+/* Landing */
+%menu-tab {
+	justify-content: space-between;
+	button {
+		margin-top: 0.4em;
+	}
+}
+#landing {
+	@extend %menu-tab;
+	input {
+		margin-top: 2px;
+		width: 9em;
+	}
+	#code-input {
+		text-transform: uppercase;
+	}
+}
+#lobby {
+	@extend %menu-tab;
+	.icon-select {
+		@include flex(row wrap, center);
+		font-size: 2em;
+		margin-bottom: 1em;
+	}
+	#start-btn:disabled {
+		filter: brightness(0.6);
+	}
+}
+
+/* Drawing */
+#draw, #draw-bachelor, #draw-suitor {
+	height: 100%;
+	
+	@include flex(row wrap, center, center);
+	margin: auto;
+	
+	#info {
+		#goblin-name {
+			flex: 1 0;
+			text-align: center;
+			font-size: 1.6em;
+		}
+		.countdown {
+			flex: 1 0;
+			text-align: center;
+		}
+	}
+}
+
+/* Drawpad */
+#drawpad {
+	
+	$border: 4px solid black;
+	
+	width: min(96vw, 77vh);
+	
+	@include flex(column nowrap, center, stretch);
+	
+	touch-action: pinch-zoom;
+	border: $border;
+	
+	#canvas {
+		aspect-ratio: 1;
+		width: 100%;
+		height: auto;
+		background-color: white;
+		border-top: $border;
+		border-bottom: $border;
+	}
+	
+	.btn-row {
+		@include flex(row nowrap);
+		
+		.color-select-btn {
+			border: 0.2em solid;
+		}
+		
+		button {
+			flex: 1;
+			aspect-ratio: 1 / 1;
+			border: 0;
+			border-radius: 0;
+			margin: 0;
+			padding: 0;
+			img { width: 100%; height: auto; }
+		}
+		
+		#spacer-btn {
+			flex: 2;
+			aspect-ratio: 2 / 1;
+		}
+		#submit-btn {
+			flex: 4;
+			aspect-ratio: 4 / 1;
+			
+			font-size: 1.2em;
+			background-color: #4A5;
+			transition: background-color 0.8s;
+		}
+		#submit-btn:hover:enabled {
+			filter: brightness(1.06);
+		}
+		#submit-btn:active:enabled {
+			/*transition: background-color 0.7s;*/
+			background-color: #090;
+		}
+		#submit-btn.submitted {
+			background-color: #070;
+		}
+	}
+}

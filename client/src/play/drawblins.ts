@@ -39,8 +39,6 @@ const page = projector(starting);
 
 export function view() {
 	
-	page.put(starting);
-	
 	defer(
 		client.use(INC, OUT),
 		INC.subscribe("drawing", ({ goblinName, secsLeft }: { goblinName: string, secsLeft: number }) => {
@@ -56,7 +54,7 @@ export function view() {
 		INC.subscribe("showingScores", () => page.put(showingResults)),
 	);
 	
-	return s(page);
+	return h("div#drawblins.mode", s(page));
 }
 
 function starting() {
@@ -73,7 +71,8 @@ function drawing(endTime: number, goblinName: string) {
 	}
 	
 	return h("div#draw.tab", [
-		h("div", [
+		h("div#info", [
+			h("div", "Draw a creature named:"),
 			h("div#goblin-name", goblinName),
 			countdown(endTime, () => drawpad.submit()),
 		]),

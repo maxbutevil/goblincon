@@ -1,0 +1,28 @@
+
+@forward "flow.scss";
+@forward "components.scss";
+
+* {
+	margin: 0;
+	user-select: none;
+}
+body {
+	margin: 0.5em;
+}
+html, body {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+body {
+	font-family: Arial;
+	background-color: #eeeee0;
+}
+
+
+button, input {
+	font-size: 0.9em;
+	border: 3px solid #333;
+	border-radius: 6px;
+	color: black;
+}

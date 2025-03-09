@@ -1,6 +1,5 @@
 
-import "../shared.css"
-import "./host.css"
+import "./host.scss"
 
 import {
 	Val, ReceiveIndex, SendIndex,
@@ -101,7 +100,7 @@ function lobby() {
 		[
 			logo(),
 			h("div#lobby", {}, [
-				h("div.vflow.overview", {}, [
+				h("div#overview.tab", {}, [
 					h("h2", "Lobby"),
 					h("div", [
 						h("h3", "Join Code"),
@@ -114,7 +113,7 @@ function lobby() {
 					playerList()
 				]),
 				s(mode.changed, () => {
-					return h("div.vflow.game-settings", [
+					return h("div#settings.tab", [
 						h("h2", "Settings"),
 						mode.view(),
 						...mode.get().settingViews()

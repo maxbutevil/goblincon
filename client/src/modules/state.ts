@@ -12,9 +12,9 @@ export default class State<T> {
 	
 	static ANY: typeof ANY = ANY;
 	
-	public changed = new Signal<[from: T, to: T]>();
+	changed = new Signal<[from: T, to: T]>();
+	value: T;
 	
-	private value: T;
 	private cmpDepth: number;
 	private signalEntries = new Array<{ signal: Signal<[T, T]>, from: StatePool<T>, to: StatePool<T> }>();
 	
@@ -45,12 +45,11 @@ export default class State<T> {
 	}
 	
 	private handleChanged(from: T, to: T): void {
-		const out: [T, T] = [from, to];
-		this.changed.emit(out);
+		this.changed.emit(from, to);
 		
 		for (const entry of this.signalEntries)
 			if (this.stateMatch(entry.from, from) && this.stateMatch(entry.to, to))
-				entry.signal.emit(out);
+				entry.signal.emit(from, to);
 	}
 	
 	private cmp(one: T, two: T): boolean {

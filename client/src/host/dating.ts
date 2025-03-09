@@ -75,33 +75,30 @@ export function view() {
 	);
 	rounds = [];
 	scores.reset();
-	return s(page);
+	return h("div#dating.mode", s(page));
 }
 function starting() {
 	return idlePage("Game Starting!", "(Dating Mode)", "Get ready to draw!");
 }
 function drawingBachelors(theme: string) {
-	return h("div.tab", [
+	return h("div#drawing-bachelors.tab", [
 		h("h1", "Draw your Bachelor!"),
 		h("h3", "Draw a bachelor that fits the theme:"),
 		h("h2", theme),
 	]);
 }
 function drawingSuitors() {
-	return h("div.tab", [
+	return h("div#drawing-suitors.tab", [
 		h("h1", "Draw your Suitors!"),
 		h("h2", "Draw creatures that would make good partners for the bachelors you have received")
 	]);
 }
 function showingScores() {
-	return h(
-		"div.tab",
-		[
-			h("h1", "Scores"),
-			h("h2", `Round ${rounds.length}/${mode.setting("roundCount")}`),
-			scores.view()
-		]
-	);
+	return h("div#showing-scores.tab", [
+		h("h1", "Scores"),
+		h("h2", `Round ${rounds.length}/${mode.setting("roundCount")}`),
+		scores.view()
+	]);
 }
 function voting(bachelorId: number) {
 	

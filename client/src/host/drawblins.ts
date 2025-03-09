@@ -68,17 +68,17 @@ export function view() {
 			currentRound().handleVote(playerId, forId);
 		})
 	);
-	return s(page);
+	return h("div#drawblins.mode", s(page));
 }
 function starting() {
 	return h(
-		"div.tab",
+		"div#starting.tab",
 		h("h1", "Game Starting!")
 	);
 }
 function drawing() {
 	return h(
-		"div.tab",
+		"div#drawing.tab",
 		[
 			h("h2", "Draw a creature named..."),
 			h("h1", currentRound().goblinName)
@@ -133,7 +133,7 @@ function voting() {
 			rows[row].push(submissions[i]);
 		}
 		
-		return h("div.tab", [
+		return h("div#voting.tab", [
 			h("div", `Vote for your favorite ${round.goblinName}!`),
 			h("div.submission-ctr", rows.map(row => h("div.submission-row", row)))
 		]);
@@ -142,20 +142,13 @@ function voting() {
 }
 function showingScores() {
 	return h(
-		"div.tab",
+		"div#showing-scores.tab",
 		[
 			h("h1", "Scores"),
 			h("h2", `Round ${rounds.length}/${mode.setting("roundCount")}`),
 			scores.view()
 		]
 	);
-}
-function scoreEntry(playerId: number, rank: number) {
-	//let name = Room.playerName(playerId);
-	const player = Room.players.get(playerId)!;
-	const score = scores.get(playerId);
-	
-	
 }
 
 

@@ -84,12 +84,12 @@ type Index = { [key: string]: Validator<any> }
 export class ReceiveIndex<I extends Index> {
 	
 	private extractors: I;
-	private signals: { [K in keyof I]?: Signal<IncomingMessage<I, K>> } = {};
+	private signals: { [K in keyof I]?: Signal<[IncomingMessage<I, K>]> } = {};
 	constructor(extractors: I) {
 		this.extractors = extractors;
 	}
 	
-	private signal<K extends keyof I>(key: K): Signal<IncomingMessage<I, K>> {
+	private signal<K extends keyof I>(key: K): Signal<[IncomingMessage<I, K>]> {
 		return this.signals[key] ??= new Signal();
 	}
 	listen<K extends keyof I>(key: K, callback: ReceiveCallback<I, K>) {
@@ -150,7 +150,7 @@ export class ReceiveIndex<I extends Index> {
 export class SendIndex<I extends Index> {
 	
 	//send = new Signal<string>();
-	outgoing = new Signal<string>();
+	outgoing = new Signal<[string]>();
 	
 	//private sender: (encoded: string) => any;
 	constructor(_: I/*, sender: (encoded: string) => any*/) {

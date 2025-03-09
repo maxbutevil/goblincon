@@ -9,14 +9,12 @@ import {
   eventListenersModule,
   
   h,
-  //fragment,
   VNode,
   VNodeChildren,
   VNodeChildElement,
 } from "snabbdom";
 export {
   h,
-  //fragment,
 };
 export type {
   VNode,
@@ -55,29 +53,30 @@ export function conditional(condition: any, vnode: VNode): VNode | null {
 }
 
 type Builder<A extends any[] = []> = (...args: A) => VNode;
-type ContainedBuilder = Builder<[() => void]>;
-//type Projector = Signal<() => VNode>;
+//type ContainedBuilder = Builder<[() => void]>;
 
 export function s<T>(s: State<T>, builder: Builder<[T]>): VNode;
 //export function s<T>(s: State<T>[], builder: (curr: T) => VNode): VNode;
-export function s<T>(s: Signal<T>, builder: Builder<[T | undefined]>): VNode;
-export function s<T>(s: Signal<T>[], builder: Builder<[T | undefined]>): VNode;
+export function s<T extends any[]>(s: Signal<T>, builder: Builder<T | []>): VNode;
+export function s<T extends any[]>(s: Signal<T>[], builder: Builder<T | []>): VNode;
 export function s(builder: Builder<[() => void]>): VNode;
 export function s(p: Projector): VNode;
-export function s<T>(
-  d: State<T> | Signal<T> | Signal<T>[] | Builder<[() => void]> | Projector,
-  builder?: Builder<[T]> | Builder<[T | undefined]> | undefined
+export function s(
+  d: State<any> | Signal<any> | Signal<any>[] | Builder<[() => void]> | Projector,
+  builder?: Builder<any> | undefined
 ) {
   if (d instanceof State) {
     return stateful(d, builder as any);
   } else if (d instanceof Projector) {
     return projected(d);
+  } else if (d instanceof Persistor) {
+    return persisted(d);
   } else if (typeof d == "function") {
     return contained(d);
   } else if (Array.isArray(d)) {
-    return multiSignaled(d, builder as Builder<[T | undefined]>);
+    return multiSignaled(d, builder as Builder<any>);
   } else {
-    return monoSignaled(d, builder as Builder<[T | undefined]>);
+    return monoSignaled(d, builder as Builder<any>);
   }
 }
 
@@ -99,14 +98,20 @@ export function projector<A extends any[]>(initialBuilder: (...args: A) => VNode
 
 
 export function projected(projector: Projector): VNode {
-  return monoSignaled(
-    projector,
-    (builder) => (builder ?? projector.initialBuilder)()
+  return monoSignaled<[Builder]>(
+    projector.signal,
+    (builder) => (builder ?? projector.initial)()
+  );
+}
+export function persisted(persistor: Persistor): VNode {
+  return stateful(
+    persistor.state,
+    (builder) => builder()
   );
 }
 export function stateful<T>(state: State<T>, builder: (curr: T) => VNode): VNode {
   //console.log("Building with:", state.get());
-  const rebuild = ([_from, _curr]: [T, T]) => {
+  const rebuild = (_from: T, _curr: T) => {
     //console.log("Rebuilding with:", state.get());
     ref.rebuild(() => builder(state.get()));
   };
@@ -118,25 +123,25 @@ export function stateful<T>(state: State<T>, builder: (curr: T) => VNode): VNode
   return vnode;
 }
 
-function monoSignaled<T>(signal: Signal<T>, builder: Builder<[T | undefined]>) {
+function monoSignaled<T extends any[]>(signal: Signal<T>, builder: Builder<T>) {
   let ref: Ref, vnode: VNode;
-  const rebuild = (arg: T) => ref.rebuild(() => builder(arg));
+  const rebuild = (...args: T) => ref.rebuild(() => builder(...args));
   [ref, vnode] = Ref.build(
     builder as () => VNode,
     signal.subscribe(rebuild)
   );
   return vnode;
 }
-function multiSignaled<T>(signals: Signal<T>[], builder: Builder<[T | undefined]>): VNode {
+function multiSignaled<T extends any[]>(signals: Signal<T>[], builder: Builder<T | []>): VNode {
   let ref: Ref, vnode: VNode;
-  const rebuild = (arg: T) => ref.rebuild(() => builder(arg));
+  const rebuild = (...args: T) => ref.rebuild(() => builder(...args));
   [ref, vnode] = Ref.build(
     builder as Builder,
     Signal.bundle(...signals.map(signal => signal.subscribe(rebuild)))
   );
   return vnode;
 }
-export function signaled<T>(signals: Signal<T> | Signal<T>[], builder: Builder<[T | undefined]>): VNode {
+export function signaled<T extends any[]>(signals: Signal<T> | Signal<T>[], builder: Builder<T | []>): VNode {
   if (Array.isArray(signals)) {
     return multiSignaled(signals, builder);
   } else {
@@ -387,49 +392,43 @@ class Ref {
   
 }
 
-/*class Stapler extends State<() => VNode> {
-  constructor(initial: () => VNode) {
-    super(initial);
-  }
-  set<A extends any[]>(builder: (...args: A) => VNode, ...args: A) {
-    if (args.length === 0) {
-      super.set(builder);
-    } else {
-      super.set(() => builder(...args));
-    }
-  }
-}*/
-class Projector extends Signal<() => VNode> {
+const EMPTY_BUILDER = () => h("!");
+
+class Projector {
   
-  initialBuilder: () => VNode;
-  constructor(initialBuilder: () => VNode) {
-    super();
-    this.initialBuilder = initialBuilder;
+  readonly signal = new Signal<[Builder]>();
+  readonly initial: Builder;
+  
+  constructor(initialBuilder: Builder) {
+    this.initial = initialBuilder;
   }
-  put<A extends any[]>(builder: (...args: A) => VNode, ...args: A) {
-    if (args.length === 0) {
-      this.emit(builder);
+  put<A extends any[]>(builder: (...args: A) => VNode, ...builderArgs: A) {
+    if (builderArgs.length === 0) {
+      this.signal.emit(builder);
     } else {
-      this.emit(() => builder(...args));
+      this.signal.emit(() => builder(...builderArgs));
     }
   }
   clear() {
-    this.emit(() => h("!"));
+    this.signal.emit(EMPTY_BUILDER);
   }
   reset() {
-    this.emit(this.initialBuilder);
+    this.signal.emit(this.initial);
   }
 }
-/*class Projector2 extends Signal<() => VNode> {
-  current: () => VNode;
-  constructor(current: () => VNode) {
-    this.current = current;
+class Persistor {
+  readonly state: State<Builder>;
+  constructor(initialBuilder: Builder) {
+    this.state = new State(initialBuilder);
   }
-  put<A extends any[]>(builder: (...args: A) => VNode, ...args: A) {
-    if (args.length === 0) {
-      this.set(builder);
+  put<A extends any[]>(builder: (...args: A) => VNode, ...builderArgs: A) {
+    if (builderArgs.length === 0) {
+      this.state.set(builder);
     } else {
-      this.set();
+      this.state.set(() => builder(...builderArgs));
     }
   }
-}*/
+  clear() {
+    this.state.set(EMPTY_BUILDER);
+  }
+}

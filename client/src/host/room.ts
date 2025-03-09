@@ -10,9 +10,9 @@ import {
 } from "../modules/index"
 
 
-export const playerJoined = new Signal<Player>();
-export const playerLeft = new Signal<Player>()
-export const playerIconChanged = new Signal<Player>();
+export const playerJoined = new Signal<[Player]>();
+export const playerLeft = new Signal<[Player]>()
+export const playerIconChanged = new Signal<[Player]>();
 
 export let joinCode = "";
 //export let players: Player[] = [];

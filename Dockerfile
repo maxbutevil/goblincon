@@ -1,6 +1,6 @@
 
 #ssh root@161.35.235.183
-#git clone git@github.com:maxbutevil/goblincon-plus .
+#git clone git@github.com:maxbutevil/goblincon
 
 #MAYBE: git reset --hard HEAD
 #git pull

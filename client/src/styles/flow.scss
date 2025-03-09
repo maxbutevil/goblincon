@@ -1,0 +1,71 @@
+
+@use 'sass:meta';
+@use 'sass:list';
+@use 'sass:math';
+
+
+@function is-length($val) {
+	@return $val == "0" or (meta.type-of($val) == "number" and list.index("cm" "mm" "Q" "in" "pc" "pt" "px" "em" "ex" "ch" "rem" "vw" "vh" "vmin" "vmax", math.unit($val)) != null);
+}
+@mixin flex($flow: column nowrap, $args...) {
+	display: flex;
+	flex-flow: $flow;
+	
+	@if list.length($args) == 0 {
+		justify-content: flex-start;
+		align-items: center;
+	}
+	@else if list.length($args) == 1 {
+		align-items: center;
+		@if is-length(list.nth($args, 1)) {
+			justify-content: flex-start;
+			gap: list.nth($args, 1);
+		} @else {
+			justify-content: list.nth($args, 1);
+		}
+	}
+	@else if list.length($args) == 2 {
+		justify-content: list.nth($args, 1);
+		@if is-length(list.nth($args, 2)) {
+			align-items: center;
+			gap: list.nth($args, 2);
+		} @else {
+			align-items: list.nth($args, 2);
+		}
+	}
+	@else {
+		justify-content: list.nth($args, 1);
+		align-items: list.nth($args, 2);
+		gap: list.nth($args, 3);
+	}
+}
+
+@mixin vflow($gap: 0.3em) {
+	@include flex(column nowrap, $gap);
+	text-align: center;
+}
+@mixin popup {
+	@include vflow;
+	
+	font-size: 1em;
+	
+	margin: 1.2em;
+	padding: 1em;
+	
+	border: 3px solid black;
+	border-radius: 8px;
+	
+	background-color: #eeeee0;
+}
+
+.mode {
+	flex: auto;
+}
+.tab {
+	flex: auto;
+	@include vflow;
+	margin: 0.5em;
+	font-size: 1.2em;
+}
+
+

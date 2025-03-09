@@ -3,7 +3,7 @@ import {
 	State,
 	h, s, defer,
 	Shared, PlayerIcons,
-	VNodeChildren
+	VNode, VNodeChildren
 } from "./modules/index"
 
 export function logo() {
@@ -17,7 +17,7 @@ export function logo() {
 	]);
 }
 
-export function countdown(endTime: number, onFinish?: () => void) {
+/*export function countdown(endTime: number, onFinish?: () => void) {
 	
 	let secondsLeft = new State<number>(NaN);
 	let interval: NodeJS.Timeout | undefined;
@@ -46,7 +46,7 @@ export function countdown(endTime: number, onFinish?: () => void) {
 		const style = curr <= 3 ? { color: "red" } : { color: "black" };
 		return h("div.countdown", { style }, curr.toString());
 	});
-}
+}*/
 
 export function idlePage(header: string, ...subheaders: string[]) {
 	return h("div#idle.tab", [
@@ -71,12 +71,62 @@ function iconBtn(iconSrc: string, onClick: () => any) {
 	);
 }
 export function mountedBtn(iconSrc: string, onClick: () => any) {
-	return h("div.mounted-btn-vflow", iconBtn(iconSrc, onClick));
+	return h("div#mounted-btns", iconBtn(iconSrc, onClick));
 }
-export function mountedBtnFlow(btnArgs: Array<[string, () => any]>) {
+export function mountedBtns(btnArgs: Array<[string, () => any]>) {
 	const btns = btnArgs.map(data => iconBtn(...data));
-	return h("div.mounted-btn-vflow", btns);
+	return h("div#mounted-btns", btns);
 }
 
-
+export class Countdown {
+	
+	private secondsLeft = new State(NaN);
+	private callbacks: Array<{ time: number, callback: () => any }> = [];
+	private interval: NodeJS.Timeout;
+	
+	constructor(endTime: number) {
+		
+		const tick = () => {
+			let delta = endTime - Date.now() - 50;
+			let newSeconds = Math.ceil(delta/1000);
+			
+			if (newSeconds <= 0) {
+				newSeconds = 0;
+				clearInterval(this.interval);
+			}
+			
+			for (let i = this.callbacks.length - 1; i >= 0; i--) {
+				const { time, callback } = this.callbacks[i];
+				if (newSeconds <= time) {
+					callback();
+					this.callbacks.splice(i, 1);
+				}
+			}
+			
+			this.secondsLeft.set(newSeconds);
+		};
+		
+		this.interval = setInterval(tick, 200);
+		tick();
+	}
+	view(): VNode {
+		defer(() => clearInterval(this.interval));
+		return s(this.secondsLeft, (curr) => {
+			const style = curr <= 3 ? { color: "red" } : { color: "black" };
+			return h("div.countdown", { style }, curr.toString());
+		});
+	}
+	onThreshold(time: number, callback: () => any): Countdown {
+		this.callbacks.push({ time, callback });
+		return this;
+	}
+	onFinish(callback: () => any): Countdown {
+		return this.onThreshold(0, callback);
+	}
+}
+export function countdown(endTime: number, onFinish?: () => void): VNode {
+	const cd = new Countdown(endTime);
+	if (onFinish) cd.onFinish(onFinish);
+	return cd.view();
+}
 

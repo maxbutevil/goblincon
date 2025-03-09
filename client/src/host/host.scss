@@ -1,0 +1,52 @@
+
+@use "../styles/index.scss" as *;
+
+#lobby {
+	@include flex(row nowrap, space-around, flex-start);
+	#join-code {
+		font-size: 3em;
+		/*user-select: text;*/
+	}
+}
+
+.setting-select {
+	margin: 6px;
+	.name {
+		font-size: 0.9em;
+		margin-bottom: 4px;
+	}
+}
+
+.score-entry-ctr {
+	min-width: 16em;
+	@include flex(column nowrap);
+	
+	.score-entry {
+		@include flex(row nowrap, space-between);
+		font-size: 1.3em;
+	}
+}
+
+.submission-ctr {
+	flex: 1 1 0px;
+	width: 96vw;
+	
+	@include flex(column nowrap, center, 0.6em);
+	
+	.submission-row {
+		flex: 1 1 0px;
+		@include flex(row nowrap, center, 0.6em);
+	}
+	.submission-row:only-child {
+		height: auto;
+		flex: 0 1 34%;
+	}
+	.submission-row #vs-icon {
+		aspect-ratio: 1;
+		flex: 0 1 0px;
+		max-height: 36vh;
+	}
+}
+
+
+

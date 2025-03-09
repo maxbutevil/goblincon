@@ -1,0 +1,126 @@
+
+@use "flow.scss" as *;
+
+.countdown {
+	font-size: 1.6em;
+}
+
+.player-icon {
+	width: 2.0em;
+	height: 2.0em;
+	flex: 0 0 2.0em;
+}
+.player-view {
+	@include flex(row nowrap, 0.3em);
+}
+
+.multi-btn {
+	@include flex(row nowrap, center);
+	font-size: 1.0em;
+	
+	button.selected {
+		background-color: #AAA;
+	}
+	button:not(:first-child) {
+		border-radius: 0;
+		border-left: none;
+	}
+	button:first-child {
+		border-radius: 4px 0 0 4px;
+	}
+	button:last-child {
+		border-radius: 0 4px 4px 0;
+	}
+	button:only-child {
+		border-radius: 4px;
+	}
+}
+
+#status {
+	text-align: center;
+	font-weight: bold;
+}
+#status.error {
+	color: #A00;
+}
+
+#logo {
+	#icon-row {
+		@include flex(row nowrap, center);
+		font-size: 1em;
+	}
+}
+
+#overlay-shadow {
+	position: fixed;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+	
+	@include flex(column nowrap, center, center);
+	padding: none;
+	
+	border: none;
+	background-color: rgba(0, 0, 0, 0.45);
+}
+
+#mounted-btns {
+	
+	position: fixed;
+	left: 0.5em;
+	bottom: 0.5em;
+	
+	@include flex(column nowrap, 0.5em);
+	
+	button {
+		width: 2.4em;
+		height: 2.4em;
+		padding: 0.2em;
+		margin: none;
+		
+		img {
+			margin: none;
+			width: 100%;
+			height: 100%;
+		}
+	}
+}
+
+.submission-panel {
+	@include flex(column nowrap, space-between);
+	padding: 0.6em;
+	
+	background-color: #ddd;
+	border: 3px solid black;
+	border-radius: 8px;
+	
+	img { aspect-ratio: 1; width: 100%; }
+}
+.submission {
+	@extend .submission-panel;
+	aspect-ratio: 7 / 8;
+	height: 88%;
+	flex: 0 1 0;
+	position: relative;
+	
+	.vote-ctr {
+		position: absolute;
+		top: 2%;
+		left: 2%;
+		right: 2%;
+		bottom: 2%;
+		
+		@include flex(row wrap, flex-start, flex-start);
+		font-size: 1.8em;
+		.player-icon {
+			animation: fadeIn 0.6s;
+			@keyframes fadeIn {
+				0% { opacity: 0; rotate: -25deg; }
+				50% { opacity: 0.5; rotate: 25deg; }
+				100% { opacity: 1; rotate: 0deg; }
+			}
+		}
+	}
+}
+

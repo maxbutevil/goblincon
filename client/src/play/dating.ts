@@ -48,7 +48,6 @@ const OUT = new SendIndex({
 
 const page = projector(starting);
 
-
 export function view() {
 	
 	defer(
@@ -69,7 +68,7 @@ export function view() {
 		INC.subscribe("doneVoting", () => page.put(doneVoting)),
 	);
 	
-	return s(page);
+	return h("div#dating.mode", s(page));
 }
 function starting() {
 	return h("div#start.tab", [
@@ -82,7 +81,7 @@ function drawingBachelor(endTime: number, bachelorTheme: string) {
 	const drawpad = new Drawpad();
 	
 	return h("div#draw-bachelor.tab", [
-		h("div", [
+		h("div#info", [
 			h("div#bachelor-theme", `Theme: ${bachelorTheme}`),
 			countdown(endTime, () => drawpad.submit()),
 		]),
@@ -93,40 +92,40 @@ function drawingBachelor(endTime: number, bachelorTheme: string) {
 }
 function drawingSuitor(endTime: number, bachelorId: number, bachelorDrawing: string) {
 	
-	const drawpad = new Drawpad();
-	
 	const overlayOpen = new State(true);
 	function toggle() {
 		overlayOpen.set(!overlayOpen.get());
 	};
+	function overlay() {
+		return h("div#overlay-shadow",/* { on: { click: toggle } }, */ [
+			h("div#bachelor-popup.popup.vflow", [
+				h("div.vflow", [
+					h("div", [
+						h("h2", "Your Bachelor(ette)"),
+						h("div", "Use this as inspiration for your suitor drawing!"),
+					]),
+					h("div.bachelor-ctr", [
+						h("img", { attrs: { src: bachelorDrawing }}),
+					])
+				]),
+				h("button", { on: { click: toggle } }, "Start Drawing!")
+			])
+		]);
+	}
+	
+	const drawpad = new Drawpad();
+	//const countdown = new Countdown();
 	
 	return h("div#draw-suitor.tab", [
-		h("div", "Draw a suitor for your bachelor(ette)"),
-		countdown(endTime, () => drawpad.submit()),
+		h("div#info", [
+			h("div", "Draw a suitor for your bachelor(ette)"),
+			countdown(endTime, () => drawpad.submit()),
+		]),
 		drawpad.view((drawing) => {
 			OUT.send("suitorSubmission", { bachelorId, drawing });
 		}),
 		//h("button", { on: { click: toggle } }, "See Bachelor"),
-		s(overlayOpen, curr => {
-			if (!curr) {
-				return h("!");
-			} else {
-				return h("div.overlay",/* { on: { click: toggle } }, */ [
-					h("div#bachelor-popup.popup.vflow", [
-						h("div.vflow", [
-							h("div", [
-								h("h2", "Your Bachelor(ette)"),
-								h("div", "Use this as inspiration for your suitor drawing!"),
-							]),
-							h("div.bachelor-ctr", [
-								h("img", { attrs: { src: bachelorDrawing }}),
-							])
-						]),
-						h("button", { on: { click: toggle } }, "Start Drawing!")
-					])
-				]);
-			}
-		}),
+		s(overlayOpen, curr => curr ? overlay() : h("!")),
 		mountedBtn(showBachelorIcon, toggle)
 	]);
 }
@@ -137,7 +136,7 @@ function voting(endTime: number, choices: string[]) {
 		page.put(doneVoting);
 	}
 	
-	return h("div.tab", [
+	return h("div#voting.tab", [
 		h("h1", "Voting!"),
 		h("div", "Vote for your favorite suitor!"),
 		countdown(endTime),

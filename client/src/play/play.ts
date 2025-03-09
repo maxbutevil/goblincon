@@ -1,6 +1,5 @@
 
-import "../shared.css"
-import "./play.css"
+import "./play.scss"
 
 import {
 	State,
@@ -90,10 +89,10 @@ INC.listen("inDating", () => {
 });*/
 
 function info(message: string) {
-	return h(`div.status.info`, message);
+	return h(`div#status.info`, message);
 }
 function error(message: string) {
-	return h(`div.status.error`, message);
+	return h(`div#status.error`, message);
 }
 
 function landing() {
@@ -143,7 +142,7 @@ function landing() {
 			if (!curr) {
 				return h("!");
 			} else {
-				return h("div.overlay", { on: { click: close } },
+				return h("div#overlay-shadow", { on: { click: close } },
 					h("div#help-popup.popup.vflow", [
 						h("div", [
 							h("h2", "How to Play"),

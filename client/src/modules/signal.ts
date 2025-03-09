@@ -5,11 +5,11 @@
 //import { EventEmitter } from "events"
 
 
-type Callback<T> = (() => any) | ((arg: T) => any);
+type Callback<A extends any[]> = ((...args: A) => any);
 //type Cleanup = () =>
 //type Drop = () => void;
 
-export default class Signal<T = void> extends Set<Callback<T>> {
+export default class Signal<T extends any[]> extends Set<Callback<T>> {
 	
 	static readonly UNHANDLED = false;
 	static readonly HANDLED = true;
@@ -21,7 +21,7 @@ export default class Signal<T = void> extends Set<Callback<T>> {
 		}
 	}
 	
-	public static forwardEvent<T extends Event>(emitter: EventTarget, event: string): Signal<T> {
+	/*public static forwardEvent<T extends Event>(emitter: EventTarget, event: string): Signal<T> {
 		let newSignal = new Signal<T>();
 		//newSignal.bindEvent(emitter, event);
 		emitter.addEventListener(event, event => newSignal.emit(event as T));//newSignal.emit.bind(newSignal));
@@ -31,14 +31,14 @@ export default class Signal<T = void> extends Set<Callback<T>> {
 		let newSignal = new Signal<T>();
 		newSignal.bindSignal(signal);
 		return newSignal;
-	}
+	}*/
 	/*bindEvent(emitter: EventTarget, event: string): void {
 		//emitter.on(event, this.emit.bind(this));
 		emitter.addEventListener(event, this.emit.bind(this));
 	}*/
-	bindSignal(signal: Signal<T>): void {
+	/*bindSignal(signal: Signal<T>): void {
 		signal.listen(this.emit.bind(this));
-	}
+	}*/
 	
 	public listen(callback: Callback<T>): Callback<T> {
 		this.add(callback);
@@ -67,13 +67,13 @@ export default class Signal<T = void> extends Set<Callback<T>> {
 		
 	}*/
 	
-	public emit(arg: T): void {
+	public emit(...args: T): void {
 		for (const callback of this)
-			callback(arg);
+			callback(...args);
 	}
-	public handle(arg: T): boolean {
+	public handle(...args: T): boolean {
 		for (const callback of this)
-			if (callback(arg) === Signal.HANDLED)
+			if (callback(...args) === Signal.HANDLED)
 				return Signal.HANDLED;
 		return Signal.UNHANDLED;
 	}

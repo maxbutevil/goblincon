@@ -24,10 +24,10 @@ class Client {
 	connectionFailed = this.state.transition(Connection.PENDING, Connection.CLOSED);
 	
 	//error = new Signal<CloseEvent>();
-	closed = new Signal<CloseEvent>();
+	closed = new Signal<[CloseEvent]>();
 	// how the client is told about incoming messages
 	// in practice, this is forwarded to a ReceiveIndex
-	private incoming = new Signal<Message>();
+	private incoming = new Signal<[Message]>();
 	
 	// internal state
 	private ws: WebSocket | undefined;

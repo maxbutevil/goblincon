@@ -1,4 +1,6 @@
 import { defineConfig } from '@rsbuild/core';
+import { pluginSass } from '@rsbuild/plugin-sass';
+
 
 export default defineConfig({
 	source: {
@@ -6,7 +8,6 @@ export default defineConfig({
 			//testing: "./src/testing.ts",
 			host: "./src/host/host.ts",
 			play: "./src/play/play.ts",
-			//howto: "./src/pages/howto.ts"
 		}
 	},
 	html: {
@@ -26,6 +27,7 @@ export default defineConfig({
 			],
 		},*/
 	},
+	plugins: [pluginSass(/*{ rewriteUrls: true }*/)],
 	output: {
 		//minify: false,
 	},
