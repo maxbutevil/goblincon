@@ -69,14 +69,7 @@ impl<'a> Lobby<'a> {
 		let State::Open { leader_id } = self.state else { return false };
 		self.has_player(leader_id)
 	}*/
-	fn has_player(&self, player_id: PlayerId) -> bool {
-		self.clients.players.contains(player_id as usize)
-	}
-	fn has_connected_player(&self, player_id: PlayerId) -> bool {
-		let player = self.clients.players.get(player_id as usize);
-		let Some(player) = player else { return false };
-		player.is_connected()
-	}
+	
 	fn new_leader_id(&self) -> Option<PlayerId> {
 		for (player_id, player) in self.clients.players.iter() {
 			if player.is_connected() {
@@ -167,7 +160,7 @@ impl<'a> Lobby<'a> {
 	}
 	
 	
-	async fn handle_client_message(&mut self, client_id: ClientId, msg: String) {
+	async fn handle_client_message(&mut self, client_id: ClientId, msg: Utf8Bytes) {
 		match client_id {
 			ClientId::Host => {
 				/*let global_message = deserialize::<'_, GlobalHostMsgIn>(&msg);
@@ -178,7 +171,6 @@ impl<'a> Lobby<'a> {
 					};
 					return;
 				}*/
-				
 				let lobby_message = deserialize::<'_, HostMsgIn>(&msg);
 				if let Ok(msg) = lobby_message {
 					match msg {
@@ -221,7 +213,7 @@ impl<'a> Lobby<'a> {
 		let result = self.clients.connect_player(socket, name, icon).await;
 		let Ok(player_id) = result else { return };
 		
-		if self.has_player(leader_id) {
+		if self.clients.has_player(leader_id) {
 			self.sync_nonleader(player_id).await;
 			self.sync_leader(leader_id).await; // tell leader updated player count
 		} else {
@@ -253,7 +245,7 @@ impl<'a> Lobby<'a> {
 		
 		self.clients.remove_player(player_id).await;
 		
-		if self.has_player(leader_id) {
+		if self.clients.has_player(leader_id) {
 			// tell leader updated player count
 			self.sync_leader(leader_id).await;
 		} else {

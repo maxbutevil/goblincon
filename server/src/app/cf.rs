@@ -1,10 +1,14 @@
 
 // This file is for CloseFrames
 
-use std::borrow::Cow;
-use axum::extract::ws::CloseFrame;
+//use std::borrow::Cow;
+use axum::extract::ws::{
+	CloseFrame,
+	Utf8Bytes
+};
 
-pub type Frame = CloseFrame<'static>;
+
+pub type Frame = CloseFrame;
 
 /*  */
 pub const LOBBY_FULL: Frame = ok("Lobby is full");
@@ -28,7 +32,7 @@ pub const INVALID_REJOIN: Frame = custom(4002, "Rejoin failed");
 const fn custom(code: u16, reason: &'static str) -> Frame {
 	CloseFrame {
 		code,
-		reason: Cow::Borrowed(reason)
+		reason: Utf8Bytes::from_static(reason)
 	}
 }
 pub const fn ok(reason: &'static str) -> Frame {

@@ -104,7 +104,7 @@ impl Assignments {
 		if player_ids.len() < 3 {
 			None
 		} else {
-			player_ids.shuffle(&mut rand::thread_rng());
+			player_ids.shuffle(&mut rand::rng());
 			Some(Self(player_ids))
 		}
 	}
@@ -130,11 +130,11 @@ impl Assignments {
 	fn get_bachelors<'a>(&'a self, suitor_id: PlayerId) -> Option<[&'a (PlayerId, String); SUITOR_COUNT]> {
 		Some(self.get_bachelors_at(self.find(suitor_id)?))
 	}
-	fn get_bachelor_drawings<'a>(&'a self, suitor_id: PlayerId) -> Option<[&'a str; SUITOR_COUNT]> {
+	/*fn get_bachelor_drawings<'a>(&'a self, suitor_id: PlayerId) -> Option<[&'a str; SUITOR_COUNT]> {
 		self
 			.get_bachelors(suitor_id)
 			.map(|bachelors| bachelors.map(|b| b.1.as_str()))
-	}
+	}*/
 	/*fn get_bachelor_drawings<'a>(&'a self, suitor_id: PlayerId) -> Option<[&'a str; SUITOR_COUNT]> {
 		Some(self.get_bachelor_drawings_at(self.find(suitor_id)?))
 	}*/
@@ -154,9 +154,9 @@ impl Assignments {
 			[self.get_wrapped(i + 2), self.get_wrapped(i + self.len() - 1)]
 		}
 	}
-	fn get_suitors<'a>(&'a self, bachelor_id: PlayerId) -> Option<[&'a Assignment; SUITOR_COUNT]> {
+	/*fn get_suitors<'a>(&'a self, bachelor_id: PlayerId) -> Option<[&'a Assignment; SUITOR_COUNT]> {
 		Some(self.get_suitors_at(self.find(bachelor_id)?))
-	}
+	}*/
 	/*fn get_suitor_ids(&self, bachelor_id: PlayerId) -> Option<[PlayerId; SUITOR_COUNT]> {
 		self
 			.get_suitors(bachelor_id)
@@ -198,7 +198,7 @@ impl Assignments {
 			.map(|(i, (id, _))| (*id, self.get_suitor_ids_at(i)))
 			.collect::<Vec<_>>();
 		
-		remaining.shuffle(&mut rand::thread_rng());
+		remaining.shuffle(&mut rand::rng());
 		remaining
 	}
 }

@@ -18,7 +18,7 @@ pub use futures_util::{
 };
 
 pub use rand::prelude::*;
-pub use axum::extract::ws::{Message, WebSocket};
+pub use axum::extract::ws::{WebSocket, Message, Utf8Bytes};
 pub type WebSocketSender = SplitSink<WebSocket, Message>;
 pub type WebSocketReceiver = SplitStream<WebSocket>;
 
@@ -73,7 +73,7 @@ impl RoomId {
 	const CHARS: &'static [u8] = b"BCDFGHJKLMNPQRSTVWXZ";
 	
 	pub fn generate() -> Self {
-		let rng = &mut rand::thread_rng();
+		let rng = &mut rand::rng();
 		let inner = [(); 5].map(|_| *Self::CHARS.choose(rng).unwrap());
 		Self(inner)
 	}

@@ -31,7 +31,7 @@ impl<T: Copy + 'static> Table<T> {
 		Self { total_weight, entries }
 	}
 	fn pick(&self) -> T {
-		self.pick_at(rand::thread_rng().gen_range(0..self.total_weight))
+		self.pick_at(rand::rng().random_range(0..self.total_weight))
 	}
 	fn pick_at(&self, mut i: usize) -> T {
 		for &(weight, values) in self.entries.iter() {

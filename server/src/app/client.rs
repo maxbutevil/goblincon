@@ -7,6 +7,7 @@ use std::ops::{Deref, DerefMut};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use async_scoped::TokioScope;
+//use axum::extract::ws::Utf8Bytes;
 
 pub use serde::{Serialize, Deserialize};
 
@@ -91,7 +92,7 @@ impl Presence {
 	}
 	pub async fn send(&mut self, msg: &impl Serialize) -> bool {
 		let Ok(msg) = serialize(msg) else { return false };
-		self.send_raw(Message::Text(msg)).await
+		self.send_raw(Message::Text(msg.into())).await
 	}
 	pub async fn close(&mut self, close_frame: cf::Frame) -> bool {
 		self.send_raw(Message::Close(Some(close_frame))).await
@@ -156,7 +157,11 @@ impl Players {
 	async fn send_players<'a, I>(players: I, msg: &impl Serialize) -> bool
 	where I: Iterator<Item=(usize, &'a mut Box<Player>)> {
 		let Ok(msg) = serialize(msg) else { return false };
-		let msg = Message::Text(msg);
+		let msg = Message::Text(msg.into());
+		Self::send_players_raw(players, msg).await
+	}
+	async fn send_players_raw<'a, I>(players: I, msg: Message) -> bool
+	where I: Iterator<Item=(usize, &'a mut Box<Player>)> {
 		let (_, results) = TokioScope::scope_and_block(|scope| {
 			for (_, player) in players {
 				scope.spawn(player.send_raw(msg.clone()));
@@ -226,7 +231,7 @@ type Receiver = mpsc::Receiver<(ClientId, ClientEvent)>;
 
 pub enum ClientEvent {
 	Disconnect,
-	Message(String)
+	Message(Utf8Bytes)
 }
 pub struct ClientIndex {
 	sender: Sender,
@@ -245,7 +250,7 @@ impl ClientIndex {
 			let (tx, mut rx) = host_socket.split();
 			let sender = sender.clone();
 			let handle = tokio::spawn(async move {
-				while let Some(content) = next_string(&mut rx).await {
+				while let Some(content) = next_str(&mut rx).await {
 					
 					if content.is_empty() {
 						/* This is an empty keep-alive message, ignore */
@@ -289,12 +294,12 @@ impl ClientIndex {
 	}
 	
 	fn generate_token() -> PlayerToken {
-		rand::thread_rng().gen::<PlayerToken>()
+		rand::rng().random::<PlayerToken>()
 	}
 	fn new_player_presence(sender: Sender, socket: WebSocket, player_id: PlayerId) -> Presence {
 		let (tx, mut rx) = socket.split();
 		let handle = tokio::spawn(async move {
-			while let Some(content) = next_string(&mut rx).await {
+			while let Some(content) = next_str(&mut rx).await {
 				if content.is_empty() {
 					/* This is an empty keep-alive msg, ignore */
 					continue;
@@ -321,12 +326,20 @@ impl ClientIndex {
 		self.players.len()
 	}
 	
+	pub fn has_player(&self, player_id: PlayerId) -> bool {
+		self.players.contains(player_id as usize)
+	}
+	pub fn has_connected_player(&self, player_id: PlayerId) -> bool {
+		let player = self.players.get(player_id as usize);
+		let Some(player) = player else { return false };
+		player.is_connected()
+	}
 	pub fn player<'a>(&'a self, id: PlayerId) -> Option<&'a Player> {
 		self.players.get(id as usize).map(|player| player.as_ref())
 	}
-	pub fn player_mut<'a>(&'a mut self, id: PlayerId) -> Option<&'a mut Player> {
+	/*pub fn player_mut<'a>(&'a mut self, id: PlayerId) -> Option<&'a mut Player> {
 		self.players.get_mut(id as usize).map(|player| player.as_mut())
-	}
+	}*/
 	
 	pub async fn recv(&mut self) -> Option<(ClientId, ClientEvent)> {
 		let event = self.receiver.recv().await;
@@ -494,7 +507,7 @@ pub fn deserialize<'a, T: Deserialize<'a>>(str: &'a str) -> Result<T, ()> {
 		Err(_err) => Err(())
 	}
 }
-async fn next_string(receiver: &mut WebSocketReceiver) -> Option<String> {
+async fn next_str<'a>(receiver: &'a mut WebSocketReceiver) -> Option<Utf8Bytes> {
 	while let Some(msg) = receiver.next().await {
 		match msg {
 			Ok(Message::Text(content)) => return Some(content),
