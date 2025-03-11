@@ -12,7 +12,7 @@ import * as Room from "./room"
 import { Player, ScoreMap } from "./room"
 import { Mode, Setting } from "./mode"
 import * as PlayerIcons from "../modules/player_icons"
-import { submission } from "./components"
+import { submission, submissionGrid } from "./components"
 
 
 //import { motion } from "framer-motion"
@@ -110,32 +110,9 @@ function voting() {
 				submissions.push(submission(id, drawing, voteQueue.votes[id]));
 		}
 		
-		/* This is a nightmare, but so are 2D flexbox layouts */
-		/* And it works! */
-		let aspectRatio = window.innerWidth / window.innerHeight;
-		let rowWidth = submissions.length;
-		let rowCount = 1;
-		if (submissions.length >= aspectRatio * 2.4) {
-			for (let i = 2; i < submissions.length; i++) {
-				rowCount = i;
-				rowWidth = Math.ceil(submissions.length/i);
-				if ((rowWidth / i) <= aspectRatio * 1.2)
-					break;
-			}
-		}
-		
-		let rows: VNode[][] = [];
-		for (let i = 0; i < rowCount; i++)
-			rows.push([]);
-		
-		for (let i = 0; i < submissions.length; i++) {
-			let row = Math.floor(i/rowWidth);
-			rows[row].push(submissions[i]);
-		}
-		
 		return h("div#voting.tab", [
 			h("div", `Vote for your favorite ${round.goblinName}!`),
-			h("div.submission-ctr", rows.map(row => h("div.submission-row", row)))
+			h("div.submission-ctr", submissionGrid(submissions))
 		]);
 	});
 	

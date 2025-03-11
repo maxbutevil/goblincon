@@ -1,14 +1,48 @@
-import "./shared.css"
-import State from './modules/state'
-import { h, patchRoot, s, cleanup, defer, cleaned, VNode } from './modules/micron';
-import Signal from "./modules/signal"
+import "./styles/index.scss"
+import "./play/play.scss"
+import "./host/host.scss"
+//import { exit as exitIcon } from "./assets/icons/index"
+import "./assets/icons/index"
+
+import {
+	Signal, State,
+	h, s,
+	projector, cleanup, defer, VNode,
+	patchRoot
+} from "./modules/index"
 
 import * as icons from "./assets/icons/index"
 import * as PlayerIcon from "./modules/player_icons"
 
-let c = false;
-const state = new State(0);
-const signal = new Signal();
+import { Player } from "./host/room";
+import { submission, submissionGrid } from "./host/components";
+
+const testPage = projector(submissionGridTest);
+
+function submissionGridTest() {
+	
+	const count = new State(1);
+	const player = new Player(0, "test", 0);
+	
+	return h(
+		"div.mode",
+		{ on: { click: () => count.set(count.get() + 1) } },
+		s(count, (curr) => {
+			
+			const submissions = [];
+			for (let i = 0; i < curr; i++) {
+				submissions.push(submission(player, icons.exit));
+			}
+			
+			return submissionGrid(submissions);
+		})
+	);
+}
+
+
+
+patchRoot(h("div.mode", s(testPage)));
+
 
 /*patchRoot(
 	signaled(t2, () => {
@@ -30,33 +64,6 @@ const signal = new Signal();
 	})
 );*/
 
-patchRoot(
-	s(state, (curr) => {
-		return s(signal, () => {
-			
-			/*return cleaned(
-				() => console.log("splendid!"),
-				() => h("div", String(state.get()))
-			);*/
-			
-			if (curr === 0) {
-				defer(() => console.log("splendid!"));
-				//cleanup(() => console.log("splendid!"))
-			}
-			
-			return h("div", String(state.get()));
-			
-			/*if (curr == 1) {
-				return cleaned(
-					() => console.log("cleaning up!"),
-					() => h("div.a", String(state.get()))
-				);
-			} else {
-				return h("div.a", String(state.get()));
-			}*/
-		});
-	})
-);
 
 /*patchRoot(
 	stateful(state, (curr) => {
@@ -74,20 +81,6 @@ patchRoot(
 		}
 	})
 );*/
-
-setInterval(() => {
-	
-	if (c) {
-		console.log(state.get());
-		state.set(1 - state.get())
-	} else {
-		signal.emit();
-		signal.emit();
-		signal.emit();
-	}
-	
-	c = !c;
-}, 2000);
 
 
 /*patchRoot(

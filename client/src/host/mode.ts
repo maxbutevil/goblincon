@@ -64,10 +64,12 @@ export class Setting<T = number> {
 			h("div.name", {}, this.name),
 			signaled(this.changed, () => {
 				return h("div.multi-btn", this.choices.map((_, i) => {
-					const tag = (i === this.current) ? "button.selected" : "button";
 					return h(
-						tag,
-						{ on: { click: () => this.set(i) } },
+						"button",
+						{
+							on: { click: () => this.set(i) },
+							class: { selected: i === this.current }
+						},
 						this.getString(i)
 					);
 				}));

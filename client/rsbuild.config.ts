@@ -12,14 +12,14 @@ export default defineConfig({
 	},
 	html: {
 		title: "GoblinCon",
-		//favicon: "./favicons/01.ico",
+		favicon: "./icons/01/favicon.ico",
 		meta: {
 			charset: { charset: 'UTF-8' },
 			viewport: "width=device-width, initial-scale=1",
 			//"theme-color": "#ccccc0",
 			//viewport: "width=device-width, initial-scale=1, maximum-scale=1"
 		},
-		favicon: "./icons/01/favicon.ico",
+		
 		/*appIcon: {
 			name: "GoblinCon",
 			icons: [
@@ -27,7 +27,7 @@ export default defineConfig({
 			],
 		},*/
 	},
-	plugins: [pluginSass(/*{ rewriteUrls: true }*/)],
+	plugins: [pluginSass()],
 	output: {
 		//minify: false,
 	},

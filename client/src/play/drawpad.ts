@@ -284,7 +284,7 @@ export default class Drawpad {
 					const isSelected = drawMode.type === "draw" && drawMode.color === color;
 					let borderColor = isSelected ? "white" : color;
 					
-					return h("button.button.color-select-btn",
+					return h("button",
 						{
 							style: {
 								backgroundColor: color,
@@ -325,7 +325,7 @@ export default class Drawpad {
 					);
 				}
 				
-				return h("div#color-select.btn-row", [
+				return h("div#color-btn-row", [
 					...Shared.DRAW_COLORS.map(color => colorButton(color)),
 					eraseButton()
 				]);
@@ -363,7 +363,7 @@ export default class Drawpad {
 			
 			//clearTimeout(submittingTimeout);
 			const submitted = curr === CanvasState.SUBMITTED;
-			const canSubmit = curr === CanvasState.IDLE;
+			//const canSubmit = curr === CanvasState.IDLE;
 			const disabled = submitted;
 			
 			function startSubmit() {
@@ -392,20 +392,20 @@ export default class Drawpad {
 						update: (_oldVnode, vnode) => init(vnode)
 					}
 				}, "You don't have canvas support!"),
-				h("div#draw-utils.btn-row", [
+				h("div#action-btn-row", [
 					h("button#undo-btn", { on: { click: undo }, attrs: { disabled } }, icon(icons.undo)),
 					h("button#redo-btn", { on: { click: redo }, attrs: { disabled } }, icon(icons.redo)),
 					lineWidthBtn(disabled),
 					h("button#spacer-btn", { attrs: { disabled: true } }),
 					h(
-						"button#submit-btn" + (submitted ? ".submitted" : ""),
+						"button#submit-btn",
 						{
 							on: {
 								pointerdown: startSubmit,
 								pointerup: cancelSubmit,
 								pointerleave: cancelSubmit
 							},
-							attrs: { disabled: !canSubmit }
+							attrs: { disabled: submitted }
 						},
 						submitted ? "Submitted!" : "Hold to Submit"
 					)
