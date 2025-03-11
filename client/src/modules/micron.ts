@@ -90,7 +90,14 @@ export function projector<A extends any[]>(initialBuilder: (...args: A) => VNode
   if (initialArgs.length === 0) {
     return new Projector(initialBuilder);
   } else {
-    return new Projector(() => initialBuilder(...initialArgs))
+    return new Projector(() => initialBuilder(...initialArgs));
+  }
+}
+export function persistor<A extends any[]>(initialBuilder: (...args: A) => VNode, ...initialArgs: A) {
+  if (initialArgs.length === 0) {
+    return new Persistor(initialBuilder);
+  } else {
+    return new Persistor(() => initialBuilder(...initialArgs));
   }
 }
 //export function 
@@ -417,7 +424,9 @@ class Projector {
   }
 }
 class Persistor {
+  
   readonly state: State<Builder>;
+  
   constructor(initialBuilder: Builder) {
     this.state = new State(initialBuilder);
   }

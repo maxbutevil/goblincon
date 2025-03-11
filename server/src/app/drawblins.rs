@@ -30,6 +30,10 @@ fn test() {
 		"voteTimeFactor": -30.0,
 		"scoreTimeFactor": 12.0
 	}"#).unwrap();
+	assert_eq!(s.round_count, 1);
+	assert_eq!(s.draw_time_factor, 0.2);
+	assert_eq!(s.vote_time_factor, 0.2);
+	assert_eq!(s.score_time_factor, 5.0);
 	println!("{}", serialize(&s).unwrap());
 }
 

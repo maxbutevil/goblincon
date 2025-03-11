@@ -49,7 +49,7 @@ export function cacheColor(color: string) {
 		get(i, color);
 }
 
-import { h } from "./render"
+import { h } from "./micron"
 export function view(icon: number, color: string) {
 	return h("img.player-icon", { attrs: { src: get(icon, color) } });
 }

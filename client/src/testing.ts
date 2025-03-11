@@ -1,6 +1,6 @@
 import "./shared.css"
 import State from './modules/state'
-import { h, patchRoot, s, cleanup, defer, cleaned, VNode } from './modules/render';
+import { h, patchRoot, s, cleanup, defer, cleaned, VNode } from './modules/micron';
 import Signal from "./modules/signal"
 
 import * as icons from "./assets/icons/index"

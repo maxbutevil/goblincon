@@ -1,6 +1,6 @@
 
 
-import { h, signaled, VNode } from "../modules/render";
+import { h, signaled, VNode } from "../modules/micron";
 import Signal from "../modules/signal"
 //import * as Utils from "../utils"
 

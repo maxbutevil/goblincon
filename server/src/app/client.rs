@@ -497,18 +497,11 @@ pub fn deserialize<'a, T: Deserialize<'a>>(str: &'a str) -> Result<T, ()> {
 async fn next_string(receiver: &mut WebSocketReceiver) -> Option<String> {
 	while let Some(msg) = receiver.next().await {
 		match msg {
-			Ok(Message::Text(content)) => {
-				return Some(content);
-			},
-			Ok(Message::Ping(_)) => {
-				/* Ignore these, tungstenite handles them */
-			},
-			Ok(Message::Close(_)) => {
-				//tracing::debug!("websocket connection closed");
-				return None;
-			},
-			Ok(msg) => {
-				tracing::warn!("invalid websocket msg: {msg:?}");
+			Ok(Message::Text(content)) => return Some(content),
+			Ok(Message::Close(_)) => return None,
+			Ok(Message::Pong(_) | Message::Ping(_)) => {}, // Ignore these, tungstenite handles them
+			Ok(Message::Binary(_)) => {
+				tracing::warn!("binary websocket message received (expected text)");
 			},
 			Err(err) => {
 				tracing::error!("{err}");
