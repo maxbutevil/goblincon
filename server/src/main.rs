@@ -64,10 +64,11 @@ async fn main() {
 		.route("/host", any(ws_upgrade_host))
 		.route("/play/join", any(ws_upgrade_player_join))
 		.route("/play/rejoin", any(ws_upgrade_player_reconnect));
+	
 	let page_router = Router::new()
 		.route_service("/host", ServeFile::new(format!("{dist_path}/host.html")))
-		.route_service("/play", ServeFile::new(format!("{dist_path}/play.html")))
-		.route_service("/howto", ServeFile::new(format!("{dist_path}/howto.html")));
+		.route_service("/play", ServeFile::new(format!("{dist_path}/play.html")));
+		//.route_service("/testing", ServeFile::new(format!("{dist_path}/testing.html")));
 	let static_service = ServeDir::new(format!("{dist_path}/static"))
 		.append_index_html_on_directories(false);
 	

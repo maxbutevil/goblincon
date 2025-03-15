@@ -16,6 +16,7 @@ body {
 }
 #bachelor-popup {
 	@include popup;
+	
 }
 
 /* Landing */
@@ -51,17 +52,15 @@ body {
 #draw, #draw-bachelor, #draw-suitor {
 	height: 100%;
 	
-	@include flex(row wrap, center, center, 1em);
+	@include flex(row wrap, center, space-around, 1em);
 	margin: auto;
 	
 	#info {
 		#goblin-name {
-			flex: 1 0;
 			text-align: center;
 			font-size: 1.6em;
 		}
 		.countdown {
-			flex: 1 0;
 			text-align: center;
 		}
 	}
@@ -117,7 +116,7 @@ body {
 	
 	#action-btn-row {
 		@extend %btn-row;
-		#spacer-btn {
+		.spacer {
 			flex: 2;
 		}
 		#submit-btn {

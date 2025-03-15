@@ -47,15 +47,15 @@
 @mixin popup {
 	@include vflow;
 	
-	font-size: 1em;
-	
+	max-width: 96vw;
 	margin: 1.2em;
 	padding: 1em;
 	
-	border: 3px solid black;
-	border-radius: 8px;
+	font-size: 1em;
 	
 	background-color: #eeeee0;
+	border: 3px solid black;
+	border-radius: 8px;
 }
 
 .mode {

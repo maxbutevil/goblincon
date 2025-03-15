@@ -24,25 +24,23 @@ export type {
 
 
 const VERBOSE = false;
+
+
 const modules = [
   classModule,
   styleModule,
   attributesModule,
   eventListenersModule,
-  
 ];
 //const options = { experimental: { fragments: true } };
-export const patch = init(modules);
-export function patchId(id: string, vnode: VNode): VNode | null {
+const patch = init(modules);
+export function mount(vnode: VNode, id = "root") {
   let element = document.getElementById(id);
   if (element == null) {
-    console.error(`Error in patchId(): element with id ${id} does not exist`);
+    console.error(`Error in mount(): element with id ${id} does not exist`);
     return null;
   }
   return patch(element, vnode);
-}
-export function patchRoot(vnode: VNode): VNode {
-  return patchId("root", vnode)!; /* Maybe shouldn't assume root exists */
 }
 
 type Cleanup = () => void;
@@ -55,37 +53,7 @@ export function conditional(condition: any, vnode: VNode): VNode | null {
 type Builder<A extends any[] = []> = (...args: A) => VNode;
 //type ContainedBuilder = Builder<[() => void]>;
 
-export function s<T>(s: State<T>, builder: Builder<[T]>): VNode;
-//export function s<T>(s: State<T>[], builder: (curr: T) => VNode): VNode;
-export function s<T extends any[]>(s: Signal<T>, builder: Builder<T | []>): VNode;
-export function s<T extends any[]>(s: Signal<T>[], builder: Builder<T | []>): VNode;
-export function s(builder: Builder<[() => void]>): VNode;
-export function s(p: Projector): VNode;
-export function s(
-  d: State<any> | Signal<any> | Signal<any>[] | Builder<[() => void]> | Projector,
-  builder?: Builder<any> | undefined
-) {
-  if (d instanceof State) {
-    return stateful(d, builder as any);
-  } else if (d instanceof Projector) {
-    return projected(d);
-  } else if (d instanceof Persistor) {
-    return persisted(d);
-  } else if (typeof d == "function") {
-    return contained(d);
-  } else if (Array.isArray(d)) {
-    return multiSignaled(d, builder as Builder<any>);
-  } else {
-    return monoSignaled(d, builder as Builder<any>);
-  }
-}
 
-
-/*export function projector(initialBuilder: Builder<void> = () => h("!")): Projector {
-  return new Projector(initialBuilder);
-}*/
-
-//put<A extends any[]>(builder: (...args: A) => VNode, ...args: A): void;
 export function projector<A extends any[]>(initialBuilder: (...args: A) => VNode, ...initialArgs: A) {
   if (initialArgs.length === 0) {
     return new Projector(initialBuilder);
@@ -100,9 +68,33 @@ export function persistor<A extends any[]>(initialBuilder: (...args: A) => VNode
     return new Persistor(() => initialBuilder(...initialArgs));
   }
 }
-//export function 
 
 
+export function s<T>(s: State<T>, builder: Builder<[T]>): VNode;
+//export function s<T>(s: State<T>[], builder: (curr: T) => VNode): VNode;
+export function s<T extends any[]>(s: Signal<T>, builder: Builder<T | []>): VNode;
+export function s<T extends any[]>(s: Signal<T>[], builder: Builder<T | []>): VNode;
+export function s(builder: Builder<[() => void]>): VNode;
+export function s(p: Projector): VNode;
+export function s(p: Persistor): VNode;
+export function s(
+  d: State<any> | Signal<any> | Signal<any>[] | Builder<[() => void]> | Projector | Persistor,
+  builder?: Builder<any> | undefined
+) {
+  if (d instanceof Projector) {
+    return projected(d);
+  } else if (d instanceof Persistor) {
+    return persisted(d);
+  } else if (typeof d == "function") {
+    return contained(d);
+  } else if (d instanceof State) {
+    return stateful(d, builder as Builder<any>);
+  } else if (Array.isArray(d)) {
+    return multiSignaled(d, builder as Builder<any>);
+  } else {
+    return monoSignaled(d, builder as Builder<any>);
+  }
+}
 
 export function projected(projector: Projector): VNode {
   return monoSignaled<[Builder]>(
@@ -167,10 +159,10 @@ export function contained(builder: (rerender: () => void) => VNode) {
   [ref, vnode] = Ref.build(_builder, null);
   return vnode;
 }
-export function cleaned(cleanup: Cleanup, builder: () => VNode): VNode {
+/*export function cleaned(cleanup: Cleanup, builder: () => VNode): VNode {
   let [_ref, vnode] = Ref.build(builder, cleanup);
   return vnode;
-}
+}*/
 
 
 export function defer(...callbacks: Cleanup[]) {

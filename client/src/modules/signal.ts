@@ -2,12 +2,7 @@
 
 
 
-//import { EventEmitter } from "events"
-
-
 type Callback<A extends any[]> = ((...args: A) => any);
-//type Cleanup = () =>
-//type Drop = () => void;
 
 export default class Signal<T extends any[]> extends Set<Callback<T>> {
 	
@@ -56,17 +51,6 @@ export default class Signal<T extends any[]> extends Set<Callback<T>> {
 		return () => this.drop(callback);
 	}
 	
-	/*public subscribe(callback: Callback<T>, chain?: () => void): () => void {
-		
-		this.listen(callback);
-		
-		return () => {
-			chain?.();
-			this.drop(callback);
-		}
-		
-	}*/
-	
 	public emit(...args: T): void {
 		for (const callback of this)
 			callback(...args);
@@ -77,18 +61,6 @@ export default class Signal<T extends any[]> extends Set<Callback<T>> {
 				return Signal.HANDLED;
 		return Signal.UNHANDLED;
 	}
-	
-	/*public static keyDown(key): Signal {
-		document.addEventListener();
-	}*/
-	
-	/*public static register() {
-		
-	}
-	public static flush() {
-		
-	}*/
-	
 }
 
 

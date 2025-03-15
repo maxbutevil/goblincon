@@ -29,7 +29,7 @@ export default class Val {
 				return Val.is(extractor, value);
 		};
 	}
-	static choice<T>(...choices: Array<T>): ValidatorMethod<T> {
+	static choice<const T>(...choices: Array<T>): ValidatorMethod<T> {
 		return (value: any): value is T => choices.includes(value);
 	}
 	static branch<T>(...branches: Array<Validator<T>>): ValidatorMethod<T> {
@@ -56,7 +56,7 @@ export default class Val {
 	}
 	
 	
-	static Val<T>(extractor: Validator<T>, validator: (value: T) => boolean): ValidatorMethod<T> {
+	static check<T>(extractor: Validator<T>, validator: (value: T) => boolean): ValidatorMethod<T> {
 		return (value: any): value is T => {
 			return Val.is(extractor, value) && validator(value);
 		}

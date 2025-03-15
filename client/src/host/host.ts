@@ -5,7 +5,7 @@ import {
 	Val, ReceiveIndex, SendIndex,
 	client,
 	Shared,
-	h, s, projector, patchRoot, VNode
+	h, s, projector, mount, VNode
 } from "../modules/index"
 import {
 	logo,
@@ -157,7 +157,7 @@ function app() {
 	return s(page);
 }
 
-patchRoot(app());
+mount(app());
 
 window.addEventListener("DOMContentLoaded", async () => {
 	try {

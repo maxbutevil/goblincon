@@ -157,16 +157,15 @@ export class VoteQueue {
 		function shuffle<T>(array: T[]) {
 			let swapIdx, temp;
 			for (let i = 0; i < array.length - 1; i++) {
-				swapIdx = i + Math.random() * (array.length - i);
+				swapIdx = i + Math.floor(Math.random() * (array.length - i));
 				temp = array[i];
 				array[i] = array[swapIdx];
 				array[swapIdx] = temp;
 			}
-			//return array;
 		}
 		
-		// shuffle the vote arrays?
-		// we *do* need the undefined checks; vote arrays may be sparse!
+		// shuffle the vote arrays
+		// we *do* need the undefined checks; votes may be sparse!
 		for (const voteArray of votes)
 			if (voteArray)
 				shuffle(voteArray);
@@ -185,7 +184,6 @@ export class VoteQueue {
 			if (!anyLeft) break;
 		}
 		this.queue.reverse();
-		
 	}
 	start(votes: number[][]) {
 		
@@ -204,6 +202,7 @@ export class VoteQueue {
 				let [forId, playerId] = nextVote;
 				(this.votes[forId] ??= []).push(playerId);
 				this.update.emit();
+				console.warn(forId, playerId);
 			}
 		}, DELAY_MS);
 	}
@@ -212,9 +211,6 @@ export class VoteQueue {
 export class ScoreMap {
 	scores = new Map<number, number>();
 	
-	constructor() {
-		//this.reset();
-	}
 	reset(/*playerIds: Iterable<number> = players.keys()*/) {
 		this.scores.clear();
 		for (const id of playerIds())

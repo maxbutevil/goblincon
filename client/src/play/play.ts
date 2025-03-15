@@ -7,7 +7,7 @@ import {
 	client, Connection,
 	Shared,
 	PlayerIcons,
-	h, s, projector, patchRoot, VNode,
+	h, s, projector, mount, VNode,
 } from "../modules/index"
 
 import Globals from "./globals"
@@ -360,7 +360,7 @@ function app() {
 	return s(page);
 }
 
-patchRoot(app());
+mount(app());
 
 /* misc event handling */
 window.addEventListener("beforeunload", () => {

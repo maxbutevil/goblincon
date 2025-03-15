@@ -98,7 +98,7 @@ function drawingSuitor(endTime: number, bachelorId: number, bachelorDrawing: str
 	};
 	function overlay() {
 		return h("div#overlay-shadow",/* { on: { click: toggle } }, */ [
-			h("div#bachelor-popup.popup.vflow", [
+			h("div#bachelor-popup", [
 				h("div.vflow", [
 					h("div", [
 						h("h2", "Your Bachelor(ette)"),

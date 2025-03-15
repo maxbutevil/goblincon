@@ -393,10 +393,11 @@ export default class Drawpad {
 					}
 				}, "You don't have canvas support!"),
 				h("div#action-btn-row", [
+					//h("button.spacer", { attrs: { disabled: true } }),
 					h("button#undo-btn", { on: { click: undo }, attrs: { disabled } }, icon(icons.undo)),
 					h("button#redo-btn", { on: { click: redo }, attrs: { disabled } }, icon(icons.redo)),
 					lineWidthBtn(disabled),
-					h("button#spacer-btn", { attrs: { disabled: true } }),
+					h("button.spacer", { attrs: { disabled: true } }),
 					h(
 						"button#submit-btn",
 						{

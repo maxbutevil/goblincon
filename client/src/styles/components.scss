@@ -6,12 +6,14 @@
 }
 
 .player-icon {
-	width: 2.0em;
-	height: 2.0em;
-	flex: 0 0 2.0em;
+	$size: 1.4em;
+	width: $size;
+	height: $size;
+	flex: 0 0 $size;
 }
 .player-view {
 	@include flex(row nowrap, 0.3em);
+	font-size: 1.5em;
 }
 
 .multi-btn {
@@ -19,11 +21,13 @@
 	font-size: 1.0em;
 	
 	button {
+		$rad: 6px;
+		border-radius: 0;
 		&.selected { background-color: #AAA; }
-		&:first-child {	border-radius: 4px 0 0 4px; }
-		&:last-child { border-radius: 0 4px 4px 0; }
-		&:only-child { border-radius: 4px; }
-		&:not(:first-child) { border-radius: 0; border-left: none;}
+		&:first-child {	border-radius: $rad 0 0 $rad; }
+		&:last-child { border-radius: 0 $rad $rad 0; }
+		&:only-child { border-radius: $rad; }
+		&:not(:first-child) { border-left: none; }
 	}
 }
 

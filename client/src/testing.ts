@@ -7,8 +7,7 @@ import "./assets/icons/index"
 import {
 	Signal, State,
 	h, s,
-	projector, cleanup, defer, VNode,
-	patchRoot
+	projector, cleanup, defer, VNode, mount
 } from "./modules/index"
 
 import * as icons from "./assets/icons/index"
@@ -41,10 +40,10 @@ function submissionGridTest() {
 
 
 
-patchRoot(h("div.mode", s(testPage)));
+mount(h("div.mode", s(testPage)));
 
 
-/*patchRoot(
+/*mount(
 	signaled(t2, () => {
 		return signaled(t1, () => {
 			//return h("div", String(state.get()));
@@ -65,7 +64,7 @@ patchRoot(h("div.mode", s(testPage)));
 );*/
 
 
-/*patchRoot(
+/*mount(
 	stateful(state, (curr) => {
 		if (state.get() === 1) {
 			return cleaned(
@@ -83,7 +82,7 @@ patchRoot(h("div.mode", s(testPage)));
 );*/
 
 
-/*patchRoot(
+/*mount(
 	stateful(state, (curr) => {
 		if (curr === 0) {
 			return cleaned(
@@ -99,14 +98,14 @@ patchRoot(h("div.mode", s(testPage)));
 	})
 );*/
 
-/*patchRoot(
+/*mount(
 	stateful(
 		state,
 		
 	)
 );*/
 
-/*patchRoot(
+/*mount(
 	stateful(
 		state,
 		() => stateful(
@@ -141,7 +140,7 @@ function submission(): VNode {
 
 
 
-patchRoot(
+mount(
 	h(
 		"div",
 		[
@@ -153,7 +152,7 @@ patchRoot(
 
 /*window.addEventListener("DOMContentLoaded", () => {
 	
-	patchRoot(
+	mount(
 		h(
 			"div.tab",
 			[
