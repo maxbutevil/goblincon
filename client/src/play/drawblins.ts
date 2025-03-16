@@ -71,12 +71,13 @@ function drawing(endTime: number, goblinName: string) {
 	}
 	
 	return h("div#draw.tab", [
-		drawpad.view(onSubmit),
 		h("div#info", [
 			h("div", "Draw a creature named:"),
 			h("div#goblin-name", goblinName),
 			countdown(endTime, () => drawpad.submit()),
 		]),
+		drawpad.view(onSubmit),
+		
 	]);
 }
 function voting(endTime: number, choices: string[]) {

@@ -6,14 +6,14 @@
 }
 
 .player-icon {
-	$size: 1.4em;
+	$size: 1.5em;
 	width: $size;
 	height: $size;
 	flex: 0 0 $size;
 }
 .player-view {
 	@include flex(row nowrap, 0.3em);
-	font-size: 1.5em;
+	font-size: 1.4em;
 }
 
 .multi-btn {
@@ -42,7 +42,7 @@
 #logo {
 	#icon-row {
 		@include flex(row nowrap, center);
-		font-size: 1em;
+		font-size: 1.6em;
 	}
 }
 

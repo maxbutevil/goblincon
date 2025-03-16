@@ -50,9 +50,9 @@ body {
 
 /* Drawing */
 #draw, #draw-bachelor, #draw-suitor {
-	height: 100%;
 	
-	@include flex(row wrap, center, space-around, 1em);
+	@include flex(row wrap, center, center, 0.6em);
+	align-content: flex-start;
 	margin: auto;
 	
 	#info {

@@ -355,19 +355,25 @@ function attemptRejoin() {
 	}
 }
 function app() {
-	attemptRejoin();
 	client.use(INC, OUT);
+	attemptRejoin();
 	return s(page);
 }
 
 mount(app());
 
 /* misc event handling */
+/*window.addEventListener("pageshow", () => {
+	console.log("whee!")
+	attemptRejoin();
+});*/
+document.addEventListener("visibilitychange", (ev) => {
+	if (!document.hidden) {
+		attemptRejoin();
+	}
+});
 window.addEventListener("beforeunload", () => {
 	client.close();
-});
-window.addEventListener("focus", (event) => {
-	attemptRejoin();
 });
 
 
