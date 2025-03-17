@@ -11,6 +11,7 @@ use async_scoped::TokioScope;
 
 pub use serde::{Serialize, Deserialize};
 
+#[derive(Clone, Copy)]
 pub enum ClientId {
 	Host,
 	Player(PlayerId)
@@ -299,15 +300,17 @@ impl ClientIndex {
 	fn new_player_presence(sender: Sender, socket: WebSocket, player_id: PlayerId) -> Presence {
 		let (tx, mut rx) = socket.split();
 		let handle = tokio::spawn(async move {
+			
+			let client_id = ClientId::Player(player_id);
+			
 			while let Some(content) = next_str(&mut rx).await {
 				if content.is_empty() {
 					/* This is an empty keep-alive msg, ignore */
 					continue;
 				}
 				
-				let id = ClientId::Player(player_id);
-				let event = ClientEvent::Message(content);
-				let result = sender.send((id, event)).await;
+				let event = (client_id, ClientEvent::Message(content));
+				let result = sender.send(event).await;
 				if result.is_err() {
 					break;
 				}
@@ -379,7 +382,7 @@ impl ClientIndex {
 		
 		Ok(player_id)
 	}
-	pub async fn reconnect_player(&mut self, socket: WebSocket, player_id: PlayerId, player_token: PlayerToken) -> Result<(), ()> {
+	pub async fn reconnect_player(&mut self, socket: WebSocket, player_id: PlayerId, player_token: PlayerToken, forced: bool) -> Result<(), ()> {
 		
 		let Some(player) = self.players.get_mut(player_id as usize) else {
 			tracing::debug!("game rejoin failed (no such player)");
@@ -393,18 +396,21 @@ impl ClientIndex {
 			return Err(());
 		}
 		
-		if player.is_connected() {
-			tracing::debug!("game rejoin failed (already connected on this device)");
-			Self::reject_socket(socket, cf::ALREADY_CONNECTED).await;
-			return Err(());
+		if forced {
+			player.presence.close(cf::CONNECTED_ELSEWHERE).await;
+		} else {
+			if player.is_connected() {
+				tracing::debug!("game rejoin failed (already connected on this device)");
+				Self::reject_socket(socket, cf::ALREADY_CONNECTED).await;
+				return Err(());
+			}
+			
+			let msg = &HostMsgOut::PlayerReconnected { player_id };
+			self.host.send(msg).await;
 		}
 		
 		// replace presence with new, connected one
 		player.presence = Self::new_player_presence(self.sender.clone(), socket, player_id);
-		
-		let msg = &HostMsgOut::PlayerReconnected { player_id };
-		self.host.send(msg).await;
-		
 		Ok(())
 	}
 	/*pub async fn disconnect_player(&mut self, player_id: PlayerId) -> bool {

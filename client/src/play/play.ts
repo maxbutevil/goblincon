@@ -10,7 +10,7 @@ import {
 	h, s, projector, mount, VNode,
 } from "../modules/index"
 
-import Globals from "./globals"
+import Session from "./session"
 import * as Drawblins from "./drawblins"
 import * as Dating from "./dating"
 
@@ -39,38 +39,71 @@ const OUT = new SendIndex({
 const page = projector(landing);
 const status = projector(() => h("!"));
 
+//const INITIAL_RECONNECT_DELAY_MS = 500;
+//const MAX_RECONNECT_DELAY_MS = 16000;
+let hasAttemptedAutoRejoin = false;
+
 client.pending.listen(() => {
 	status.put(info, "Connecting...");
 });
-client.disconnected.listen(() => {
-	page.put(landing);
+client.connected.listen(() => {
+	hasAttemptedAutoRejoin = false;
 });
+client.disconnected.listen(() => {
+	
+});
+
 client.closed.listen((ev) => {
 	
-	if (ev.code === Shared.CUSTOM_ERROR) {
-		status.put(error, ev.reason);
-	} else if (ev.code === Shared.INVALID_JOIN) {
-		status.put(error, "Join failed; check your code");
-	} else if (ev.code === Shared.INVALID_REJOIN) {
-		console.warn("Rejoin failed");
-		Globals.clearRejoinInfo();
-		status.reset();
-	} else if (ev.reason) {
-		status.put(info, ev.reason);
-	} else if (!ev.wasClean) {
-		status.put(error, "Connection Error");
+	if (ev.code === Shared.ALREADY_CONNECTED) {
+		Session.setupManualRejoin();
+		page.put(landing);
+		return;
+	}
+	
+	// Possible issue:
+	// if the server somehow connects client,
+	// then immediately disconnects it without a reason
+	// it may be possible to enter a loop of immediately attempting to rejoin
+	// Very unlikely to be an issue, though
+	if (!ev.reason && !ev.wasClean) {
+		// Possible automatic disconnect induced by browser
+		// Attempt to reconnect automatically before doing anything else
+		if (hasAttemptedAutoRejoin) {
+			// This is our first attempt; don't show anything
+			hasAttemptedAutoRejoin = true;
+			attemptRejoin();
+		} else {
+			page.put(landing);
+			status.put(error, "Connection error");
+		}
 	} else {
-		status.reset();
+		
+		page.put(landing);
+		
+		
+		if (ev.code === Shared.CUSTOM_ERROR) {
+			status.put(error, ev.reason);
+		} else if (ev.code === Shared.INVALID_JOIN) {
+			status.put(error, "Join failed; check your code");
+		} else if (ev.code === Shared.INVALID_REJOIN) {
+			console.warn("Rejoin failed");
+			Session.clearRejoinInfo();
+			status.reset();
+		} else if (ev.reason) {
+			status.put(info, ev.reason);
+		} else {
+			status.reset();
+		}
 	}
 });
 
 INC.listen("terminated", () => {
-	Globals.clearRejoinInfo();
+	Session.clearRejoinInfo();
 });
 INC.listen("accepted", ({ playerId, token }) => {
-	Globals.playerId = playerId;
-	Globals.storeRejoinInfo(token);
-	Globals.joinCode = ""; // make sure we see future rejoin attempts as rejoin attempts
+	Session.storeRejoinInfo(playerId, token);
+	//Session.joinCode = ""; // make sure we see future rejoin attempts as rejoin attempts
 });
 INC.listen("inLobby", ({ playerCount }) => {
 	page.put(lobby, playerCount);
@@ -82,7 +115,7 @@ INC.listen("inDating", () => {
 	page.put(Dating.view);
 });
 /*INC.listen("error", (message) => {
-	if (page.get().key === "landing" && Globals.wasRejoining())
+	if (page.get().key === "landing" && Session.wasRejoining())
 		console.warn("Couldn't rejoin game:", message);
 	else
 		statusError(message);
@@ -105,24 +138,24 @@ function landing() {
 		if (!client.state.is(Connection.CLOSED))
 			return;
 		
-		let code = Globals.joinCode;
-		let name = Globals.playerName;
+		const code = Session.joinCode;
+		const name = Session.playerName;
 		
-		if (name.length < Globals.MIN_NAME_LEN)
+		if (name.length < Session.MIN_NAME_LEN)
 			return status.put(error, "Name too short");
-		if (name.length > Globals.MAX_NAME_LEN)
+		if (name.length > Session.MAX_NAME_LEN)
 			return status.put(error, "Name too long");
-		
-		Globals.clearRejoinInfo();
-		Globals.storePlayerName();
-		
-		if (code.length !== Globals.CODE_LEN)
+		if (code.length !== Session.CODE_LEN)
 			return status.put(error, "Invalid code");
 		
-		//console.log(name, code);
-		//Globals.joinCode = code.toUpperCase();
-		let url = Globals.getJoinUrl();
-		if (url) client.connect(url);
+		if (Session.canManualRejoin()) {
+			Session.pullRejoinInfo();
+			attemptConnect(Session.manualRejoinUrl());
+		} else {
+			Session.storePlayerName();
+			Session.clearRejoinInfo();
+			attemptConnect(Session.joinUrl());
+		}
 	}
 	
 	function helpPopup() {
@@ -198,7 +231,7 @@ function landing() {
 			if (url.hostname !== window.location.hostname) return;
 			const code = url.searchParams.get("code");
 			if (!code) return;
-			if (code.length !== Globals.CODE_LEN) return;
+			if (code.length !== Session.CODE_LEN) return;
 			return code;
 		}
 		
@@ -206,12 +239,12 @@ function landing() {
 		if (!content || content.length === 5) return;
 		
 		const elm = document.querySelector("#code-input") as HTMLInputElement;
-		Globals.joinCode = elm.value = "";
+		Session.joinCode = elm.value = "";
 		ev.preventDefault();
 		
 		const code = extractUrlCode(content);
 		if (code) {
-			Globals.joinCode = elm.value = code;
+			Session.joinCode = elm.value = code;
 		} else {
 			status.put(error, "Clipboard does not contain a code");
 		}
@@ -222,6 +255,7 @@ function landing() {
 		h("div", [
 			logo(),
 			s(client.state, curr => {
+				
 				const disabled = (curr !== Connection.CLOSED);
 				return h(
 					"div#join-input.tab",
@@ -231,11 +265,11 @@ function landing() {
 							h("input#name-input", {
 								attrs: {
 									disabled,
-									maxLength: Globals.MAX_NAME_LEN,
-									value: Globals.playerName,
+									maxLength: Session.MAX_NAME_LEN,
+									value: Session.playerName,
 								},
 								on: {
-									change: ev => Globals.playerName = (ev.currentTarget as HTMLInputElement).value
+									change: ev => Session.playerName = (ev.currentTarget as HTMLInputElement).value
 								}
 							})
 						]),
@@ -244,11 +278,11 @@ function landing() {
 							h("input#code-input", {
 								attrs: {
 									disabled,
-									maxLength: Globals.CODE_LEN,
-									value: Globals.joinCode ?? ""
+									maxLength: Session.CODE_LEN,
+									value: Session.joinCode
 								},
 								on: {
-									change: ev => Globals.joinCode = (ev.currentTarget as HTMLInputElement).value,
+									change: ev => Session.joinCode = (ev.currentTarget as HTMLInputElement).value,
 									paste: pasteCode
 								}
 							})
@@ -264,7 +298,7 @@ function landing() {
 		]),
 		hostLink(),
 		helpPopup(),
-		mountedBtn(helpIcon, () => helpOpen.set(!helpOpen.get()))
+		mountedBtn(helpIcon, () => helpOpen.mutate(curr => !curr))
 	]);
 }
 function lobby(playerCount: number | undefined) {
@@ -284,7 +318,7 @@ function lobby(playerCount: number | undefined) {
 			
 			let icons: VNode[] = [];
 			for (let i = 0; i < PlayerIcons.count(); i++) {
-				let color = Globals.playerIcon === i ? Globals.playerColor : "#ffffff";
+				let color = Session.playerIcon === i ? Session.playerColor : "#ffffff";
 				let src = PlayerIcons.get(i, color);
 				icons.push(h(
 					"img.player-icon",
@@ -292,9 +326,8 @@ function lobby(playerCount: number | undefined) {
 						attrs: { src },
 						on: {
 							click: () => {
-								if (Globals.playerIcon !== i) {
-									Globals.playerIcon = i;
-									Globals.storePlayerIcon();
+								if (Session.playerIcon !== i) {
+									Session.setPlayerIcon(i);
 									OUT.send("changeIcon", { icon: i });
 									rerender();
 								}
@@ -348,11 +381,11 @@ function lobby(playerCount: number | undefined) {
 	]);
 }
 
+function attemptConnect(url: string | null) {
+	if (url) client.connect(url);
+}
 function attemptRejoin() {
-	if (client.state.is(Connection.CLOSED)) {
-		let rejoinUrl = Globals.getRejoinUrl();
-		if (rejoinUrl) client.connect(rejoinUrl);
-	}
+	attemptConnect(Session.rejoinUrl());
 }
 function app() {
 	client.use(INC, OUT);
@@ -367,11 +400,11 @@ mount(app());
 	console.log("whee!")
 	attemptRejoin();
 });*/
-document.addEventListener("visibilitychange", (ev) => {
+/*document.addEventListener("visibilitychange", (ev) => {
 	if (!document.hidden) {
 		attemptRejoin();
 	}
-});
+});*/
 window.addEventListener("beforeunload", () => {
 	client.close();
 });

@@ -7,7 +7,7 @@ import {
 	h, s, defer, projector,
 } from "../modules/index"
 
-import Globals from "./globals"
+import Session from "./session"
 
 import Drawpad from "./drawpad"
 import {
@@ -91,7 +91,7 @@ function voting(endTime: number, choices: string[]) {
 		h("h1", "Vote!"),
 		countdown(endTime),
 		...voteButtons(
-			choices.filter((choice) => choice !== Globals.playerName),
+			choices.filter((choice) => choice !== Session.playerName),
 			submitVote
 		),
 	]);

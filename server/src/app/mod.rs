@@ -108,12 +108,12 @@ impl App {
 		};
 		let _ = handle.send(room::Event::PlayerJoin { socket, name, icon }).await;
 	}
-	pub async fn accept_player_reconnect(&self, socket: WebSocket, room_id: RoomId, player_id: PlayerId, token: PlayerToken) {
+	pub async fn accept_player_reconnect(&self, socket: WebSocket, room_id: RoomId, player_id: PlayerId, token: PlayerToken, forced: bool) {
 		let Some(handle) = self.rooms.get(&room_id) else {
 			ClientIndex::reject_invalid_rejoin(socket).await;
 			return;
 		};
-		let _ = handle.send(room::Event::PlayerReconnect { socket, player_id, token }).await;
+		let _ = handle.send(room::Event::PlayerReconnect { socket, player_id, token, forced }).await;
 	}
 }
 

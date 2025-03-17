@@ -11,6 +11,7 @@ export const isMobileClient = (function(a) {
 export const CUSTOM_ERROR = 4000;
 export const INVALID_JOIN = 4001;
 export const INVALID_REJOIN = 4002;
+export const ALREADY_CONNECTED = 4003;
 
 //export const ROOM_CLOSED = 4001;
 //export const PLAYER_KICKED = 4004;

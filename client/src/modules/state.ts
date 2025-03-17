@@ -12,21 +12,21 @@ export default class State<T> {
 	
 	static ANY: typeof ANY = ANY;
 	
-	changed = new Signal<[from: T, to: T]>();
-	value: T;
+	readonly changed = new Signal<[from: T, to: T]>();
+	curr: T;
 	
 	private cmpDepth: number;
 	private signalEntries = new Array<{ signal: Signal<[T, T]>, from: StatePool<T>, to: StatePool<T> }>();
 	
-	constructor(value: T, cmpDepth = 0) {
-		this.value = value;
+	constructor(initial: T, cmpDepth = 0) {
+		this.curr = initial;
 		this.cmpDepth = cmpDepth;
 	}
-	static shallow<T>(value: T): State<T> {
-		return new State(value, 0);
+	static shallow<T>(initial: T): State<T> {
+		return new State(initial, 0);
 	}
-	static deep<T>(value: T): State<T> {
-		return new State(value, Infinity);
+	static deep<T>(initial: T): State<T> {
+		return new State(initial, Infinity);
 	}
 	
 	static cmp<T>(one: T, two: T, depth: number): boolean {
@@ -93,18 +93,22 @@ export default class State<T> {
 	}
 	
 	is(value: T): boolean {
-		return this.value == value;
+		return this.curr == value;
 	}
 	any(...values: Array<T>): boolean {
-		return values.includes(this.value);
+		return values.includes(this.curr);
 	}
 	
 	set(to: T) {
-		if (!this.cmp(to, this.value))
-			this.handleChanged(this.value, this.value = to);
+		if (!this.cmp(to, this.curr))
+			this.handleChanged(this.curr, this.curr = to);
 	}
 	get(): T {
-		return this.value;
+		return this.curr;
+	}
+	
+	mutate(mutator: (curr: T) => T) {
+		this.set(mutator(this.curr));
 	}
 	
 }

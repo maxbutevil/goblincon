@@ -11,7 +11,7 @@ pub type Sender = mpsc::Sender<Event>;
 pub type Receiver = mpsc::Receiver<Event>;
 pub enum Event {
 	PlayerJoin { socket: WebSocket, name: String, icon: PlayerIcon },
-	PlayerReconnect { socket: WebSocket, player_id: PlayerId, token: PlayerToken }
+	PlayerReconnect { socket: WebSocket, player_id: PlayerId, token: PlayerToken, forced: bool }
 }
 
 pub fn channel() -> (Sender, Receiver) {

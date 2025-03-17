@@ -13,6 +13,15 @@ export enum Connection {
 
 const HEARTBEAT_INTERVAL_MS = 45 * 1000;
 
+const REJOIN_DELAY_INITIAL = 125;
+const REJOIN_DELAY_MAX = 16000;
+
+type RejoinStrategy = {
+	maxDelayMs: number,
+	initialDelayMs: number,
+	
+};
+
 type Message = { type: string, data: any };
 class Client {
 	
@@ -31,6 +40,7 @@ class Client {
 	
 	// internal state
 	private ws: WebSocket | undefined;
+	private reconnectAttempt = 0;
 	private heartbeatTimeout: NodeJS.Timeout | undefined;
 	private readonly heartbeatCallback = () => this.send(""); // cached callback
 	

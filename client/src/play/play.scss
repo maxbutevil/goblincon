@@ -40,7 +40,7 @@ body {
 	@extend %menu-tab;
 	.icon-select {
 		@include flex(row wrap, center);
-		font-size: 2em;
+		font-size: 1.6em;
 		margin-bottom: 1em;
 	}
 	#start-btn:disabled {
@@ -52,7 +52,7 @@ body {
 #draw, #draw-bachelor, #draw-suitor {
 	
 	@include flex(row wrap, center, center, 0.6em);
-	align-content: flex-start;
+	align-content: center;
 	margin: auto;
 	
 	#info {
