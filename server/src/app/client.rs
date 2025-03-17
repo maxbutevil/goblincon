@@ -523,7 +523,7 @@ async fn next_str<'a>(receiver: &'a mut WebSocketReceiver) -> Option<Utf8Bytes> 
 				tracing::warn!("binary websocket message received (expected text)");
 			},
 			Err(err) => {
-				tracing::error!("{err}");
+				tracing::debug!("websocket receive: {err}");
 				return None;
 			},
 		}
@@ -534,7 +534,7 @@ async fn send_raw(sender: &mut WebSocketSender, msg: Message) -> Result<(), ()> 
 	match sender.send(msg).await {
 		Ok(()) => Ok(()),
 		Err(err) => {
-			tracing::warn!("{err}");
+			tracing::warn!("websocket send error: {err}");
 			Err(())
 		}
 	}
