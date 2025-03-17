@@ -226,7 +226,7 @@ pub struct Game<'a> {
 	state: State,
 	round: usize,
 	
-	themes: Box<[String]>
+	themes: Box<[&'static str]>
 	//rounds: Vec<Round>
 }
 impl<'a> Game<'a> {
@@ -310,7 +310,7 @@ impl<'a> Game<'a> {
 					if submitted {
 						PlayerMsgOut::DoneDrawingBachelor
 					} else {
-						let theme = self.themes[self.round].as_str();
+						let theme = self.themes[self.round];//.as_str();
 						let secs_left = self.timeout.remaining_secs();
 						PlayerMsgOut::DrawingBachelor { theme, secs_left }
 					}
