@@ -69,7 +69,7 @@ client.closed.listen((ev) => {
 	if (!ev.reason && !ev.wasClean) {
 		// Possible automatic disconnect induced by browser
 		// Attempt to reconnect automatically before doing anything else
-		if (hasAttemptedAutoRejoin) {
+		if (!hasAttemptedAutoRejoin) {
 			// This is our first attempt; don't show anything
 			hasAttemptedAutoRejoin = true;
 			attemptRejoin();
