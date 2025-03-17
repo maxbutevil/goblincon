@@ -78,9 +78,7 @@ client.closed.listen((ev) => {
 			status.put(error, "Connection error");
 		}
 	} else {
-		
 		page.put(landing);
-		
 		
 		if (ev.code === Shared.CUSTOM_ERROR) {
 			status.put(error, ev.reason);

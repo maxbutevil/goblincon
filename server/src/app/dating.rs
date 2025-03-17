@@ -46,8 +46,19 @@ enum HostMsgOut<'a> {
 	ShowingScores,
 	
 	/* Events */
-	BachelorSubmitted { drawing: &'a str, player_id: PlayerId },
-	SuitorSubmitted { drawing: &'a str, player_id: PlayerId, bachelor_id: PlayerId },
+	BachelorSubmitted {
+		player_id: PlayerId,
+		drawing: &'a str,
+		#[serde(skip_serializing_if = "Option::is_none")]
+		name: Option<&'a str>
+	},
+	SuitorSubmitted {
+		player_id: PlayerId,
+		bachelor_id: PlayerId,
+		drawing: &'a str,
+		#[serde(skip_serializing_if = "Option::is_none")]
+		name: Option<&'a str>
+	},
 	VoteSubmitted { player_id: PlayerId, for_id: PlayerId },
 }
 
@@ -55,8 +66,8 @@ enum HostMsgOut<'a> {
 #[serde(tag = "type", content = "data")]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 enum PlayerMsgIn {
-	BachelorSubmission { drawing: String },
-	SuitorSubmission { drawing: String, bachelor_id: PlayerId },
+	BachelorSubmission { drawing: String, #[serde(default)] name: Option<String> },
+	SuitorSubmission { bachelor_id: PlayerId, drawing: String, #[serde(default)] name: Option<String> },
 	VoteSubmission { for_name: String }
 }
 
@@ -392,15 +403,15 @@ impl<'a> Game<'a> {
 	//}
 	async fn handle_player_message(&mut self, player_id: PlayerId, msg: PlayerMsgIn) {
 		match msg {
-			PlayerMsgIn::BachelorSubmission { drawing } =>
-				self.handle_bachelor_submission(player_id, drawing).await,
-			PlayerMsgIn::SuitorSubmission { drawing, bachelor_id } =>
-				self.handle_suitor_submission(player_id, bachelor_id, drawing).await,
+			PlayerMsgIn::BachelorSubmission { drawing, name } =>
+				self.handle_bachelor_submission(player_id, drawing, name).await,
+			PlayerMsgIn::SuitorSubmission { bachelor_id, drawing, name } =>
+				self.handle_suitor_submission(player_id, bachelor_id, drawing, name).await,
 			PlayerMsgIn::VoteSubmission { for_name } =>
 				self.handle_vote_submission(player_id, for_name).await
 		}
 	}
-	async fn handle_bachelor_submission(&mut self, player_id: PlayerId, drawing: String) {
+	async fn handle_bachelor_submission(&mut self, player_id: PlayerId, drawing: String, name: Option<String>) {
 		let State::DrawBachelors { ref mut submissions } = self.state else {
 			tracing::debug!("player attempted to submit bachelor drawing while game in invalid state");
 			return;
@@ -411,8 +422,9 @@ impl<'a> Game<'a> {
 		};
 		
 		self.clients.host.send(&HostMsgOut::BachelorSubmitted {
+			player_id,
 			drawing: &drawing,
-			player_id
+			name: name.as_deref(),
 		}).await;
 		
 		submissions[player_id as usize] = Some(drawing);
@@ -424,7 +436,7 @@ impl<'a> Game<'a> {
 			self.advance().await;
 		}
 	}
-	async fn handle_suitor_submission(&mut self, player_id: PlayerId, bachelor_id: PlayerId, drawing: String) {
+	async fn handle_suitor_submission(&mut self, player_id: PlayerId, bachelor_id: PlayerId, drawing: String, name: Option<String>) {
 		let State::DrawSuitors { ref mut submitted, ref assignments, current } = self.state else {
 			tracing::debug!("player attempted to submit suitor drawing while game in invalid state");
 			return;
@@ -455,9 +467,10 @@ impl<'a> Game<'a> {
 		submitted[player_id as usize] = true;
 		
 		self.clients.host.send(&HostMsgOut::SuitorSubmitted {
-			drawing: &drawing,
 			player_id,
-			bachelor_id
+			bachelor_id,
+			drawing: &drawing,
+			name: name.as_deref()
 		}).await;
 		
 		if round == current {

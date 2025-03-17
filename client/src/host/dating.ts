@@ -31,8 +31,8 @@ const INC = new ReceiveIndex({
 	"showingVotes": Val.NONE,
 	"showingScores": Val.NONE,
 	
-	"bachelorSubmitted": { drawing: Val.STR, playerId: Val.NUM },
-	"suitorSubmitted": { drawing: Val.STR, playerId: Val.NUM, bachelorId: Val.NUM },
+	"bachelorSubmitted": { drawing: Val.STR, name: Val.optional(Val.STR), playerId: Val.NUM },
+	"suitorSubmitted": { drawing: Val.STR, name: Val.optional(Val.STR), playerId: Val.NUM, bachelorId: Val.NUM },
 	"voteSubmitted": { playerId: Val.NUM, forId: Val.NUM },
 });
 const OUT = new SendIndex({

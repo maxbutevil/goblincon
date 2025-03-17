@@ -29,21 +29,21 @@ const INC = new ReceiveIndex({
 	//gameStarted: Val.NONE,
 	
 	/* state synchronization */
-	drawingBachelor: { secsLeft: Val.NUM, theme: Val.STR },
-	drawingSuitor: { secsLeft: Val.NUM, bachelorId: Val.NUM, bachelorDrawing: Val.STR },
-	voting: { secsLeft: Val.NUM, choices: Val.array(Val.STR) },
+	"drawingBachelor": { secsLeft: Val.NUM, theme: Val.STR },
+	"drawingSuitor": { secsLeft: Val.NUM, bachelorId: Val.NUM, bachelorDrawing: Val.STR },
+	"voting": { secsLeft: Val.NUM, choices: Val.array(Val.STR) },
 	
 	/* idle states */
-	showingVotes: Val.NONE,
-	showingScores: Val.NONE,
-	doneDrawingBachelor: Val.NONE,
-	doneDrawingSuitor: Val.NONE,
-	doneVoting: Val.NONE,
+	"showingVotes": Val.NONE,
+	"showingScores": Val.NONE,
+	"doneDrawingBachelor": Val.NONE,
+	"doneDrawingSuitor": Val.NONE,
+	"doneVoting": Val.NONE,
 });
 const OUT = new SendIndex({
-	bachelorSubmission: { drawing: Val.STR },
-	suitorSubmission: { drawing: Val.STR, bachelorId: Val.NUM },
-	voteSubmission: { forName: Val.STR },
+	"bachelorSubmission": { drawing: Val.STR, name: Val.optional(Val.STR) },
+	"suitorSubmission": { drawing: Val.STR, name: Val.optional(Val.STR), bachelorId: Val.NUM },
+	"voteSubmission": { forName: Val.STR },
 });
 
 const page = projector(starting);
@@ -86,7 +86,7 @@ function drawingBachelor(endTime: number, bachelorTheme: string) {
 			countdown(endTime, () => drawpad.submit()),
 		]),
 		drawpad.view((drawing) => {
-			OUT.send("bachelorSubmission", { drawing });
+			OUT.send("bachelorSubmission", { drawing, name: undefined });
 		}),
 	]);
 }
@@ -122,7 +122,7 @@ function drawingSuitor(endTime: number, bachelorId: number, bachelorDrawing: str
 			countdown(endTime, () => drawpad.submit()),
 		]),
 		drawpad.view((drawing) => {
-			OUT.send("suitorSubmission", { bachelorId, drawing });
+			OUT.send("suitorSubmission", { bachelorId, drawing, name: undefined });
 		}),
 		//h("button", { on: { click: toggle } }, "See Bachelor"),
 		s(overlayOpen, curr => curr ? overlay() : h("!")),

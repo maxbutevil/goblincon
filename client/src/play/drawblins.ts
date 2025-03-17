@@ -20,19 +20,19 @@ import {
 
 const INC = new ReceiveIndex({
 	//waiting: Val.choice<"start" | "draw" | "vote" | "results" | "score">("start", "draw", "vote", "results", "score"),
-	drawing: { goblinName: Val.STR, secsLeft: Val.NUM },
-	voting: { choices: Val.array(Val.STR), secsLeft: Val.NUM },
+	"drawing": { goblinName: Val.STR, secsLeft: Val.NUM },
+	"voting": { choices: Val.array(Val.STR), secsLeft: Val.NUM },
 	
 	// idle states
-	starting: Val.NONE,
-	doneDrawing: Val.NONE,
-	doneVoting: Val.NONE,
-	showingVotes: Val.NONE,
-	showingScores: Val.NONE,
+	"starting": Val.NONE,
+	"doneDrawing": Val.NONE,
+	"doneVoting": Val.NONE,
+	"showingVotes": Val.NONE,
+	"showingScores": Val.NONE,
 });
 const OUT = new SendIndex({
-	drawingSubmission: { drawing: Val.STR },
-	voteSubmission: { forName: Val.STR },
+	"drawingSubmission": { drawing: Val.STR },
+	"voteSubmission": { forName: Val.STR },
 });
 
 const page = projector(starting);

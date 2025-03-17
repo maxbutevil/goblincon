@@ -56,9 +56,6 @@ export default class Session {
 		localStorage.removeItem("rejoinToken");
 	}
 	
-	static hasJoinCode(): boolean {
-		return this.joinCode !== "";
-	}
 	static setupManualRejoin() {
 		if (!this.joinCode) {
 			this.playerName = localStorage.getItem("rejoinName") ?? this.playerName; // not sure about this one
