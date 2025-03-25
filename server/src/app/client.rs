@@ -403,15 +403,23 @@ impl ClientIndex {
 			return Err(());
 		}
 		
-		if manual {
-			player.presence.close(cf::CONNECTED_ELSEWHERE).await;
-		} else {
-			if player.is_connected() {
+		if player.is_connected() {
+			if !manual {
+				
+			}
+		}
+		
+		if player.is_connected() {
+			if manual {
+				/* Manual rejoins override the current connection */
+				player.presence.close(cf::CONNECTED_ELSEWHERE).await;
+			} else {
+				/* Automatic rejoins do not override the current connection */
 				tracing::debug!("game rejoin failed (already connected on this device)");
 				Self::reject_socket(socket, cf::ALREADY_CONNECTED).await;
 				return Err(());
 			}
-			
+		} else {
 			let msg = &HostMsgOut::PlayerReconnected { player_id };
 			self.host.send(msg).await;
 		}
