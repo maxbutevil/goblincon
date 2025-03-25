@@ -334,12 +334,6 @@ impl ClientIndex {
 		}
 		
 		if player.is_connected() {
-			if !manual {
-				
-			}
-		}
-		
-		if player.is_connected() {
 			if manual {
 				/* Manual rejoins override the current connection */
 				player.presence.close(cf::CONNECTED_ELSEWHERE).await;
