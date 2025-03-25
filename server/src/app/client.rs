@@ -17,56 +17,6 @@ pub enum ClientId {
 	Player(PlayerId)
 }
 
-/*trait MsgDest {
-	//async fn send_raw(&mut self, msg: Message) -> bool;
-	async fn send_raw(&mut self, msg: Message) -> bool;
-	async fn send(&mut self, msg: &impl Serialize) -> bool {
-		let Ok(msg) = serialize(msg) else { return false };
-		self.send_raw(Message::Text(msg)).await
-	}
-	async fn close(&mut self, close_frame: cf::Frame) -> bool {
-		self.send_raw(Message::Close(Some(close_frame))).await
-	}
-}*/
-/*impl MsgDest for (usize, &mut Presence) {
-	async fn send_raw(&mut self, msg: Message) -> bool {
-		self.1.send_raw(msg).await
-	}
-}
-impl<'a> MsgDest for (usize, &'a mut Box<Player>) {
-	async fn send_raw(&mut self, msg: Message) -> bool {
-		self.1.send_raw(msg).await
-	}
-}*/
-
-/*
-this code has been lost to the Obscure Rust Compiler Bug abyss
-pub trait MsgDestIterator : Sized {
-	async fn send_raw(self, msg: Message) -> bool;
-	async fn send(self, msg: &impl Serialize) -> bool {
-		let Ok(msg) = serialize(msg) else { return false };
-		self.send_raw(Message::Text(msg)).await
-	}
-	async fn close(self, close_frame: cf::Frame) -> bool {
-		self.send_raw(Message::Close(Some(close_frame))).await
-	}
-}
-impl<T, I> MsgDestIterator for I
-where
-	T: MsgDest,
-	I: Iterator<Item=T>
-{
-	async fn send_raw(self, msg: Message) -> bool {
-		let mut ok = true;
-		for mut dest in self {
-			ok = ok && dest.send_raw(msg.clone()).await;
-		}
-		ok
-	}
-}*/
-
-
-
 pub struct Presence {
 	sender: WebSocketSender,
 	handle: JoinHandle<()>
@@ -243,31 +193,15 @@ pub struct ClientIndex {
 //#[allow(dead_code)]
 impl ClientIndex {
 	
+	
 	pub async fn new(host_socket: WebSocket, id: RoomId) -> Self {
+		
 		const EVENT_QUEUE_SIZE: usize = 2;
 		let (sender, receiver) = mpsc::channel(EVENT_QUEUE_SIZE);
+		
 		let players = Players(Slab::with_capacity(MAX_PLAYER_COUNT));
 		let mut host = {
-			let (tx, mut rx) = host_socket.split();
-			let sender = sender.clone();
-			let handle = tokio::spawn(async move {
-				while let Some(content) = next_str(&mut rx).await {
-					
-					if content.is_empty() {
-						/* This is an empty keep-alive message, ignore */
-						continue;
-					}
-					
-					let event = (ClientId::Host, ClientEvent::Message(content));
-					let result = sender.send(event).await;
-					if result.is_err() {
-						break;
-					}
-				}
-				//tracing::debug!("host receiver closing");
-				let _ = sender.send((ClientId::Host, ClientEvent::Disconnect)).await;
-			});
-			let presence = Presence::new(tx, handle);
+			let presence = Self::new_presence(sender.clone(), host_socket, ClientId::Host);
 			Host { presence }
 		};
 		
@@ -304,12 +238,9 @@ impl ClientIndex {
 	fn generate_token() -> PlayerToken {
 		rand::rng().random::<PlayerToken>()
 	}
-	fn new_player_presence(sender: Sender, socket: WebSocket, player_id: PlayerId) -> Presence {
+	fn new_presence(sender: Sender, socket: WebSocket, client_id: ClientId) -> Presence {
 		let (tx, mut rx) = socket.split();
 		let handle = tokio::spawn(async move {
-			
-			let client_id = ClientId::Player(player_id);
-			
 			while let Some(content) = next_str(&mut rx).await {
 				if content.is_empty() {
 					/* This is an empty keep-alive msg, ignore */
@@ -322,8 +253,7 @@ impl ClientIndex {
 					break;
 				}
 			}
-			let id = ClientId::Player(player_id);
-			let event = (id, ClientEvent::Disconnect);
+			let event = (client_id, ClientEvent::Disconnect);
 			let _ = sender.send(event).await;
 		});
 		Presence::new(tx, handle)
@@ -374,10 +304,10 @@ impl ClientIndex {
 			return Err(());
 		}
 		
-		let player_id = self.players.vacant_key() as PlayerId;
 		let token = Self::generate_token();
-		
-		let presence = Self::new_player_presence(self.sender.clone(), socket, player_id);
+		let player_id = self.players.vacant_key() as PlayerId;
+		let client_id = ClientId::Player(player_id);
+		let presence = Self::new_presence(self.sender.clone(), socket, client_id);
 		let player = Player { presence, token, name: name.clone() };
 		self.players.insert(Box::new(player));
 		
@@ -425,20 +355,10 @@ impl ClientIndex {
 		}
 		
 		// replace presence with new, connected one
-		player.presence = Self::new_player_presence(self.sender.clone(), socket, player_id);
+		let client_id = ClientId::Player(player_id);
+		player.presence = Self::new_presence(self.sender.clone(), socket, client_id);
 		Ok(())
 	}
-	/*pub async fn disconnect_player(&mut self, player_id: PlayerId) -> bool {
-		if let Some(player) = self.players.get_mut(player_id as usize) {
-			if player.is_connected() {
-				player.disconnect().await;
-				return true;
-			} else {
-				tracing::debug!("attempted to disconnect player that is not connected");
-			}
-		}
-		false
-	}*/
 	async fn drop_player(&mut self, player_id: PlayerId, close_frame: cf::Frame) -> bool {
 		let Some(mut player) = self.players.try_remove(player_id as usize) else {
 			tracing::debug!("attempted to remove player that is not present");
@@ -474,7 +394,6 @@ impl ClientIndex {
 		removed_ids
 	}*/
 	pub async fn close(&mut self) {
-		//self.host.close(close_frame).await;
 		self.host.close(cf::ROOM_CLOSED).await;
 		for (_, player) in self.players.iter_mut() {
 			player.close(cf::ROOM_CLOSED).await;
