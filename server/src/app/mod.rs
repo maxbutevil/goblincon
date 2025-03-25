@@ -71,7 +71,7 @@ impl App {
 			let (lobby, handle) = lobby::Lobby::new(&mut clients);
 			self.rooms.insert(id, handle);
 			let Ok(settings) = lobby.run().await else {
-				break 
+				break;
 			};
 			
 			let result = match settings {
@@ -106,14 +106,23 @@ impl App {
 			ClientIndex::reject_invalid_join(socket).await;
 			return;
 		};
-		let _ = handle.send(room::Event::PlayerJoin { socket, name, icon }).await;
+		let _ = handle.send(room::Event::PlayerJoin {
+			socket,
+			name,
+			icon
+		}).await;
 	}
-	pub async fn accept_player_reconnect(&self, socket: WebSocket, room_id: RoomId, player_id: PlayerId, token: PlayerToken, forced: bool) {
+	pub async fn accept_player_reconnect(&self, socket: WebSocket, room_id: RoomId, player_id: PlayerId, token: PlayerToken, manual: bool) {
 		let Some(handle) = self.rooms.get(&room_id) else {
-			ClientIndex::reject_invalid_rejoin(socket, forced).await;
+			ClientIndex::reject_invalid_rejoin(socket, manual).await;
 			return;
 		};
-		let _ = handle.send(room::Event::PlayerReconnect { socket, player_id, token, forced }).await;
+		let _ = handle.send(room::Event::PlayerReconnect {
+			socket,
+			player_id,
+			token,
+			manual
+		}).await;
 	}
 }
 

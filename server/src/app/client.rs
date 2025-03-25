@@ -389,21 +389,21 @@ impl ClientIndex {
 		
 		Ok(player_id)
 	}
-	pub async fn reconnect_player(&mut self, socket: WebSocket, player_id: PlayerId, player_token: PlayerToken, forced: bool) -> Result<(), ()> {
+	pub async fn reconnect_player(&mut self, socket: WebSocket, player_id: PlayerId, player_token: PlayerToken, manual: bool) -> Result<(), ()> {
 		
 		let Some(player) = self.players.get_mut(player_id as usize) else {
 			tracing::debug!("game rejoin failed (no such player)");
-			Self::reject_invalid_rejoin(socket, forced).await;
+			Self::reject_invalid_rejoin(socket, manual).await;
 			return Err(());
 		};
 		
 		if player_token != player.token {
 			tracing::debug!("game rejoin failed (invalid token)");
-			Self::reject_invalid_rejoin(socket, forced).await;
+			Self::reject_invalid_rejoin(socket, manual).await;
 			return Err(());
 		}
 		
-		if forced {
+		if manual {
 			player.presence.close(cf::CONNECTED_ELSEWHERE).await;
 		} else {
 			if player.is_connected() {

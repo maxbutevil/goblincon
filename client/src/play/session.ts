@@ -95,7 +95,7 @@ export default class Session {
 	static manualRejoinUrl(): string | null {
 		const baseUrl = this.rejoinUrl();
 		if (!baseUrl) return null;
-		return baseUrl + "&forced=true";
+		return baseUrl + "&manual=true";
 	}
 	
 }

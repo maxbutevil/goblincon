@@ -108,7 +108,7 @@ const ADJECTIVE: StrTable = Table::new(&[
 	]),
 	(1, &[
 		"Goblinistic",
-		"Vainglorious"
+		"Vainglorious",
 	]),
 ]);
 /*const PRE_TITLES: StrTable = Table::new(&[

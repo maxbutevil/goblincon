@@ -116,8 +116,8 @@ impl<'a> Lobby<'a> {
 					match event {
 						room::Event::PlayerJoin { socket, name, icon } =>
 							{ self.handle_join(socket, name, icon).await; },
-						room::Event::PlayerReconnect { socket, player_id, token, forced } =>
-							{ self.handle_reconnect(socket, player_id, token, forced).await; },
+						room::Event::PlayerReconnect { socket, player_id, token, manual } =>
+							{ self.handle_reconnect(socket, player_id, token, manual).await; },
 					}
 				},
 				client_event = self.clients.recv() => {
@@ -225,13 +225,13 @@ impl<'a> Lobby<'a> {
 		//self.clients.kick_player(player_id).await;
 		
 	}
-	async fn handle_reconnect(&mut self, socket: WebSocket, player_id: PlayerId, token: PlayerToken, forced: bool) {
+	async fn handle_reconnect(&mut self, socket: WebSocket, player_id: PlayerId, token: PlayerToken, manual: bool) {
 		let State::Open { leader_id } = self.state else {
 			tracing::warn!("player attempted to reconnect to lobby while not open");
 			return;
 		};
 		
-		let result = self.clients.reconnect_player(socket, player_id, token, forced).await;
+		let result = self.clients.reconnect_player(socket, player_id, token, manual).await;
 		let Ok(_) = result else { return; };
 		
 		if leader_id == player_id {

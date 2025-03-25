@@ -141,7 +141,7 @@ struct RejoinQuery {
 	token: PlayerToken,
 	
 	#[serde(default)]
-	forced: bool
+	manual: bool
 }
 
 /*async fn random_icon() {
@@ -178,7 +178,7 @@ async fn ws_upgrade_player_reconnect(
 	};
 	
 	Ok(ws.on_upgrade(async move |socket| {
-		app.accept_player_reconnect(socket, room_id, query.id, query.token, query.forced).await
+		app.accept_player_reconnect(socket, room_id, query.id, query.token, query.manual).await
 	}))
 }
 

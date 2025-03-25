@@ -18,28 +18,60 @@ pub fn generate(count: usize) -> Box<[&'static str]> {
 ]);*/
 
 const THEMES: &[&str] = &[
-	"Goblins",
-	"Mischief Makers",
-	"Abstract Concepts",
-	"Sea Creatures",
-	"Birds",
+	
+	/* Adjectives */
 	"Muscular",
 	"Hairy",
 	"Bald",
 	"Sinister",
-	"Good Kissers",
-	"Ghosts",
-	"Spirits",
-	"Devils",
-	"Demons",
 	"Cute",
 	"Squishy",
 	"Fluffy",
 	"Soft",
 	"Large",
 	"Small",
-	"Western",
+	"Scary",
+	"Musical",
+	
+	/* Jobs */
+	"Detectives",
+	"Doctors",
+	"CEOs",
+	"Pirates",
+	
+	/* Supernatural */
+	"Goblins",
+	"Ghosts",
+	"Spirits",
+	"Devils",
+	"Demons",
 	"Vampires",
+	"Zombies",
+	
+	/* Nature */
+	"Sea Creatures",
+	"Birds",
+	"Plants",
+	
+	/* Genre */
+	"Western",
+	"Sci-Fi",
+	"Murder Mystery",
+	"Medical Drama",
+	"Comedy",
+	"Cartoon",
+	
+	/* Abstract */
+	"Abstract Concepts",
+	"Personified Emotions",
+	"Imaginary Friends",
+	
+	/* Other Traits */
+	"Mischief Makers",
+	"Good Kissers",
+	"World Leaders",
+	"Historical Figures",
+	"The 1%",
 	
 ];
 

@@ -293,8 +293,8 @@ impl<'a> Game<'a> {
 					match event {
 						room::Event::PlayerJoin { socket: _, name: _, icon: _ } =>
 							{ tracing::warn!("player attempted to join a game that is already in progress"); },
-						room::Event::PlayerReconnect { socket, player_id, token, forced } =>
-							{ self.handle_reconnect(socket, player_id, token, forced).await; }
+						room::Event::PlayerReconnect { socket, player_id, token, manual } =>
+							{ self.handle_reconnect(socket, player_id, token, manual).await; }
 					}
 				},
 				event = self.clients.recv() => {
@@ -322,8 +322,8 @@ impl<'a> Game<'a> {
 			.collect::<Box<[String]>>()
 	}
 	
-	async fn handle_reconnect(&mut self, socket: WebSocket, player_id: PlayerId, token: PlayerToken, forced: bool) {
-		let result = self.clients.reconnect_player(socket, player_id, token, forced).await;
+	async fn handle_reconnect(&mut self, socket: WebSocket, player_id: PlayerId, token: PlayerToken, manual: bool) {
+		let result = self.clients.reconnect_player(socket, player_id, token, manual).await;
 		let Ok(_) = result else { return };
 		
 		let msg = GlobalPlayerMsgOut::InDating;
