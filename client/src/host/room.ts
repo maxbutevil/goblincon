@@ -115,21 +115,6 @@ export class Player {
 		this.name = name;
 		this.icon = icon;
 	}
-	/*iconView() {
-		return PlayerIcons.view(this.icon, this.color);
-	}
-	view() {
-		return h("div.player-view", [
-			this.iconView,
-			this.name
-		]);
-	}
-	scoredView(score: number) {
-		return h("div.player-view", [
-			this.iconView(),
-			`${this.name} (${score}pts)`,
-		]);
-	}*/
 	static iconView(player: Player) {
 		return PlayerIcons.view(player.icon, player.color);
 	}

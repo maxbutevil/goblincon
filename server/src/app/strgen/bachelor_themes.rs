@@ -47,7 +47,7 @@ const THEMES: &[&str] = &[
 	"Demons",
 	"Vampires",
 	"Zombies",
-	
+		
 	/* Nature */
 	"Sea Creatures",
 	"Birds",

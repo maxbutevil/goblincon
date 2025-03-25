@@ -32,8 +32,8 @@ class Client {
 	disconnected = this.state.transitionFrom(Connection.OPEN);
 	connectionFailed = this.state.transition(Connection.PENDING, Connection.CLOSED);
 	
-	//error = new Signal<CloseEvent>();
 	closed = new Signal<[CloseEvent]>();
+	
 	// how the client is told about incoming messages
 	// in practice, this is forwarded to a ReceiveIndex
 	private incoming = new Signal<[Message]>();

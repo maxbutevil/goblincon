@@ -39,9 +39,6 @@ const OUT = new SendIndex({
 
 const page = projector(landing);
 const status = projector(() => h("!"));
-
-//const INITIAL_RECONNECT_DELAY_MS = 500;
-//const MAX_RECONNECT_DELAY_MS = 16000;
 let hasAttemptedAutoRejoin = false;
 
 client.pending.listen(() => {

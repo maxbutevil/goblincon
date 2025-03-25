@@ -5,7 +5,7 @@ import {
 	Val, ReceiveIndex, SendIndex,
 	client,
 	Shared,
-	h, s, projector, mount, VNode
+	h, s, c, projector, mount, VNode
 } from "../modules/"
 import {
 	logo,
@@ -139,17 +139,25 @@ function playerList() {
 	];
 	
 	return s(signals, () => {
-		let children: VNode[];
+		
+		let status: string;
+		let list = Array.from(Room.players.values())
+			.map((player) => Player.view(player));
+		
 		if (Room.playerCount() === 0) {
-			children = [ h("div", "No players yet!") ];
+			status = "No players yet!";
+		} else if (Room.playerCount() < Shared.MIN_PLAYER_COUNT) {
+			status = `Need ${Shared.MIN_PLAYER_COUNT} to start!`;
+		} else if (Room.playerCount() === Shared.MAX_PLAYER_COUNT) {
+			status = "Room is full!";
 		} else {
-			const players = Array.from(Room.players.values());
-			children = players.map((player) => Player.view(player));
+			status = "Ready to start!";
 		}
 		
-		return h("div.player-list", {}, [
-			h("h3", {}, "Players"),
-			...children
+		return h("div#player-list", [
+			h("h3", {}, `Players (${Room.playerCount()}/${Shared.MAX_PLAYER_COUNT})`),
+			h("div#status", status),
+			...list
 		]);
 	});
 }
