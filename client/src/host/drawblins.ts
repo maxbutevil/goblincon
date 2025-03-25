@@ -6,7 +6,7 @@ import {
 	h, s, defer, projector, VNode,
 	
 	client
-} from "../modules/index"
+} from "../modules/"
 
 import * as Room from "./room"
 import { Player, ScoreMap } from "./room"
@@ -107,7 +107,7 @@ function voting() {
 		for (const id of Room.playerIds()) {
 			const drawing = round.drawings[id];
 			if (drawing != undefined)
-				submissions.push(submission(id, drawing, voteQueue.votes[id]));
+				submissions.push(submission(id, drawing, { voteIds: voteQueue.votes[id] }));
 		}
 		
 		return h("div#voting.tab", [

@@ -31,15 +31,16 @@
 	flex: 1;
 	width: 96vw;
 	
-	@include flex(column nowrap, center, 0.6em);
+	@include flex(column nowrap, center, stretch, 0.6em);
 	
 	.submission-row {
-		flex: 1;
-		@include flex(row nowrap, center, 0.6em);
+		flex: 1 1 0;
+		min-height: 0;
+		@include flex(row nowrap, center, stretch, 0.6em);
 		
 		// special one-row case
 		&:only-child {
-			height: auto;
+			//height: auto;
 			flex: 0 1 66%;
 		}
 		
@@ -47,6 +48,7 @@
 			aspect-ratio: 1;
 			flex: 0 1 0px;
 			max-height: 36vh;
+			align-self: center;
 		}
 		
 		

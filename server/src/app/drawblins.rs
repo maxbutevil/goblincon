@@ -13,13 +13,13 @@ const SHOW_SCORES_TIME: DynamicDuration = DynamicDuration::from_secs(4, 1);
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
 	#[serde(deserialize_with = "room::clamp_round_count")]
-	pub round_count: usize,
+	round_count: usize,
 	#[serde(deserialize_with = "room::clamp_time_factor")]
-	pub draw_time_factor: f32,
+	draw_time_factor: f32,
 	#[serde(deserialize_with = "room::clamp_time_factor")]
-	pub vote_time_factor: f32,
+	vote_time_factor: f32,
 	#[serde(deserialize_with = "room::clamp_time_factor")]
-	pub score_time_factor: f32
+	score_time_factor: f32
 }
 
 #[test]

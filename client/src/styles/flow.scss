@@ -47,9 +47,9 @@
 @mixin popup {
 	@include vflow;
 	
-	max-width: 96vw;
-	margin: 1.2em;
-	padding: 1em;
+	max-width: 98vw;
+	margin: 0.6em;
+	padding: 0.6em;
 	
 	font-size: 1em;
 	
@@ -58,6 +58,9 @@
 	border-radius: 8px;
 }
 
+.vflow {
+	@include vflow;
+}
 .mode {
 	flex: auto;
 	@include flex;

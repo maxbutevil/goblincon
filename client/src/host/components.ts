@@ -1,38 +1,26 @@
 
 import {
 	State,
-	h, s, defer,
+	h, s, c, defer,
 	VNode, VNodeChildElement,
 	//Shared, PlayerIcons,
-} from "../modules/index"
+} from "../modules/"
 import * as Room from "./room"
 import { Player } from "./room"
 
-/*export function submissionBase(drawing: string, children: VNodeChildElement[]) {
+export function submission(player: number | Player, drawing: string, { name, voteIds }: { name?: string, voteIds?: number[] } = {}) {
+	
 	return h(
 		"div.submission",
 		[
-			h("img", { attrs: { src: drawing }}),
-			...children
-			//Room.playerView(playerId),
-			//voteIds.length === 0 ? null : h("div.vote-ctr", voteIds.map(Room.iconView))
-		]
-	);
-}*/
-export function submission(player: number | Player, drawing: string, voteIds: number[] = []) {
-	//const player = Room.player(playerId)
-	/*return submissionBase(drawing, [
-		Room.playerView(playerId),
-		voteIds.length === 0 ? null : h("div.vote-ctr", voteIds.map(Room.iconView))
-	]);*/
-	return h(
-		"div.submission",
-		[
-			h("img", { attrs: { src: drawing }}),
+			c(name && h("div.name", name)),
+			h("img", { attrs: { src: drawing }}, ),
 			typeof player === "number" ? Room.playerView(player) : Player.view(player), //Room.playerView(playerId),
-			voteIds.length === 0 ? null : h("div.vote-ctr", voteIds.map(Room.iconView))
+			(!voteIds || voteIds.length === 0) ? null : h("div.vote-ctr", voteIds.map(Room.iconView))
 		]
 	);
+	
+	
 }
 export function submissionGrid(submissions: VNode[]): VNode {
 	/* This is a nightmare, but so are 2D flexbox layouts */

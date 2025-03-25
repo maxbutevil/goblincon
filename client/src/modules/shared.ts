@@ -10,8 +10,16 @@ export const isMobileClient = (function(a) {
 
 export const CUSTOM_ERROR = 4000;
 export const INVALID_JOIN = 4001;
-export const INVALID_REJOIN = 4002;
-export const ALREADY_CONNECTED = 4003;
+export const INVALID_AUTO_REJOIN = 4002;
+export const INVALID_MANUAL_REJOIN = 4003;
+export const ROOM_CLOSED = 4004;
+export const PLAYER_LEFT = 4005;
+export const PLAYER_KICKED = 4006;
+export const ALREADY_CONNECTED = 4007;
+export const CONNECTED_ELSEWHERE = 4008;
+
+export const MIN_PLAYER_COUNT = 3;
+export const MAX_PLAYER_COUNT = 16;
 
 //export const ROOM_CLOSED = 4001;
 //export const PLAYER_KICKED = 4004;
@@ -46,9 +54,5 @@ export const PLAYER_COLORS = [
 
 export function playerColor(id: number): string {
 	return PLAYER_COLORS[id % PLAYER_COLORS.length];
-}
-
-export function endTime(secsLeft: number, secsBuffer: number): number {
-	return Date.now() + 1000 * (secsLeft - secsBuffer);
 }
 

@@ -8,7 +8,7 @@ import {
 	h, s, defer, projector, VNode,
 	
 	client
-} from "../modules/index"
+} from "../modules/"
 
 import * as Room from "./room"
 import { Player, ScoreMap } from "./room"
@@ -20,9 +20,7 @@ import {
 import {
 	submission
 } from "./components"
-import {
-	vs as vsIcon
-} from "../assets/icons"
+import * as icons from "../assets/icons"
 
 const INC = new ReceiveIndex({
 	"drawingBachelors": { theme: Val.STR },
@@ -41,6 +39,7 @@ const OUT = new SendIndex({
 
 const mode = new Mode("dating", view, {
 	roundCount: new Setting("Number of Rounds", [ 1, 2, 3 ]),
+	naming: Setting.boolean("Creature Naming", true),
 	bachelorDrawTimeFactor: Setting.multiplier("Bachelor Drawing Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ]),
 	suitorDrawTimeFactor: Setting.multiplier("Suitor Drawing Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ]),
 	voteTimeFactor: Setting.multiplier("Voting Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ]),
@@ -56,7 +55,7 @@ function currentRound(): Round { return rounds.at(-1)!; }
 
 const page = projector(starting);
 
-export function view() {
+function view() {
 	defer(
 		client.use(INC, OUT),
 		INC.subscribe("drawingBachelors", ({ theme }) => {
@@ -66,11 +65,11 @@ export function view() {
 		INC.subscribe("drawingSuitors", () => page.put(drawingSuitors)),
 		INC.subscribe("showingScores", () => page.put(showingScores)),
 		INC.subscribe("voting", ({ bachelorId }) => page.put(voting, bachelorId)),
-		INC.subscribe("bachelorSubmitted", ({ playerId, drawing }) => {
-			currentRound().handleBachelorDrawing(playerId, drawing)
+		INC.subscribe("bachelorSubmitted", ({ playerId, drawing, name }) => {
+			currentRound().handleBachelorDrawing(playerId, drawing, name)
 		}),
-		INC.subscribe("suitorSubmitted", ({ playerId, bachelorId, drawing }) => {
-			currentRound().handleSuitorDrawing(bachelorId, playerId, drawing);
+		INC.subscribe("suitorSubmitted", ({ playerId, bachelorId, drawing, name }) => {
+			currentRound().handleSuitorDrawing(bachelorId, playerId, drawing, name);
 		})
 	);
 	rounds = [];
@@ -123,15 +122,20 @@ function voting(bachelorId: number) {
 	
 	return s(voteQueue.update, () => {
 		
-		let bachelorDrawing = submission(bachelorId, matchup.bachelorDrawing);
-		let suitorDrawings = matchup.suitors.map(({ id, drawing }, index) =>
-			submission(id, drawing, voteQueue.votes[index])
+		let bachelorDrawing = submission(bachelorId, matchup.bachelorDrawing, {
+			name: matchup.bachelorDrawingName
+		});
+		
+		let suitors = matchup.suitors.sort((a, b) => a.id - b.id);
+		let suitorDrawings = matchup.suitors.map(({ id, drawing, name }, index) =>
+			submission(id, drawing, { name, voteIds: voteQueue.votes[index] })
 		);
+		
 		
 		if (suitorDrawings.length === 2) {
 			suitorDrawings = [
 				suitorDrawings[0],
-				h("img#vs-icon", { attrs: { src: vsIcon } }),
+				h("img#vs-icon", { attrs: { src: icons.vs } }),
 				suitorDrawings[1]
 			]
 		}
@@ -145,13 +149,15 @@ function voting(bachelorId: number) {
 	});
 }
 
-type Suitor = { id: number, drawing: string, votes: number[] };
+type Suitor = { id: number, drawing: string, name: string | undefined, votes: number[] };
 class Matchup {
 	bachelorDrawing: string;
+	bachelorDrawingName: string | undefined;
 	suitors: Suitor[] = [];
 	
-	constructor(bachelorDrawing: string) {
+	constructor(bachelorDrawing: string, bachelorDrawingName?: string) {
 		this.bachelorDrawing = bachelorDrawing;
+		this.bachelorDrawingName = bachelorDrawingName;
 	}
 	suitor(suitorId: number): Suitor | undefined {
 		for (const suitor of this.suitors)
@@ -169,22 +175,22 @@ class Round {
 	matchup(bachelorId: number): Matchup | undefined {
 		return this.matchups.get(bachelorId);
 	}
-	handleBachelorDrawing(playerId: number, drawing: string) {
-		this.matchups.set(playerId, new Matchup(drawing));
+	handleBachelorDrawing(playerId: number, drawing: string, name?: string) {
+		this.matchups.set(playerId, new Matchup(drawing, name));
 	}
-	handleSuitorDrawing(bachelorId: number, playerId: number, drawing: string) {
+	handleSuitorDrawing(bachelorId: number, playerId: number, drawing: string, name?: string) {
 		let matchup = this.matchup(bachelorId);
 		if (!matchup) {
 			console.error("invalid bachelor id for suitor drawing submission");
 			return;
 		}
-		matchup.suitors.push({ id: playerId, drawing, votes: [] });
+		matchup.suitors.push({ id: playerId, drawing, name, votes: [] });
 	}
 	handleVote(bachelorId: number, playerId: number, forId: number) {
 		const matchup = this.matchup(bachelorId);
-		if (!matchup) return console.error("invalid bachelorId for vote:", bachelorId);
+		if (!matchup) return console.error(`invalid bachelorId for vote: ${bachelorId} -> ${forId}`);
 		const suitor = matchup.suitor(forId);
-		if (!suitor) return console.error("invalid suitorId for vote:", forId);
+		if (!suitor) return console.error(`invalid suitorId for vote: ${bachelorId} -> ${forId}`);
 		suitor.votes.push(playerId);
 	}
 }

@@ -1,7 +1,7 @@
 
 
 
-import { Shared } from "../modules/index"
+import { Shared } from "../modules/"
 
 /*enum State {
 	REJOIN
@@ -13,6 +13,7 @@ export default class Session {
 	static readonly MIN_NAME_LEN = 2;
 	static readonly MAX_NAME_LEN = 16;
 	static readonly CODE_LEN = 5;
+	static readonly MAX_SUBMISSION_NAME_LEN = 18;
 	
 	static joinCode = new URLSearchParams(window.location.search).get("code") ?? "";
 	static playerName = localStorage.getItem("playerName") ?? "";

@@ -4,11 +4,11 @@ import {
 	Signal, State,
 	Shared,
 	h, s, defer, VNode
-} from "../modules/index"
+} from "../modules/"
 
 //import Globals from "../modules/globals"
 
-import * as icons from "../assets/icons/index"
+import * as icons from "../assets/icons/"
 
 const BACKUP_MAX_LAG = 18; // if current backup is at least this out of date, rebuild (catch up)
 const BACKUP_MED_LAG = 10; // if we undo past the current backup, how far back to we jump?
@@ -31,16 +31,57 @@ enum CanvasState {
 	SUBMITTED
 };
 
+type DrawpadOptions = {
+	onSubmit: (drawing: string) => void,
+	onStartSubmit?: () => boolean
+};
+
 export default class Drawpad {
 	
 	private readonly submitted = new Signal();
+	private readonly options: DrawpadOptions;
+	readonly state = new State(CanvasState.BLANK);
+	
+	//private onSubmit = 
+	
+	
+	
+	constructor(options: DrawpadOptions) {
+		this.options = options;
+	}
+	
+	/*readonly state = new State(CanvasState.BLANK);
+	
+	private mode: DrawMode = "draw";
+	private weight: DrawWeight = "thin";
+	private color: string = "#000000";
+	private undoStack: Array<DrawOperation> = [];
+	private redoStack: Array<DrawOperation> = [];
+	private backup?: ImageData;
+	private backupIndex = 0;
+	
+	canvas?: Canvas;*/
+	
+	
 	
 	submit() {
 		this.submitted.emit();
 	}
-	view(onSubmit: (drawingData: string) => void) {
+	isSubmitted(): boolean {
+		return this.state.is(CanvasState.SUBMITTED);
+	}
+	
+	/*private applyMode(mode: DrawMode = this.drawMode) {
 		
-		const state = new State(CanvasState.BLANK);
+	}*/
+	
+	view() {
+		
+		const { onSubmit, onStartSubmit } = this.options;
+		const { state, submitted } = this;
+		
+		
+		//const state = new State(CanvasState.BLANK);
 		
 		let undoStack: Array<DrawOperation> = [];
 		let redoStack: Array<DrawOperation> = [];
@@ -356,7 +397,7 @@ export default class Drawpad {
 			return h("img", { attrs: { src } });
 		}
 		let submittingTimeout: NodeJS.Timeout;
-		defer(this.submitted.subscribe(submit));
+		defer(submitted.subscribe(submit));
 		
 		// This could probably avoid rerendering on every canvas state change
 		return s(state, curr => {
@@ -367,6 +408,14 @@ export default class Drawpad {
 			const disabled = submitted;
 			
 			function startSubmit() {
+				if (!state.is(CanvasState.IDLE)) {
+					return;
+				}
+				if (onStartSubmit) {
+					if (!onStartSubmit()) {
+						return;
+					}
+				}
 				clearTimeout(submittingTimeout);
 				submittingTimeout = setTimeout(submit, 0.7 * 1000);
 			}

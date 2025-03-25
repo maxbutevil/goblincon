@@ -5,18 +5,18 @@ import {
 	Val, ReceiveIndex, SendIndex,
 	client,
 	h, s, defer, projector,
-} from "../modules/index"
+} from "../modules/"
 
 import Session from "./session"
 
 import Drawpad from "./drawpad"
 import {
-	countdown,
+	Countdown,
 	idlePage,
 	voteButtons
 } from "../components"
 
-//import * as icons from "../assets/icons/index"
+//import * as icons from "../assets/icons/"
 
 const INC = new ReceiveIndex({
 	//waiting: Val.choice<"start" | "draw" | "vote" | "results" | "score">("start", "draw", "vote", "results", "score"),
@@ -41,11 +41,11 @@ export function view() {
 	
 	defer(
 		client.use(INC, OUT),
-		INC.subscribe("drawing", ({ goblinName, secsLeft }: { goblinName: string, secsLeft: number }) => {
-			page.put(drawing, Shared.endTime(secsLeft, 4), goblinName);
+		INC.subscribe("drawing", ({ goblinName, secsLeft }) => {
+			page.put(drawing, secsLeft, goblinName);
 		}),
 		INC.subscribe("voting", ({ choices, secsLeft }) => {
-			page.put(voting, Shared.endTime(secsLeft, 2), choices);
+			page.put(voting, secsLeft, choices);
 		}),
 		INC.subscribe("starting", () => page.put(starting)),
 		INC.subscribe("doneDrawing", () => page.put(doneDrawing)),
@@ -63,24 +63,25 @@ function starting() {
 		h("h2", "Get ready to draw!")
 	]);
 }
-function drawing(endTime: number, goblinName: string) {
+function drawing(secsLeft: number, goblinName: string) {
 	
-	const drawpad = new Drawpad();
-	const onSubmit = (drawing: string) => {
-		OUT.send("drawingSubmission", { drawing });
-	}
+	const drawpad = new Drawpad({
+		onSubmit: (drawing: string) => {
+			OUT.send("drawingSubmission", { drawing });
+		}
+	});
 	
 	return h("div#draw.tab", [
 		h("div#info", [
 			h("div", "Draw a creature named:"),
 			h("div#goblin-name", goblinName),
-			countdown(endTime, () => drawpad.submit()),
+			Countdown.secs(secsLeft, 4, () => drawpad.submit()),
 		]),
-		drawpad.view(onSubmit),
+		drawpad.view(),
 		
 	]);
 }
-function voting(endTime: number, choices: string[]) {
+function voting(secsLeft: number, choices: string[]) {
 	
 	const submitVote = (forName: string) => {
 		OUT.send("voteSubmission", { forName });
@@ -89,7 +90,7 @@ function voting(endTime: number, choices: string[]) {
 	
 	return h("div#vote.tab", [
 		h("h1", "Vote!"),
-		countdown(endTime),
+		Countdown.secs(secsLeft, 2),
 		...voteButtons(
 			choices.filter((choice) => choice !== Session.playerName),
 			submitVote

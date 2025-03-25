@@ -110,6 +110,13 @@ export default class State<T> {
 	mutate(mutator: (curr: T) => T) {
 		this.set(mutator(this.curr));
 	}
+	toggle(to: T, other: T) {
+		if (this.get() !== to) {
+			this.set(to);
+		} else {
+			this.set(other);
+		}
+	}
 	
 }
 

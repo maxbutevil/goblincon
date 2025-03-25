@@ -7,7 +7,7 @@ import {
 	PlayerIcons,
 	h, defer,
 	VNode
-} from "../modules/index"
+} from "../modules/"
 
 
 export const playerJoined = new Signal<[Player]>();

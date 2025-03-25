@@ -5,7 +5,7 @@ import { pluginSass } from '@rsbuild/plugin-sass';
 export default defineConfig({
 	source: {
 		entry: {
-			//testing: "./src/testing.ts",
+			testing: "./src/testing.ts",
 			host: "./src/host/host.ts",
 			play: "./src/play/play.ts",
 		}
@@ -29,6 +29,6 @@ export default defineConfig({
 	},
 	plugins: [pluginSass()],
 	output: {
-		//minify: false,
+		minify: false,
 	},
 });

@@ -1,6 +1,6 @@
 
 
-use crate::types::*;
+use crate::globals::*;
 
 use core::fmt;
 use core::fmt::Display;

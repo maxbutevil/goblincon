@@ -46,8 +46,14 @@ export function mount(vnode: VNode, id = "root") {
 type Cleanup = () => void;
 //const EMPTY_CLEANUP: Cleanup = () => {};
 
-export function conditional(condition: any, vnode: VNode): VNode | null {
+/*export function conditional(condition: any, vnode: VNode): VNode | null {
   return !!condition ? vnode : null;
+}*/
+/*export function c(exp: VNode | null | undefined | boolean | number | string): VNode | null {
+  return (exp !== null && typeof exp === "object") ? exp : null;
+}*/
+export function c<T extends {} = VNode>(exp: T | null | undefined | boolean | number | string): T | undefined {
+  return (exp !== null && typeof exp === "object") ? exp : undefined;
 }
 
 type Builder<A extends any[] = []> = (...args: A) => VNode;

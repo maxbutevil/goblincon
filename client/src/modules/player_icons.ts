@@ -1,5 +1,5 @@
 
-import iconMap from "../assets/players/index"
+import iconMap from "../assets/players/"
 import Canvas from "./canvas"
 
 //export type IconKey = keyof typeof icons;

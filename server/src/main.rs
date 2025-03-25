@@ -11,7 +11,7 @@
 
 
 
-pub mod types;
+pub mod globals;
 pub mod app;
 //mod favicons;
 
@@ -37,7 +37,7 @@ use serde::Deserialize;
 
 use std::env;
 
-use crate::types::*;
+use crate::globals::*;
 
 
 

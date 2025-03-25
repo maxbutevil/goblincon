@@ -1,5 +1,5 @@
 
-use crate::types::*;
+use crate::globals::*;
 use super::cf;
 
 use slab::Slab;
@@ -283,15 +283,22 @@ impl ClientIndex {
 		}
 	}
 	
-	async fn reject_socket(mut socket: WebSocket, close_frame: cf::Frame) {
+	pub async fn reject_socket(mut socket: WebSocket, close_frame: cf::Frame) {
 		let msg = Message::Close(Some(close_frame));
 		let _ = socket.send(msg).await;
 	}
 	pub async fn reject_invalid_join(socket: WebSocket) {
 		Self::reject_socket(socket, cf::INVALID_JOIN).await;
 	}
-	pub async fn reject_invalid_rejoin(socket: WebSocket) {
-		Self::reject_socket(socket, cf::INVALID_REJOIN).await;
+	pub async fn reject_invalid_rejoin(socket: WebSocket, manual: bool) {
+		
+		let frame = if manual {
+			cf::INVALID_MANUAL_REJOIN
+		} else {
+			cf::INVALID_AUTO_REJOIN
+		};
+		
+		Self::reject_socket(socket, frame).await;
 	}
 	
 	fn generate_token() -> PlayerToken {
@@ -386,13 +393,13 @@ impl ClientIndex {
 		
 		let Some(player) = self.players.get_mut(player_id as usize) else {
 			tracing::debug!("game rejoin failed (no such player)");
-			Self::reject_socket(socket, cf::INVALID_REJOIN).await;
+			Self::reject_invalid_rejoin(socket, forced).await;
 			return Err(());
 		};
 		
 		if player_token != player.token {
 			tracing::debug!("game rejoin failed (invalid token)");
-			Self::reject_socket(socket, cf::INVALID_REJOIN).await;
+			Self::reject_invalid_rejoin(socket, forced).await;
 			return Err(());
 		}
 		

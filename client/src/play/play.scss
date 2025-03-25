@@ -18,6 +18,9 @@ body {
 	@include popup;
 	
 }
+#name-popup {
+	@include popup;
+}
 
 /* Landing */
 %menu-tab {

@@ -4,15 +4,21 @@
 
 type Callback<A extends any[]> = ((...args: A) => any);
 
-export default class Signal<T extends any[]> extends Set<Callback<T>> {
+export default class Signal<T extends any[] = []> extends Set<Callback<T>> {
 	
 	static readonly UNHANDLED = false;
 	static readonly HANDLED = true;
 	
 	public static bundle(...callbacks: Array<() => void>): () => void {
-		return () => {
-			for (const callback of callbacks)
-				callback();
+		if (callbacks.length === 0) {
+			return () => {};
+		} else if (callbacks.length === 1) {
+			return callbacks[0];
+		} else {
+			return () => {
+				for (const callback of callbacks)
+					callback();
+			}
 		}
 	}
 	
@@ -61,6 +67,22 @@ export default class Signal<T extends any[]> extends Set<Callback<T>> {
 				return Signal.HANDLED;
 		return Signal.UNHANDLED;
 	}
+	
+	
+	private static _keydown?: Signal<[KeyboardEvent]>;
+	private static _keyup?: Signal<[KeyboardEvent]>;
+	public static get keydown() {
+		return this._keydown ??= Signal.fromDocumentEvent("keydown");
+	}
+	public static get keyup() {
+		return this._keyup ??= Signal.fromDocumentEvent("keyup");
+	}
+	static fromDocumentEvent<E extends keyof DocumentEventMap>(event: E): Signal<[DocumentEventMap[E]]> {
+		const signal = new Signal<[DocumentEventMap[E]]>();
+		document.addEventListener(event, ev => signal.emit(ev));
+		return signal;
+	}
+	
 }
 
 

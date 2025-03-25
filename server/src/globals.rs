@@ -22,11 +22,14 @@ pub use axum::extract::ws::{WebSocket, Message, Utf8Bytes};
 pub type WebSocketSender = SplitSink<WebSocket, Message>;
 pub type WebSocketReceiver = SplitStream<WebSocket>;
 
-pub const MIN_PLAYER_COUNT: usize = 2;
-pub const MAX_PLAYER_COUNT: usize = 12;
+pub const MIN_PLAYER_COUNT: usize = 3;
+pub const MAX_PLAYER_COUNT: usize = 16;
 
 pub const MIN_NAME_LEN: usize = 2;
 pub const MAX_NAME_LEN: usize = 16;
+
+pub const MAX_SUBMISSION_NAME_CHARS: usize = 18;
+pub const MAX_SUBMISSION_NAME_LEN: usize = 4 * MAX_SUBMISSION_NAME_CHARS;
 
 /*
 Timeout if:

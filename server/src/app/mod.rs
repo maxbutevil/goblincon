@@ -11,7 +11,7 @@ use dashmap::DashMap;
 //use std::net::SocketAddr;
 
 
-use crate::types::*;
+use crate::globals::*;
 
 mod strgen;
 mod timeout;
@@ -110,7 +110,7 @@ impl App {
 	}
 	pub async fn accept_player_reconnect(&self, socket: WebSocket, room_id: RoomId, player_id: PlayerId, token: PlayerToken, forced: bool) {
 		let Some(handle) = self.rooms.get(&room_id) else {
-			ClientIndex::reject_invalid_rejoin(socket).await;
+			ClientIndex::reject_invalid_rejoin(socket, forced).await;
 			return;
 		};
 		let _ = handle.send(room::Event::PlayerReconnect { socket, player_id, token, forced }).await;

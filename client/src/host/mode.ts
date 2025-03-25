@@ -29,9 +29,9 @@ export class Setting<T = number> {
 	static multiplier(name: string, choices: number[], currentIndex = Math.floor(choices.length/2), precision = 1): Setting<number> {
 		return new Setting(name, choices, currentIndex, (v) => Number(v).toFixed(precision) + "x")
 	}
-	static boolean(name: string, current = false): Setting<boolean> {
+	static boolean(name: string, current = false, trueLabel = "Yes", falseLabel = "No"): Setting<boolean> {
 		let currentIndex = current ? 1 : 0;
-		return new Setting(name, [false, true], currentIndex, (v) => v ? "Yes" : "No");
+		return new Setting(name, [false, true], currentIndex, (v) => v ? trueLabel : falseLabel);
 	}
 	
 	set(newCurrent: number) {

@@ -2,13 +2,13 @@
 import "./play.scss"
 
 import {
-	State,
+	Signal, State,
 	Val, ReceiveIndex, SendIndex,
 	client, Connection,
 	Shared,
 	PlayerIcons,
-	h, s, projector, mount, VNode,
-} from "../modules/index"
+	h, s, defer, projector, mount, VNode,
+} from "../modules/"
 
 import Session from "./session"
 import * as Drawblins from "./drawblins"
@@ -16,9 +16,10 @@ import * as Dating from "./dating"
 
 import {
 	logo,
-	mountedBtn
+	tray,
+	iconBtn
 } from "../components"
-import { help as helpIcon } from "../assets/icons/index"
+import { help as helpIcon } from "../assets/icons/"
 
 const INC = new ReceiveIndex({
 	terminated: Val.NONE,
@@ -52,14 +53,8 @@ client.connected.listen(() => {
 client.disconnected.listen(() => {
 	
 });
-
 client.closed.listen((ev) => {
 	
-	if (ev.code === Shared.ALREADY_CONNECTED) {
-		Session.setupManualRejoin();
-		page.put(landing);
-		return;
-	}
 	
 	// Possible issue:
 	// if the server somehow connects client,
@@ -78,46 +73,72 @@ client.closed.listen((ev) => {
 			status.put(error, "Connection error");
 		}
 	} else {
-		page.put(landing);
 		
-		if (ev.code === Shared.CUSTOM_ERROR) {
+		function _error(msg: string = ev.reason) {
+			page.put(landing);
+			status.put(error, msg);
+		}
+		function _info(msg: string = ev.reason) {
+			page.put(landing);
+			status.put(info, msg);
+		}
+		function _reset() {
+			page.put(landing);
+			status.reset();
+		}
+		
+		switch (ev.code) {
+			case Shared.CUSTOM_ERROR: return _error();
+			case Shared.INVALID_JOIN: return _error("Join failed; check your code");
+			case Shared.INVALID_AUTO_REJOIN:
+				console.warn("Auto rejoin failed");
+				Session.clearRejoinInfo();
+				return _reset();
+				
+			
+			
+			case Shared.INVALID_MANUAL_REJOIN:
+			case Shared.ROOM_CLOSED:
+			case Shared.PLAYER_LEFT:
+			case Shared.PLAYER_KICKED:
+				Session.clearRejoinInfo();
+				Session.joinCode = "";
+				return _info();
+			
+			case Shared.ALREADY_CONNECTED:
+				Session.setupManualRejoin();
+				return _info();
+			case Shared.CONNECTED_ELSEWHERE: return _info();
+				
+			default:
+				if (ev.reason) {
+					return _info();
+				} else {
+					return _error("Something went wrong")
+				}
+		}
+		
+		/*if (ev.code === Shared.CUSTOM_ERROR) {
 			status.put(error, ev.reason);
 		} else if (ev.code === Shared.INVALID_JOIN) {
 			status.put(error, "Join failed; check your code");
-		} else if (ev.code === Shared.INVALID_REJOIN) {
-			console.warn("Rejoin failed");
+		} else if (ev.code === Shared.INVALID_AUTO_REJOIN) {
+			console.warn("Auto rejoin failed");
 			Session.clearRejoinInfo();
 			status.reset();
+		} else if (ev.code === Shared.) {
+			
 		} else if (ev.reason) {
 			status.put(info, ev.reason);
 		} else {
-			status.reset();
-		}
+			status.put(info, `${Session.joinCode}, ${Session.playerName}`)
+			//status.reset();
+		}*/
 	}
 });
-
-INC.listen("terminated", () => {
-	Session.clearRejoinInfo();
+window.addEventListener("beforeunload", () => {
+	client.close();
 });
-INC.listen("accepted", ({ playerId, token }) => {
-	Session.storeRejoinInfo(playerId, token);
-	//Session.joinCode = ""; // make sure we see future rejoin attempts as rejoin attempts
-});
-INC.listen("inLobby", ({ playerCount }) => {
-	page.put(lobby, playerCount);
-});
-INC.listen("inDrawblins", () => {
-	page.put(Drawblins.view);
-});
-INC.listen("inDating", () => {
-	page.put(Dating.view);
-});
-/*INC.listen("error", (message) => {
-	if (page.get().key === "landing" && Session.wasRejoining())
-		console.warn("Couldn't rejoin game:", message);
-	else
-		statusError(message);
-});*/
 
 function info(message: string) {
 	return h(`div#status.info`, message);
@@ -128,7 +149,14 @@ function error(message: string) {
 
 function landing() {
 	
-	let helpOpen = new State(false);
+	const helpOpen = new State(false);
+	
+	defer(Signal.keydown.subscribe(keydown));
+	function keydown(ev: KeyboardEvent) {
+		if (helpOpen.is(false) && ev.key === "Enter") {
+			attemptJoin();
+		}
+	}
 	
 	//function joinGame(code: string, name: string) {
 	function attemptJoin() {
@@ -143,8 +171,10 @@ function landing() {
 			return status.put(error, "Name too short");
 		if (name.length > Session.MAX_NAME_LEN)
 			return status.put(error, "Name too long");
-		if (code.length !== Session.CODE_LEN)
-			return status.put(error, "Invalid code");
+		if (code.length < Session.CODE_LEN)
+			return status.put(error, "Invalid code (not long enough)");
+		if (code.length > Session.CODE_LEN)
+			return status.put(error, "Invalid code (too long?? somehow???)");
 		
 		if (Session.canManualRejoin()) {
 			Session.pullRejoinInfo();
@@ -161,13 +191,15 @@ function landing() {
 		function b(content: string): VNode {
 			return h("b", { style: { fontWeight: "bold" }}, content);
 		}
-		
-		function br(): VNode {
-			return h("br");
-		}
 		function close() {
 			helpOpen.set(false);
 		}
+		
+		defer(Signal.keydown.subscribe((ev) => {
+			if (ev.key === "Escape") {
+				close();
+			}
+		}));
 		
 		return s(helpOpen, (curr) => {
 			if (!curr) {
@@ -191,7 +223,7 @@ function landing() {
 								//" and ",
 								//b("Play"),
 								" from a mobile device",
-								br(),
+								h("br"),
 								h("div.small", "(other devices are ok too)")
 							]),
 							h("div.section", [
@@ -234,9 +266,14 @@ function landing() {
 		}
 		
 		const content = ev.clipboardData?.getData("text");
-		if (!content || content.length === 5) return;
+		const elm = ev.currentTarget as HTMLInputElement;
+		if (!content) return;
+		if (content.length === 5) {
+			Session.joinCode = elm.value = content;
+			return;
+		}
 		
-		const elm = document.querySelector("#code-input") as HTMLInputElement;
+		//const elm = document.querySelector("#code-input") as HTMLInputElement;
 		Session.joinCode = elm.value = "";
 		ev.preventDefault();
 		
@@ -267,7 +304,10 @@ function landing() {
 									value: Session.playerName,
 								},
 								on: {
-									change: ev => Session.playerName = (ev.currentTarget as HTMLInputElement).value
+									keydown,
+									input: (ev) => {
+										Session.playerName = (ev.currentTarget as HTMLInputElement).value;
+									},
 								}
 							})
 						]),
@@ -280,8 +320,12 @@ function landing() {
 									value: Session.joinCode
 								},
 								on: {
-									change: ev => Session.joinCode = (ev.currentTarget as HTMLInputElement).value,
-									paste: pasteCode
+									keydown,
+									paste: pasteCode,
+									input: (ev) => {
+										Session.joinCode = (ev.currentTarget as HTMLInputElement).value;
+										status.reset();
+									},
 								}
 							})
 						]),
@@ -296,19 +340,12 @@ function landing() {
 		]),
 		hostLink(),
 		helpPopup(),
-		mountedBtn(helpIcon, () => helpOpen.mutate(curr => !curr))
+		tray(iconBtn(helpIcon, () => helpOpen.mutate(curr => !curr)))
 	]);
 }
 function lobby(playerCount: number | undefined) {
 	
 	const promoted = playerCount !== undefined;
-	
-	function leave() {
-		OUT.send("leave", undefined);
-	}
-	function startGame() {
-		OUT.send("startGame", undefined);
-	}
 	
 	function iconSelect() {
 		
@@ -343,13 +380,18 @@ function lobby(playerCount: number | undefined) {
 	if (promoted) {
 		
 		let blurb;
-		if (playerCount <= 1) {
+		if (playerCount < Shared.MIN_PLAYER_COUNT)
+			blurb = `${playerCount} players (not enough)`;
+		else
+			blurb = `${playerCount} players`;
+		
+		/*if (playerCount <= 1) {
 			blurb = "1 player (not enough)";
 		} else if (playerCount == 2) {
 			blurb = "2 players (not recommended)";
 		} else {
 			blurb = `${playerCount} players`;
-		}
+		}*/
 		
 		startInterface = [
 			h("div", "Start the game when everybody's in!"),
@@ -357,7 +399,7 @@ function lobby(playerCount: number | undefined) {
 			h(
 				"button#start-btn",
 				{
-					on: { click: startGame },
+					on: { click: () => OUT.send("startGame", undefined) },
 					attrs: { disabled: playerCount <= 1 }
 				},
 				"Start"
@@ -373,7 +415,7 @@ function lobby(playerCount: number | undefined) {
 		]),
 		h(
 			"button#leave-btn",
-			{ on: { click: leave } },
+			{ on: { click: () => OUT.send("leave", undefined) } },
 			"Leave Game",
 		)
 	]);
@@ -387,24 +429,16 @@ function attemptRejoin() {
 }
 function app() {
 	client.use(INC, OUT);
+	INC.listen("terminated", () => Session.clearRejoinInfo());
+	INC.listen("accepted", ({ playerId, token }) => Session.storeRejoinInfo(playerId, token));
+	INC.listen("inLobby", ({ playerCount }) => page.put(lobby, playerCount));
+	INC.listen("inDrawblins", () => page.put(Drawblins.view));
+	INC.listen("inDating", () => page.put(Dating.view));
+	
 	attemptRejoin();
 	return s(page);
 }
 
 mount(app());
-
-/* misc event handling */
-/*window.addEventListener("pageshow", () => {
-	console.log("whee!")
-	attemptRejoin();
-});*/
-/*document.addEventListener("visibilitychange", (ev) => {
-	if (!document.hidden) {
-		attemptRejoin();
-	}
-});*/
-window.addEventListener("beforeunload", () => {
-	client.close();
-});
 
 

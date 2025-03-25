@@ -3,8 +3,8 @@ import {
 	State,
 	h, s, defer,
 	Shared, PlayerIcons,
-	VNode, VNodeChildren
-} from "./modules/index"
+	VNode, VNodeChildren, VNodeChildElement
+} from "./modules/"
 
 export function logo() {
 	return h("div#logo", [
@@ -54,29 +54,41 @@ export function idlePage(header: string, ...subheaders: string[]) {
 		...subheaders.map((s) => h("h2", s)),
 	]);
 }
-export function img(src: string) {
+/*export function img(src: string): VNode {
 	return h("img", { attrs: { src }});
-}
+}*/
 
-export function voteButtons(choices: string[], submit: (choice: string) => void) {
+export function voteButtons(choices: string[], submit: (choice: string) => void): VNode[] {
 	return choices.map(choice => {
 		return h("button", { on: { click: () => submit(choice) } }, choice);
 	});
 }
 
-function iconBtn(iconSrc: string, onClick: () => any) {
-	return h("button",
-		{ on: { click: onClick } },
+export function iconBtn(iconSrc: string, onClick: () => any, disabled = false): VNode {
+	return h("button.icon-btn",
+		{
+			on: { click: onClick },
+			attrs: { disabled }
+		},
 		h("img", { attrs: { src: iconSrc }})
 	);
 }
-export function mountedBtn(iconSrc: string, onClick: () => any) {
+
+export function tray(...children: VNodeChildElement[]) {
+	return h("div#tray", children);
+}
+
+/*export function mountedBtn(iconSrc: string, onClick: () => any): VNode {
 	return h("div#mounted-btns", iconBtn(iconSrc, onClick));
 }
-export function mountedBtns(btnArgs: Array<[string, () => any]>) {
+export function mountedBtns(btnArgs: Array<[string, () => any]>): VNode {
 	const btns = btnArgs.map(data => iconBtn(...data));
 	return h("div#mounted-btns", btns);
-}
+}*/
+
+/*export function endTime(secsLeft: number, secsBuffer: number): number {
+	return Date.now() + 1000 * (secsLeft - secsBuffer);
+}*/
 
 export class Countdown {
 	
@@ -109,6 +121,20 @@ export class Countdown {
 		this.interval = setInterval(tick, 200);
 		tick();
 	}
+	static simple(endTime: number, onFinish?: () => void): VNode {
+		const cd = new Countdown(endTime);
+		if (onFinish) cd.onFinish(onFinish);
+		return cd.view();
+	}
+	static secs(secsLeft: number, secsBuffer = 0, onFinish?: () => void): VNode {
+		const cd = this.fromSecs(secsLeft, secsBuffer);
+		if (onFinish) cd.onFinish(onFinish);
+		return cd.view();
+	}
+	static fromSecs(secsLeft: number, secsBuffer = 0): Countdown {
+		return new Countdown(Date.now() + 1000 * (secsLeft - secsBuffer));
+	}
+	
 	view(): VNode {
 		defer(() => clearInterval(this.interval));
 		return s(this.secondsLeft, (curr) => {
@@ -124,9 +150,5 @@ export class Countdown {
 		return this.onThreshold(0, callback);
 	}
 }
-export function countdown(endTime: number, onFinish?: () => void): VNode {
-	const cd = new Countdown(endTime);
-	if (onFinish) cd.onFinish(onFinish);
-	return cd.view();
-}
+
 

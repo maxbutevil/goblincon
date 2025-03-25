@@ -6,12 +6,13 @@ import {
 	client,
 	Shared,
 	h, s, projector, mount, VNode
-} from "../modules/index"
+} from "../modules/"
 import {
 	logo,
-	mountedBtn
+	tray,
+	iconBtn
 } from "../components"
-import { exit as exitIcon } from "../assets/icons/index"
+import { exit as exitIcon } from "../assets/icons/"
 
 import * as Room from "./room"
 import { Player } from "./room"
@@ -34,6 +35,16 @@ const OUT = new SendIndex({
 	>(),
 });
 
+const page = projector(loading);
+const mode = new Setting<typeof Dating | typeof Drawblins>(
+	"Game Mode",
+	[ Drawblins, Dating ],
+	1,
+	(m) => m.name
+);
+// not the most elegant solution, but this stops the error page from showing when we click a link
+let unloading = false; 
+
 client.closed.listen((ev) => {
 	if (!unloading) {
 		if (ev.reason) {
@@ -43,28 +54,23 @@ client.closed.listen((ev) => {
 		}
 	}
 });
-
-INC.listen("inLobby", ({ leaderId }) => {
-	Room.setLeaderId(leaderId);
-	page.put(lobby);
+window.addEventListener("DOMContentLoaded", async () => {
+	try {
+		console.log("requesting wake lock");
+		await navigator.wakeLock.request();
+	} catch(err) {
+		console.error("error acquiring wake lock:", err);
+	}
 });
-
-INC.listen("gameStarting", () => {
-	// here we relay the game settings and set the page accordingly
-	OUT.send("startGame", mode.get().remote());
-	page.put(mode.get().view);
+window.addEventListener("beforeunload", (event) => {
+	if (Room.playerCount() > 0) {
+		event.preventDefault();
+		return true;
+	}	else {
+		unloading = true;
+		client.close();
+	}
 });
-
-const page = projector(loading);
-let unloading = false; // not the most elegant solution, but this stops the error page from showing when we click a link
-//const mode = new Setting<"drawblins" | "dating">("Game Mode", [ "drawblins", "dating" ], 0);
-
-const mode = new Setting<typeof Dating | typeof Drawblins>(
-	"Game Mode",
-	[ Drawblins, Dating ],
-	1,
-	(m) => m.name
-);
 
 function error(message: string) {
 	return h("div.tab", [
@@ -120,7 +126,7 @@ function lobby() {
 					]);
 				})
 			]),
-			mountedBtn(exitIcon, () => location.href = "/")
+			tray(iconBtn(exitIcon, () => location.href = "/"))
 		]
 	);
 }
@@ -153,28 +159,20 @@ function connect() {
 }
 function app() {
 	client.use(INC, OUT);
+	INC.listen("inLobby", ({ leaderId }) => {
+		Room.setLeaderId(leaderId);
+		page.put(lobby);
+	});
+	INC.listen("gameStarting", () => {
+		// here we relay the game settings and set the page accordingly
+		OUT.send("startGame", mode.get().remote());
+		page.put(mode.get().view);
+	});
+	
 	connect();
 	return s(page);
 }
 
 mount(app());
-
-window.addEventListener("DOMContentLoaded", async () => {
-	try {
-		console.log("requesting wake lock");
-		await navigator.wakeLock.request();
-	} catch(err) {
-		console.error("error acquiring wake lock:", err);
-	}
-});
-window.addEventListener("beforeunload", (event) => {
-	if (Room.playerCount() > 0) {
-		event.preventDefault();
-		return true;
-	}	else {
-		unloading = true;
-		client.close();
-	}
-});
 
 

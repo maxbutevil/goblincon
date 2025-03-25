@@ -7,7 +7,8 @@ const START_TIME: Duration = Duration::from_secs(3);
 const DRAW_BACHELOR_TIME: Duration = Duration::from_secs(100);
 const DRAW_SUITOR_TIME: Duration = Duration::from_secs(100);
 const VOTE_TIME: Duration = Duration::from_secs(20);
-//const NO_SUBMISSIONS_VOTE_TIME: Duration = Duration::from_secs(4);
+const VOTE_TIME_ONE_SUBMISSION: Duration = Duration::from_secs(15);
+const VOTE_TIME_NO_SUBMISSIONS: Duration = Duration::from_secs(12);
 
 
 const SHOW_VOTES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
@@ -17,15 +18,17 @@ const SHOW_SCORES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
 	#[serde(deserialize_with = "room::clamp_round_count")]
-	pub round_count: usize,
+	round_count: usize,
 	#[serde(deserialize_with = "room::clamp_time_factor")]
-	pub bachelor_draw_time_factor: f32,
+	bachelor_draw_time_factor: f32,
 	#[serde(deserialize_with = "room::clamp_time_factor")]
-	pub suitor_draw_time_factor: f32,
+	suitor_draw_time_factor: f32,
 	#[serde(deserialize_with = "room::clamp_time_factor")]
-	pub vote_time_factor: f32,
+	vote_time_factor: f32,
 	#[serde(deserialize_with = "room::clamp_time_factor")]
-	pub score_time_factor: f32,
+	score_time_factor: f32,
+	
+	naming: bool,
 }
 
 #[derive(Deserialize)]
@@ -66,8 +69,17 @@ enum HostMsgOut<'a> {
 #[serde(tag = "type", content = "data")]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 enum PlayerMsgIn {
-	BachelorSubmission { drawing: String, #[serde(default)] name: Option<String> },
-	SuitorSubmission { bachelor_id: PlayerId, drawing: String, #[serde(default)] name: Option<String> },
+	BachelorSubmission {
+		drawing: String,
+		#[serde(default, deserialize_with = "room::cap_submission_name")]
+		name: Option<String>
+	},
+	SuitorSubmission {
+		bachelor_id: PlayerId,
+		drawing: String,
+		#[serde(default, deserialize_with = "room::cap_submission_name")]
+		name: Option<String>
+	},
 	VoteSubmission { for_name: String }
 }
 
@@ -76,8 +88,8 @@ enum PlayerMsgIn {
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 enum PlayerMsgOut<'a> {
 	
-	DrawingBachelor { theme: &'a str, secs_left: f32 },
-	DrawingSuitor { bachelor_id: PlayerId, bachelor_drawing: &'a str, secs_left: f32 },
+	DrawingBachelor { theme: &'a str, naming: bool, secs_left: f32 },
+	DrawingSuitor { bachelor_id: PlayerId, bachelor_drawing: &'a str, naming: bool, secs_left: f32 },
 	//DrawingSuitor { bachelor_drawings: &'a [&'a str], secs_left: f32 },
 	//Shipping { choices: &'a [String], secs_left: f32 },
 	Voting { choices: &'a [String], secs_left: f32 },
@@ -89,6 +101,7 @@ enum PlayerMsgOut<'a> {
 	DoneDrawingSuitor,
 	//DoneShipping,
 	DoneVoting,
+	NotVoting, // for when your own submission is being voted on
 }
 
 type PlayerMap<T> = [T; MAX_PLAYER_COUNT];
@@ -158,11 +171,12 @@ impl Assignments {
 	fn get_suitors_at<'a>(&'a self, i: usize) -> [&'a Assignment; SUITOR_COUNT] {
 		//let get = |shift| self.get_wrapped(i + shift);
 		//let a = self.get_wrapped(i + 1);
+		let get = |shift| self.get_wrapped(i + shift);
 		
 		if self.len() <= 3 {
-			[self.get_wrapped(i + 1), self.get_wrapped(i + 2)]
+			[get(2), get(1)]
 		} else {
-			[self.get_wrapped(i + 2), self.get_wrapped(i + self.len() - 1)]
+			[get(self.len() - 1), get(2)]
 		}
 	}
 	/*fn get_suitors<'a>(&'a self, bachelor_id: PlayerId) -> Option<[&'a Assignment; SUITOR_COUNT]> {
@@ -201,29 +215,28 @@ impl Assignments {
 	
 	
 	
-	fn vote_rounds(&self) -> Vec<VotingRound> {
+	fn vote_rounds(&self) -> Box<[VotingRound]> {
 		
 		let mut remaining = self
 			.iter()
 			.enumerate()
 			.map(|(i, (id, _))| (*id, self.get_suitor_ids_at(i)))
-			.collect::<Vec<_>>();
+			.collect::<Box<_>>();
 		
 		remaining.shuffle(&mut rand::rng());
 		remaining
 	}
 }
 
+
 enum State {
 	Start,
 	DrawBachelors { submissions: Box<PlayerMap<Option<String>>> },
-	//DrawSuitors { submission_counts: PlayerMap<u8>, assignments: Assignments },
 	DrawSuitors { assignments: Assignments, current: usize, submitted: [PlayerMap<bool>; SUITOR_COUNT] },
 	//DrawSuitors { submitted: PlayerMap<[bool; SUITOR_COUNT]>, current: usize, assignments: Assignments },
-	Vote { remaining: Vec<VotingRound>, current: VotingRound, votes: Box<PlayerMap<Option<PlayerId>>> },
-	ShowVotes { remaining: Vec<VotingRound> },
+	Vote { current: usize, rounds: Box<[VotingRound]>, submitted: [PlayerMap<bool>; SUITOR_COUNT], voted: PlayerMap<bool> },
+	ShowVotes { current: usize, rounds: Box<[VotingRound]>, submitted: [PlayerMap<bool>; SUITOR_COUNT] },
 	ShowScores,
-	
 	Done(Result<(), ()>)
 }
 pub struct Game<'a> {
@@ -292,12 +305,19 @@ impl<'a> Game<'a> {
 		}
 	}
 	
-	fn vote_choices(&self, suitor_ids: [PlayerId; SUITOR_COUNT]) -> Box<[String]> {
+	fn vote_choices(&self, mut suitor_ids: [PlayerId; SUITOR_COUNT], submitted: &[PlayerMap<bool>; SUITOR_COUNT]) -> Box<[String]> {
+		suitor_ids.sort_unstable();
 		suitor_ids
 			.iter()
-			.filter_map(|&id| {
-				let player = self.clients.player(id);
-				player.map(|p| p.name.to_owned())
+			.enumerate()
+			.filter_map(|(r, &id)| {
+				if !submitted[r][id as usize] {
+					// This player did not submit, can't vote for their nonexistent drawing
+					None
+				} else {
+					let player = self.clients.player(id);
+					player.map(|p| p.name.to_owned())
+				}
 			})
 			.collect::<Box<[String]>>()
 	}
@@ -313,17 +333,18 @@ impl<'a> Game<'a> {
 			match self.state {
 				State::Start => return,
 				State::Done(_) => return,
-				State::ShowVotes { remaining: _ } => PlayerMsgOut::ShowingVotes,
+				State::ShowVotes { current: _, rounds: _, submitted: _ } => PlayerMsgOut::ShowingVotes,
 				State::ShowScores => PlayerMsgOut::ShowingScores,
-				
 				State::DrawBachelors { ref submissions } => {
 					let submitted = submissions[player_id as usize].is_some();
 					if submitted {
 						PlayerMsgOut::DoneDrawingBachelor
 					} else {
-						let theme = self.themes[self.round];//.as_str();
-						let secs_left = self.timeout.remaining_secs();
-						PlayerMsgOut::DrawingBachelor { theme, secs_left }
+						PlayerMsgOut::DrawingBachelor {
+							theme: self.themes[self.round],
+							naming: self.settings.naming,
+							secs_left: self.timeout.remaining_secs()
+						}
 					}
 				},
 				State::DrawSuitors { ref assignments, ref submitted, current } => {
@@ -346,30 +367,39 @@ impl<'a> Game<'a> {
 						break 'msg PlayerMsgOut::DoneDrawingSuitor;
 					};
 					
-					let secs_left = self.timeout.remaining_secs();
 					self.clients.players.send(player_id, &PlayerMsgOut::DrawingSuitor {
 						bachelor_id: *bachelor_id,
 						bachelor_drawing: bachelor_drawing.as_str(),
-						secs_left
+						naming: self.settings.naming,
+						secs_left: self.timeout.remaining_secs()
 					}).await;
 					return;
 				},
-				State::Vote { ref current, ref votes, remaining: _ } => {
-					
-					if let Some(None) = votes.get(player_id as usize) {
-						let (_, suitor_ids) = current;
-						let choices = self.vote_choices(*suitor_ids);
-						let choices = choices.as_ref();
-						let secs_left = self.timeout.remaining_secs();
-						let msg = PlayerMsgOut::Voting {
-							choices,
-							secs_left
-						};
-						self.clients.players.send(player_id, &msg).await;
-						return;
-					} else {
-						PlayerMsgOut::DoneVoting
+				State::Vote { current, ref rounds, ref voted, ref submitted } => {
+				
+					let (_, suitor_ids) = rounds[current];
+					if suitor_ids.contains(&player_id) {
+						break 'msg PlayerMsgOut::NotVoting;
 					}
+					
+					let Some(false) = voted.get(player_id as usize) else {
+						break 'msg PlayerMsgOut::DoneVoting;
+					};
+					
+					let choices = self.vote_choices(suitor_ids, submitted);
+					let choices = choices.as_ref();
+					
+					if choices.is_empty() {
+						break 'msg PlayerMsgOut::NotVoting;
+					}
+					
+					let secs_left = self.timeout.remaining_secs();
+					let msg = PlayerMsgOut::Voting {
+						choices,
+						secs_left
+					};
+					self.clients.players.send(player_id, &msg).await;
+					return;
 				}
 			}
 		};
@@ -381,7 +411,7 @@ impl<'a> Game<'a> {
 			(ClientId::Host, ClientEvent::Disconnect) =>
 				{ return Err(()) },
 			(ClientId::Player(_), ClientEvent::Disconnect) =>
-				{ /* ClientIndex handles disconnects for us */},
+				{ /* ClientIndex handles disconnects for us */ },
 			(ClientId::Host, ClientEvent::Message(msg)) => {
 				//let Ok(msg) = deserialize::<'_, HostMsgIn>(&msg) else { return Ok(()) };
 				//self.handle_host_message(msg).await;
@@ -455,8 +485,12 @@ impl<'a> Game<'a> {
 			tracing::debug!("submitted suitor for invalid bachelor");
 			return;
 		};
+		if round > current {
+			tracing::debug!("attempted to submit suitor for a bachelor from a future round");
+			return;
+		}
 		let Some(submitted) = submitted.get_mut(current) else {
-			tracing::error!("invalid round for suitor submission (somehow)");
+			tracing::error!("invalid round for suitor submission");
 			return;
 		};
 		let Some(false) = submitted.get(player_id as usize) else {
@@ -483,12 +517,12 @@ impl<'a> Game<'a> {
 		}
 	}
 	async fn handle_vote_submission(&mut self, player_id: PlayerId, for_name: String) {
-		let State::Vote { ref current, ref mut votes, remaining: _ } = self.state else {
+		let State::Vote { ref mut voted, current, ref rounds, submitted: _ } = self.state else {
 			tracing::debug!("player attempted to vote while game in invalid state");
 			return;
 		};
 		
-		let Some(None) = votes.get(player_id as usize) else {
+		let Some(false) = voted.get(player_id as usize) else {
 			tracing::debug!("player attempted to vote multiple times");
 			return;
 		};
@@ -498,7 +532,7 @@ impl<'a> Game<'a> {
 			return;
 		};
 		
-		let (_bachelor_id, suitor_ids) = current;
+		let (_bachelor_id, suitor_ids) = rounds[current];
 		if suitor_ids.contains(&player_id) {
 			tracing::debug!("player attempted to vote in round where they are a suitor");
 			return;
@@ -508,7 +542,7 @@ impl<'a> Game<'a> {
 			return;
 		}
 		
-		votes[player_id as usize] = Some(for_id);
+		voted[player_id as usize] = true;//Some(for_id);
 		let msg = HostMsgOut::VoteSubmitted { player_id, for_id };
 		self.clients.host.send(&msg).await;
 		
@@ -517,7 +551,7 @@ impl<'a> Game<'a> {
 			.all(|id| {
 				if suitor_ids.contains(&id) {
 					true
-				} else if matches!(votes.get(id as usize), Some(Some(_))) {
+				} else if matches!(voted.get(id as usize), Some(true)) {
 					true
 				} else {
 					false
@@ -542,10 +576,10 @@ impl<'a> Game<'a> {
 				self.start_draw_suitors(*submissions).await,
 			State::DrawSuitors { assignments, current, submitted } =>
 				self.start_next_draw_suitor(1 + current, assignments, submitted).await,
-			State::Vote { remaining, current: _, votes } =>
-				self.start_show_votes(remaining, votes.as_ref()).await,
-			State::ShowVotes { remaining } =>
-				self.start_next_vote(remaining).await,
+			State::Vote { current, rounds, submitted, voted } =>
+				self.start_show_votes(current, rounds, submitted, voted).await,
+			State::ShowVotes { current, rounds, submitted } =>
+				self.start_next_vote(1 + current, rounds, submitted).await,
 			State::ShowScores => {
 				self.round += 1;
 				self.start_draw_bachelors().await
@@ -563,13 +597,14 @@ impl<'a> Game<'a> {
 			return State::Done(Ok(()));
 		};
 		
+		let naming = self.settings.naming;
 		let secs_left = self.timeout.reset_scaled(
 			DRAW_BACHELOR_TIME,
 			self.settings.bachelor_draw_time_factor
 		);
 		
 		self.clients.send_all(
-			&PlayerMsgOut::DrawingBachelor { theme, secs_left },
+			&PlayerMsgOut::DrawingBachelor { theme, naming, secs_left },
 			&HostMsgOut::DrawingBachelors { theme }
 		).await;
 		
@@ -590,7 +625,7 @@ impl<'a> Game<'a> {
 		
 		//tracing::info!("{current}");
 		if current >= SUITOR_COUNT {
-			return self.start_vote(&assignments).await;
+			return self.start_vote(&assignments, submitted).await;
 		}
 		
 		let secs_left = self.timeout.reset_scaled(
@@ -608,6 +643,7 @@ impl<'a> Game<'a> {
 			let msg = PlayerMsgOut::DrawingSuitor {
 				bachelor_id: *bachelor_id,
 				bachelor_drawing: bachelor_drawing.as_str(),
+				naming: self.settings.naming,
 				secs_left
 			};
 			self.clients.players.send(player_id, &msg).await;
@@ -615,50 +651,84 @@ impl<'a> Game<'a> {
 		
 		State::DrawSuitors { assignments, current, submitted }
 	}
-	async fn start_vote(&mut self, assignments: &Assignments) -> State {
-		self.start_next_vote(assignments.vote_rounds()).await
-	}
-	async fn start_next_vote(&mut self, mut remaining: Vec<VotingRound>) -> State {
+	async fn start_vote(&mut self, assignments: &Assignments, submitted: [PlayerMap<bool>; SUITOR_COUNT]) -> State {
+		let mut rounds = assignments
+			.iter()
+			.enumerate()
+			.map(|(i, &(id, _))| {
+				
+				let suitor_ids = assignments.get_suitor_ids_at(i);
+				/*for j in 0..SUITOR_COUNT {
+					if !submitted[j][suitor_ids[j] as usize] {
+						suitor_ids[j] = PlayerId::MAX;
+					}
+				}*/
+				//suitor_ids.sort_unstable();
+				
+				(id, suitor_ids)
+			})
+			.collect::<Box<_>>();
 		
-		let Some(current) = remaining.pop() else {
+		rounds.shuffle(&mut rand::rng());
+		
+		/*let mut remaining = self
+			.iter()
+			.enumerate()
+			.map(|(i, (id, _))| {
+				let suitor_ids = self.get_suitor_ids_at(i);
+			}(*id, self.get_suitor_ids_at(i)))
+			.collect::<Vec<_>>();*/
+		
+		//remaining.shuffle(&mut rand::rng());
+		//remaining
+		
+		self.start_next_vote(0, assignments.vote_rounds(), submitted).await
+	}
+	async fn start_next_vote(&mut self, current: usize, rounds: Box<[VotingRound]>, submitted: [PlayerMap<bool>; SUITOR_COUNT]) -> State {
+		
+		let Some(&(bachelor_id, suitor_ids)) = rounds.get(current) else {
 			/* No votes left, show scores instead */
 			return self.start_show_scores().await;
 		};
 		
-		let (bachelor_id, suitor_ids) = current;
-		let choices = self.vote_choices(suitor_ids);
+		let choices = self.vote_choices(suitor_ids, &submitted);
 		let choices = choices.as_ref();
 		
 		let secs_left = self.timeout.reset_scaled(
-			VOTE_TIME,
+			match choices.len() {
+				0 => VOTE_TIME_NO_SUBMISSIONS,
+				1 => VOTE_TIME_ONE_SUBMISSION,
+				_ => VOTE_TIME
+			},
 			self.settings.vote_time_factor
 		);
 		
 		self.clients.host.send(&HostMsgOut::Voting { bachelor_id }).await;
 		for (id, player) in self.clients.players.iter_mut() {
-			if suitor_ids.contains(&(id as PlayerId)) {
-				player.send(&PlayerMsgOut::DoneVoting).await;
+			if suitor_ids.contains(&(id as PlayerId)) || choices.is_empty() {
+				player.send(&PlayerMsgOut::NotVoting).await;
 			} else {
 				player.send(&PlayerMsgOut::Voting {	choices, secs_left }).await;
 			}
 		}
 		
 		State::Vote {
-			votes: Box::new([None; MAX_PLAYER_COUNT]),
 			current,
-			remaining
+			rounds,
+			submitted,
+			voted: [false; MAX_PLAYER_COUNT],
 		}
 	}
-	async fn start_show_votes(&mut self, remaining: Vec<VotingRound>, votes: &[Option<PlayerId>; MAX_PLAYER_COUNT]) -> State {
+	async fn start_show_votes(&mut self, current: usize, rounds: Box<[VotingRound]>, submitted: [PlayerMap<bool>; SUITOR_COUNT], voted: PlayerMap<bool>) -> State {
 		
 		self.clients.send_all(
 			&PlayerMsgOut::ShowingVotes,
 			&HostMsgOut::ShowingVotes
 		).await;
 		
-		let num_votes = votes
+		let num_votes = voted
 			.iter()
-			.filter(|v| v.is_some())
+			.filter(|&&v| v == true)
 			.count();
 		self.timeout.reset_dynamic_scaled(
 			SHOW_VOTES_TIME,
@@ -666,7 +736,7 @@ impl<'a> Game<'a> {
 			self.settings.score_time_factor
 		);
 		
-		State::ShowVotes { remaining }
+		State::ShowVotes { current, rounds, submitted }
 	}
 	async fn start_show_scores(&mut self) -> State {
 		

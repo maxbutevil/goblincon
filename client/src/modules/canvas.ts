@@ -89,13 +89,11 @@ export default class Canvas {
 		return canvas;
 	}
 	static create(sourceWidth: number, sourceHeight: number): Canvas {
-		
 		let canvasElement: HTMLCanvasElement = document.createElement("canvas");
 		canvasElement.width = sourceWidth;
 		canvasElement.height = sourceHeight;
 		
 		return Canvas.fromElement(canvasElement);
-		
 	}
 	
 	constructor(ctx: CanvasRenderingContext2D) {
