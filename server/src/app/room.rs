@@ -35,7 +35,7 @@ macro_rules! deserializer_transform {
 
 deserializer_transform!(clamp_round_count, |v: usize| v.clamp(1, 16));
 deserializer_transform!(clamp_time_factor, |v: f32| v.clamp(0.2, 5.0));
-deserializer_transform!(cap_submission_name, |v: Option<String>| {
+deserializer_transform!(cap_submission_name, |v: Option<Box<str>>| {
 	
 	let Some(v) = v else {
 		return None;

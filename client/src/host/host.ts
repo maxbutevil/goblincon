@@ -111,7 +111,7 @@ function lobby() {
 					h("div", [
 						h("h3", "Join Code"),
 						h("div#join-code", {}, Room.joinCode),
-						h("div.multi-btn", { style: { fontSize: "0.8em" } }, [
+						h("div.multi-btn", /* { style: { fontSize: "0.8em" } },*/ [
 							h("button", { on: { click: copyCode } }, "Copy Code"),
 							h("button", { on: { click: copyLink } }, "Copy Link")
 						]),

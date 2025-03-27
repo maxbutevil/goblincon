@@ -7,6 +7,7 @@ import {
 	h, s, c, defer, projector,
 	Shared
 } from "../modules/"
+import { Submission, SUBMISSION } from "../modules/submission"
 
 //import Globals from "./globals"
 
@@ -28,7 +29,7 @@ const INC = new ReceiveIndex({
 	
 	/* state synchronization */
 	"drawingBachelor": { secsLeft: Val.NUM, naming: Val.BOOL, theme: Val.STR },
-	"drawingSuitor": { secsLeft: Val.NUM, naming: Val.BOOL, bachelorId: Val.NUM, bachelorDrawing: Val.STR },
+	"drawingSuitor": { secsLeft: Val.NUM, naming: Val.BOOL, bachelorId: Val.NUM, bachelorSubmission: SUBMISSION },
 	"voting": { secsLeft: Val.NUM, choices: Val.array(Val.STR) },
 	
 	/* idle states */
@@ -40,8 +41,8 @@ const INC = new ReceiveIndex({
 	"notVoting": Val.NONE,
 });
 const OUT = new SendIndex({
-	"bachelorSubmission": { drawing: Val.STR, name: Val.optional(Val.STR) },
-	"suitorSubmission": { drawing: Val.STR, name: Val.optional(Val.STR), bachelorId: Val.NUM },
+	"bachelorSubmission": { submission: SUBMISSION },
+	"suitorSubmission": { submission: SUBMISSION, bachelorId: Val.NUM },
 	"voteSubmission": { forName: Val.STR },
 });
 
@@ -54,8 +55,8 @@ export function view() {
 		INC.subscribe("drawingBachelor", ({ secsLeft, naming, theme }) => {
 			page.put(drawingBachelor, secsLeft, naming, theme);
 		}),
-		INC.subscribe("drawingSuitor", ({ secsLeft, naming, bachelorId, bachelorDrawing }) => {
-			page.put(drawingSuitor, secsLeft, naming, bachelorId, bachelorDrawing)
+		INC.subscribe("drawingSuitor", ({ secsLeft, naming, bachelorId, bachelorSubmission }) => {
+			page.put(drawingSuitor, secsLeft, naming, bachelorId, bachelorSubmission)
 		}),
 		INC.subscribe("voting", ({ secsLeft, choices }) => {
 			page.put(voting, secsLeft, choices);
@@ -90,7 +91,8 @@ function drawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: strin
 	
 	const drawpad = new Drawpad({
 		onSubmit: (drawing) => {
-			OUT.send("bachelorSubmission", { drawing, name: nameOverlay?.name });
+			const submission = { drawing, name: nameOverlay?.name };
+			OUT.send("bachelorSubmission", { submission });
 		},
 		onStartSubmit: () => {
 			if (nameOverlay && nameOverlay.name === undefined) {
@@ -119,7 +121,7 @@ function drawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: strin
 		))
 	]);
 }
-function drawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, bachelorDrawing: string) {
+function drawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, bachelorSubmission: Submission) {
 	
 	//let name: string | undefined = undefined; // undefined = never opened name overlay
 	
@@ -135,7 +137,8 @@ function drawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 	//const nameOverlayView = nameOverlay?.view.bind(nameOverlay);
 	const drawpad = new Drawpad({
 		onSubmit: (drawing) => {
-			OUT.send("suitorSubmission", { bachelorId, drawing, name: nameOverlay?.name });
+			const submission = { drawing, name: nameOverlay?.name };
+			OUT.send("suitorSubmission", { bachelorId, submission });
 			overlay.set(null);
 		},
 		onStartSubmit: () => {
@@ -164,14 +167,21 @@ function drawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 	function bachelorView() {
 		return h("div#overlay-shadow", [
 			h("div#bachelor-popup", [
-				h("div.vflow", [
-					h("div.vflow", [
+				h("div", [
+					h("div", [
 						h("h2", "Your Bachelor(ette)"),
-						h("div", "Use this as inspiration for your suitor drawing!"),
+						h("div",
+							{ style: { fontSize: "0.86em" } },
+							"Use this as inspiration for your suitor drawing!"
+						),
 					]),
-					h("div.bachelor-ctr", [
-						h("img", { attrs: { src: bachelorDrawing }}),
-					])
+					h("div#bachelor-ctr", [
+						c(bachelorSubmission.name && h("div#bachelor-name",
+							{ style: { fontSize: "1.1em" } },
+							bachelorSubmission.name
+						)),
+						h("img", { attrs: { src: bachelorSubmission.drawing }}),
+					]),
 				]),
 				h("button",
 					{ on: { click: () => overlay.set(null) } },

@@ -1,6 +1,6 @@
 //import "./styles/.scss"
-//import "./play/play.scss"
-import "./host/host.scss"
+import "./play/play.scss"
+//import "./host/host.scss"
 //import { exit as exitIcon } from "./assets/icons/"
 import "./assets/icons/"
 
@@ -21,7 +21,7 @@ import Drawpad from "./play/drawpad"
 import { submission, submissionGrid } from "./host/components";
 import { NameOverlay } from "./play/components"
 
-const testPage = projector(datingVoteTest);
+const testPage = projector(drawingSuitorTest);
 
 const testPlayer = new Player(0, "test freak man", 0);
 const testDrawing = assets.testDrawing;
@@ -163,11 +163,18 @@ function drawingSuitorTest() {
 				h("div.vflow", [
 					h("div.vflow", [
 						h("h2", "Your Bachelor(ette)"),
-						h("div", "Use this as inspiration for your suitor drawing!"),
+						h("div",
+							{ style: { fontSize: "0.86em" } },
+							"Use this as inspiration for your suitor drawing!"
+						),
 					]),
-					h("div.bachelor-ctr", [
+					h("div#bachelor-ctr", [
+						h("div#bachelor-name",
+							{ style: { fontSize: "1.1em" } },
+							"abcde"
+						),
 						h("img", { attrs: { src: bachelorDrawing }}),
-					])
+					]),
 				]),
 				h("button",
 					{ on: { click: () => overlay.set(null) } },

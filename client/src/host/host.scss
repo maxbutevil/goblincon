@@ -5,11 +5,11 @@
 	@include flex(row nowrap, space-around, flex-start);
 	#join-code {
 		font-size: 3em;
-		/*user-select: text;*/
 	}
 	#player-list {
 		#status {
 			font-size: 0.75em;
+			margin-bottom: 4px;
 		}
 	}
 }

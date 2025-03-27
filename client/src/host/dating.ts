@@ -13,6 +13,8 @@ import {
 import * as Room from "./room"
 import { Player, ScoreMap } from "./room"
 import { Mode, Setting } from "./mode"
+import { Submission, SUBMISSION } from "../modules/submission"
+
 
 import {
 	idlePage
@@ -22,6 +24,7 @@ import {
 } from "./components"
 import * as icons from "../assets/icons"
 
+
 const INC = new ReceiveIndex({
 	"drawingBachelors": { theme: Val.STR },
 	"drawingSuitors": Val.NONE,
@@ -29,8 +32,8 @@ const INC = new ReceiveIndex({
 	"showingVotes": Val.NONE,
 	"showingScores": Val.NONE,
 	
-	"bachelorSubmitted": { drawing: Val.STR, name: Val.optional(Val.STR), playerId: Val.NUM },
-	"suitorSubmitted": { drawing: Val.STR, name: Val.optional(Val.STR), playerId: Val.NUM, bachelorId: Val.NUM },
+	"bachelorSubmitted": { submission: SUBMISSION, playerId: Val.NUM },
+	"suitorSubmitted": { submission: SUBMISSION, playerId: Val.NUM, bachelorId: Val.NUM },
 	"voteSubmitted": { playerId: Val.NUM, forId: Val.NUM },
 });
 const OUT = new SendIndex({
@@ -65,11 +68,11 @@ function view() {
 		INC.subscribe("drawingSuitors", () => page.put(drawingSuitors)),
 		INC.subscribe("showingScores", () => page.put(showingScores)),
 		INC.subscribe("voting", ({ bachelorId }) => page.put(voting, bachelorId)),
-		INC.subscribe("bachelorSubmitted", ({ playerId, drawing, name }) => {
-			currentRound().handleBachelorDrawing(playerId, drawing, name)
+		INC.subscribe("bachelorSubmitted", ({ playerId, submission }) => {
+			currentRound().handleBachelorSubmission(playerId, submission)
 		}),
-		INC.subscribe("suitorSubmitted", ({ playerId, bachelorId, drawing, name }) => {
-			currentRound().handleSuitorDrawing(bachelorId, playerId, drawing, name);
+		INC.subscribe("suitorSubmitted", ({ playerId, bachelorId, submission }) => {
+			currentRound().handleSuitorSubmission(bachelorId, playerId, submission);
 		})
 	);
 	rounds = [];
@@ -105,6 +108,9 @@ function voting(bachelorId: number) {
 	const matchup = round.matchup(bachelorId)!;
 	const voteQueue = new Room.VoteQueue();
 	
+	// Ensure that suitors show up in the same order on host and in votes
+	matchup.suitors.sort((a, b) => a.id - b.id);
+	
 	defer(
 		INC.subscribe("voteSubmitted", ({ playerId, forId }) => {
 			round.handleVote(bachelorId, playerId, forId);
@@ -122,15 +128,16 @@ function voting(bachelorId: number) {
 	
 	return s(voteQueue.update, () => {
 		
-		let bachelorDrawing = submission(bachelorId, matchup.bachelorDrawing, {
-			name: matchup.bachelorDrawingName
+		let bachelorDrawing = submission(bachelorId, matchup.bachelorSubmission.drawing, {
+			name: matchup.bachelorSubmission.name
 		});
 		
-		let suitors = matchup.suitors.sort((a, b) => a.id - b.id);
-		let suitorDrawings = matchup.suitors.map(({ id, drawing, name }, index) =>
-			submission(id, drawing, { name, voteIds: voteQueue.votes[index] })
+		let suitorDrawings = matchup.suitors.map(({ id, submission: { drawing, name } }, index) =>
+			submission(id, drawing, {
+				name,
+				voteIds: voteQueue.votes[index]
+			})
 		);
-		
 		
 		if (suitorDrawings.length === 2) {
 			suitorDrawings = [
@@ -149,15 +156,13 @@ function voting(bachelorId: number) {
 	});
 }
 
-type Suitor = { id: number, drawing: string, name: string | undefined, votes: number[] };
+type Suitor = { id: number, submission: Submission, votes: number[] };
 class Matchup {
-	bachelorDrawing: string;
-	bachelorDrawingName: string | undefined;
+	bachelorSubmission: Submission;
 	suitors: Suitor[] = [];
 	
-	constructor(bachelorDrawing: string, bachelorDrawingName?: string) {
-		this.bachelorDrawing = bachelorDrawing;
-		this.bachelorDrawingName = bachelorDrawingName;
+	constructor(bachelorSubmission: Submission) {
+		this.bachelorSubmission = bachelorSubmission;
 	}
 	suitor(suitorId: number): Suitor | undefined {
 		for (const suitor of this.suitors)
@@ -175,16 +180,16 @@ class Round {
 	matchup(bachelorId: number): Matchup | undefined {
 		return this.matchups.get(bachelorId);
 	}
-	handleBachelorDrawing(playerId: number, drawing: string, name?: string) {
-		this.matchups.set(playerId, new Matchup(drawing, name));
+	handleBachelorSubmission(playerId: number, submission: Submission) {
+		this.matchups.set(playerId, new Matchup(submission));
 	}
-	handleSuitorDrawing(bachelorId: number, playerId: number, drawing: string, name?: string) {
+	handleSuitorSubmission(bachelorId: number, playerId: number, submission: Submission) {
 		let matchup = this.matchup(bachelorId);
 		if (!matchup) {
 			console.error("invalid bachelor id for suitor drawing submission");
 			return;
 		}
-		matchup.suitors.push({ id: playerId, drawing, name, votes: [] });
+		matchup.suitors.push({ id: playerId, submission, votes: [] });
 	}
 	handleVote(bachelorId: number, playerId: number, forId: number) {
 		const matchup = this.matchup(bachelorId);

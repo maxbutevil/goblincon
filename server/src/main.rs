@@ -98,12 +98,6 @@ async fn main() {
 			.expect("axum server error");
 	}
 }
-/*fn init_tracing() {
-	let file = std::fs::OpenOptions::new()
-		.create(true)
-		.open()
-		.expect("failed to open ");
-}*/
 async fn init_rustls_config() -> Option<RustlsConfig> {
 	
 	use std::path::PathBuf;

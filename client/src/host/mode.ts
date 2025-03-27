@@ -1,10 +1,8 @@
 
 
-import { h, signaled, VNode } from "../modules/micron";
+import { h, signaled, VNode } from "../modules/micron"
 import Signal from "../modules/signal"
 //import * as Utils from "../utils"
-
-
 
 type SettingRemote<S> = S extends Setting<infer T> ? T : never;
 type SettingMap = { [key: string]: Setting<any> };

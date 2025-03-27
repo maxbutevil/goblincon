@@ -241,7 +241,7 @@ impl ClientIndex {
 	fn new_presence(sender: Sender, socket: WebSocket, client_id: ClientId) -> Presence {
 		let (tx, mut rx) = socket.split();
 		let handle = tokio::spawn(async move {
-			while let Some(content) = next_str(&mut rx).await {
+			while let Some(content) = next_bytes(&mut rx).await {
 				if content.is_empty() {
 					/* This is an empty keep-alive msg, ignore */
 					continue;
@@ -441,7 +441,7 @@ pub fn deserialize<'a, T: Deserialize<'a>>(str: &'a str) -> Result<T, ()> {
 		Err(_err) => Err(())
 	}
 }
-async fn next_str<'a>(receiver: &'a mut WebSocketReceiver) -> Option<Utf8Bytes> {
+async fn next_bytes<'a>(receiver: &'a mut WebSocketReceiver) -> Option<Utf8Bytes> {
 	while let Some(msg) = receiver.next().await {
 		match msg {
 			Ok(Message::Text(content)) => return Some(content),

@@ -45,9 +45,9 @@
 	text-align: center;
 }
 @mixin popup {
-	@include vflow;
+	@include vflow(0.3em);
 	
-	max-width: 98vw;
+	max-width: 90vw;
 	margin: 0.6em;
 	padding: 0.6em;
 	
