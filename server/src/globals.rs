@@ -28,18 +28,8 @@ pub const MAX_PLAYER_COUNT: usize = 16;
 pub const MIN_NAME_LEN: usize = 2;
 pub const MAX_NAME_LEN: usize = 16;
 
-pub const MAX_SUBMISSION_NAME_CHARS: usize = 18;
+pub const MAX_SUBMISSION_NAME_CHARS: usize = 30;
 pub const MAX_SUBMISSION_NAME_LEN: usize = 4 * MAX_SUBMISSION_NAME_CHARS;
-
-/*
-Timeout if:
- - Nobody submits anything for a round
-
-Timeout player if:
- - 
-
-Also, add kicking
-*/
 
 #[derive(Serialize, Clone)]
 #[serde(tag = "type", content = "data")]

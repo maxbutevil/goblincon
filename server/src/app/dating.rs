@@ -4,8 +4,8 @@ use strgen::bachelor_themes;
 
 const SUITOR_COUNT: usize = 2;
 const START_TIME: Duration = Duration::from_secs(3);
-const DRAW_BACHELOR_TIME: Duration = Duration::from_secs(100);
-const DRAW_SUITOR_TIME: Duration = Duration::from_secs(100);
+const DRAW_BACHELOR_TIME: Duration = Duration::from_secs(125);
+const DRAW_SUITOR_TIME: Duration = Duration::from_secs(125);
 const VOTE_TIME: Duration = Duration::from_secs(20);
 const VOTE_TIME_ONE_SUBMISSION: Duration = Duration::from_secs(15);
 const VOTE_TIME_NO_SUBMISSIONS: Duration = Duration::from_secs(12);

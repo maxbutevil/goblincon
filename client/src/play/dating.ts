@@ -105,7 +105,7 @@ function drawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: strin
 	const countdown = Countdown.fromSecs(secsLeft, 4);
 	countdown.onFinish(() => drawpad.submit());
 	countdown.onThreshold(15, () => {
-		if (nameOverlay && nameOverlay.name === undefined) {
+		if (nameOverlay && !nameOverlay.name) {
 			overlay.set(nameView);
 		}
 	});
@@ -157,7 +157,7 @@ function drawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 	const countdown = Countdown.fromSecs(secsLeft, 4);
 	countdown.onFinish(() => drawpad.submit());
 	countdown.onThreshold(15, () => {
-		if (nameOverlay && nameOverlay.name === undefined) {
+		if (nameOverlay && !nameOverlay.name) {
 			overlay.set(nameView);
 		}
 	});

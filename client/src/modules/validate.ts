@@ -9,7 +9,8 @@ export type Validated<T> = T extends Validator<infer X> ? X : never;
 
 export default class Val {
 	
-	static NONE: ValidatorMethod<void> = (value: any): value is undefined => value == undefined;
+	static NONE: ValidatorMethod<void> = (value: any): value is undefined => value === undefined;
+	//static NULL: ValidatorMethod<
 	static ANY: ValidatorMethod<any> = (value: any): value is any => true;
 	static BOOL = Val.simple<boolean>("boolean");
 	static NUM = Val.simple<number>("number");
@@ -21,12 +22,20 @@ export default class Val {
 	static fixed<T>(value: T): ValidatorMethod<T> {
 		return (_value: any): _value is T => _value === value;
 	}
-	static optional<T>(extractor: Validator<T>): ValidatorMethod<T | undefined> {
+	
+	static orNull<T>(validator: Validator<T>): ValidatorMethod<T | null> {
+		return (value: any): value is T | null => {
+			return value === null || Val.is(validator, value);
+		};
+	}
+	static orUndefined<T>(validator: Validator<T>): ValidatorMethod<T | undefined> {
 		return (value: any): value is T | undefined => {
-			if (value === undefined)
-				return true;
-			else
-				return Val.is(extractor, value);
+			return value === undefined || Val.is(validator, value);
+		};
+	}
+	static orNullish<T>(validator: Validator<T>): ValidatorMethod<T | null | undefined> {
+		return (value: any): value is T | null | undefined => {
+			return value === null || value === undefined || Val.is(validator, value);
 		};
 	}
 	static choice<const T>(...choices: Array<T>): ValidatorMethod<T> {
@@ -40,11 +49,11 @@ export default class Val {
 			return false;
 		}
 	}
-	static array<T>(extractor: ValidatorMethod<T>): ValidatorMethod<Array<T>> {
+	static array<T>(validator: ValidatorMethod<T>): ValidatorMethod<Array<T>> {
 		return (value: any): value is Array<T> => {
 			if (Array.isArray(value)) {
 				for (const element of value)
-					if (!Val.is(extractor, element))
+					if (!Val.is(validator, element))
 						return false;
 				return true;
 			}
@@ -56,25 +65,25 @@ export default class Val {
 	}
 	
 	
-	static check<T>(extractor: Validator<T>, validator: (value: T) => boolean): ValidatorMethod<T> {
+	static check<T>(validator: Validator<T>, condition: (value: T) => boolean): ValidatorMethod<T> {
 		return (value: any): value is T => {
-			return Val.is(extractor, value) && validator(value);
+			return Val.is(validator, value) && condition(value);
 		}
 	}
 	
-	static is<T>(extractor: Validator<T>, value: any): value is T {
-		if (typeof extractor == "function") {
-			return extractor(value);
+	static is<T>(validator: Validator<T>, value: any): value is T {
+		if (typeof validator == "function") {
+			return validator(value);
 		} else {
-			for (const key in extractor)
-				if (!Val.is(extractor[key], value[key]))
+			for (const key in validator)
+				if (!Val.is(validator[key], value[key]))
 					return false;
 			return true;
 		}
 	}
-	static get<T>(extractor: Validator<T>, value: any): T | undefined {
-		return Val.is(extractor, value) ? value : undefined;
-	}
+	/*static get<T>(validator: Validator<T>, value: any): T | undefined {
+		return Val.is(validator, value) ? value : undefined;
+	}*/
 }
 
 type IncomingMessage<I, K extends keyof I> = Validated<I[K]>;
@@ -83,10 +92,10 @@ type ReceiveCallback<I, K extends keyof I> = ((value: IncomingMessage<I, K>) => 
 type Index = { [key: string]: Validator<any> }
 export class ReceiveIndex<I extends Index> {
 	
-	private extractors: I;
+	private validators: I;
 	private signals: { [K in keyof I]?: Signal<[IncomingMessage<I, K>]> } = {};
-	constructor(extractors: I) {
-		this.extractors = extractors;
+	constructor(validators: I) {
+		this.validators = validators;
 	}
 	
 	private signal<K extends keyof I>(key: K): Signal<[IncomingMessage<I, K>]> {
@@ -103,17 +112,17 @@ export class ReceiveIndex<I extends Index> {
 	}
 	
 	has(type: string) {
-		return type in this.extractors;
+		return type in this.validators;
 	}
 	handle(type: keyof I, data: any): boolean {
-		if (!(type in this.extractors))
+		if (!(type in this.validators))
 			return Signal.UNHANDLED;
 		if (!(type in this.signals)) {
 			console.error(`unhandled message type: ${String(type)} | `, data);
 			return Signal.HANDLED;
 		}
 		
-		if (Val.is(this.extractors[type], data)) {
+		if (Val.is(this.validators[type], data)) {
 			if (data) {
 				console.info(`recv: ${String(type)} | ${JSON.stringify(data)}`);
 			} else {

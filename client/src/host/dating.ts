@@ -85,7 +85,7 @@ function starting() {
 function drawingBachelors(theme: string) {
 	return h("div#drawing-bachelors.tab", [
 		h("h1", "Draw your Bachelor!"),
-		h("h3", "Draw a bachelor that fits the theme:"),
+		h("h3", "Draw a creature that fits the theme:"),
 		h("h2", theme),
 	]);
 }

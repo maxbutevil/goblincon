@@ -3,7 +3,7 @@
 import {
 	Signal, State,
 	Shared,
-	h, s, defer, VNode
+	h, s, c, defer, VNode
 } from "../modules/"
 
 //import Globals from "../modules/globals"
@@ -15,9 +15,13 @@ const BACKUP_MED_LAG = 10; // if we undo past the current backup, how far back t
 const BACKUP_MIN_LAG = 2; // leave this buffer when catching up, so that a few undos don't cause a full rebuild
 const THIN_LINE_WIDTH = 8;
 const THICK_LINE_WIDTH = 20;
-const ERASER_WIDTH = 20;
+//const ERASER_WIDTH = 20;
 
-type DrawMode = { type: "erase" | "draw", weight: "thick" | "thin", color: string };
+//type DrawMode = { type: "erase" | "draw", weight: "thick" | "thin", color: string };
+
+const erase = Symbol("erase");
+type DrawMode = { color: string | typeof erase, weight: "thick" | "thin" };
+
 type DrawOperation = {
 	path: Path,
 	mode: DrawMode
@@ -39,6 +43,7 @@ type DrawpadOptions = {
 export default class Drawpad {
 	
 	private readonly submitted = new Signal();
+	private readonly drawModeChanged = new Signal();
 	private readonly options: DrawpadOptions;
 	readonly state = new State(CanvasState.BLANK);
 	
@@ -78,16 +83,15 @@ export default class Drawpad {
 	view() {
 		
 		const { onSubmit, onStartSubmit } = this.options;
-		const { state, submitted } = this;
-		
-		
-		//const state = new State(CanvasState.BLANK);
+		const { state, submitted, drawModeChanged } = this;
+		const penIcon = Canvas.create(128, 128);
 		
 		let undoStack: Array<DrawOperation> = [];
 		let redoStack: Array<DrawOperation> = [];
 		let backup: ImageData | undefined;
 		let backupIndex = 0;
-		let drawMode: DrawMode = { type: "draw", weight: "thin", color: "#000000" };
+		//let drawMode: DrawMode = { type: "draw", weight: "thin", color: "#000000" };
+		let drawMode: DrawMode = { color: "#000000", weight: "thin" };
 		
 		let canvas: Canvas | null = null;
 		
@@ -95,23 +99,29 @@ export default class Drawpad {
 			
 			if (canvas === null) return;
 			
-			switch(mode.type) {
-				case "erase":
-					canvas.setOperation("destination-out");
-					canvas.setLineWidth(ERASER_WIDTH);
-					break;
-				case "draw":
-					canvas.setStrokeStyle(mode.color);
-					if (mode.weight === "thin") {
-						canvas.setOperation("source-over");
-						canvas.setLineWidth(THIN_LINE_WIDTH);
-					} else {
-						canvas.setOperation("destination-over");
-						canvas.setLineWidth(THICK_LINE_WIDTH);
-					}
-					break;
+			if (mode.weight === "thin") {
+				canvas.setLineWidth(THIN_LINE_WIDTH);
+			} else {
+				canvas.setLineWidth(THICK_LINE_WIDTH);
+			}
+			
+			if (mode.color === erase) {
+				canvas.setOperation("destination-out");
+			} else {
+				canvas.setStrokeStyle(mode.color);
+				if (mode.weight === "thin") {
+					canvas.setOperation("source-over");
+				} else {
+					canvas.setOperation("destination-over");
+				}
 			}
 		}
+		function setMode(color: string | typeof erase, weight = drawMode.weight) {
+			drawMode = { color, weight };
+			applyMode();
+			drawModeChanged.emit();
+		}
+		
 		function applyOperation(operation: DrawOperation) {
 			applyMode(operation.mode);
 			canvas?.path(operation.path);
@@ -120,18 +130,21 @@ export default class Drawpad {
 		function canChangeMode(): boolean {
 			return canvas !== null && state.any(CanvasState.IDLE, CanvasState.BLANK);
 		}
-		function selectErase() {
-			drawMode.type = "erase";
-			applyMode();
+		function selectColor(color: typeof erase | string) {
+			if (color === erase) {
+				if (drawMode.color !== erase) {
+					setMode(erase, "thick");
+				}
+			} else {
+				if (drawMode.color === erase) {
+					setMode(color, "thin");
+				} else {
+					setMode(color);
+				}
+			}
 		}
-		function selectColor(color: string) {
-			drawMode.type = "draw";
-			drawMode.color = color;
-			applyMode();
-		}
-		function toggleLineWeight() {
-			drawMode.weight = (drawMode.weight === "thin" ? "thick" : "thin");
-			applyMode();
+		function toggleWeight() {
+			setMode(drawMode.color, drawMode.weight === "thin" ? "thick" : "thin");
 		}
 		
 		function applyOperationRange(start: number, end = Infinity) {
@@ -247,6 +260,8 @@ export default class Drawpad {
 		}
 		function endDraw() {
 			state.set(CanvasState.IDLE);
+			let op = undoStack.at(-1)!;
+			op.path.smooth();
 			rebuildCanvas();
 		}
 		function handleDraw(ev: PointerEvent) {
@@ -297,18 +312,30 @@ export default class Drawpad {
 			onSubmit(drawingData);
 		}
 		
-		function lineWidthBtn(disabled: boolean) {
-			return s(rerender => {
-				const iconSrc = drawMode.weight === "thin" ? icons.thin : icons.thick;
+		function weightBtn(disabled: boolean) {
+			return s(drawModeChanged, () => {
+				
+				let iconSrc;
+				if (drawMode.color === erase) {
+					iconSrc = drawMode.weight === "thin" ? icons.eraseThin : icons.eraseThick;
+					
+				} else {
+					penIcon.clear();
+					penIcon.setFillStyle(drawMode.color);
+					penIcon.fillEllipse(64, 64, drawMode.weight === "thin" ? 25 : 40);
+					iconSrc = penIcon.element.toDataURL();
+				}
+				//const iconSrc = drawMode.weight === "thin" ? icons.thin : icons.thick;
+				
+				
+				
+				
 				return h(
 					"button#weight-btn",
 					{
 						on: {
 							click: () => {
-								if (canChangeMode()) {
-									toggleLineWeight();
-									rerender();
-								}
+								if (canChangeMode()) toggleWeight();
 							}
 						},
 						attrs: { disabled }
@@ -319,56 +346,38 @@ export default class Drawpad {
 		}
 		function colorSelect(disabled: boolean) {
 			
-			return s(rerender => {
+			return s(drawModeChanged, () => {
 				
-				function colorButton(color: string) {
-					const isSelected = drawMode.type === "draw" && drawMode.color === color;
-					let borderColor = isSelected ? "white" : color;
+				function btn(color: typeof erase | string) {
+					
+					const selected = drawMode.color === color;
+					const click = () => {
+						if (canChangeMode()) selectColor(color);
+					};
+					let backgroundColor;
+					let borderColor;
+					
+					if (color === erase) {
+						backgroundColor = "white";
+						borderColor = selected ? "black" : "white";
+					} else {
+						backgroundColor = color;
+						borderColor = selected ? "white" : color;
+					}
 					
 					return h("button",
 						{
-							style: {
-								backgroundColor: color,
-								borderColor
-							},
-							on: {
-								click: () => {
-									if (canChangeMode()) {
-										selectColor(color);
-										rerender();
-									}
-								}
-							},
+							style: { backgroundColor, borderColor },
+							on: { click },
 							attrs: { disabled }
-						}
-					);
-				}
-				function eraseButton() {
-					const isSelected = drawMode.type === "erase";
-					let borderColor = isSelected ? "black" : "white";
-					return h(
-						"button.button.color-select-btn",
-						{
-							style: {
-								backgroundColor: "white",
-								borderColor
-							},
-							on: {
-								click: () => {
-									if (canChangeMode()) {
-										selectErase();
-										rerender();
-									}
-								}
-							}
 						},
-						icon(icons.erase)
+						c(color === erase && icon(icons.eraseThick))
 					);
 				}
 				
 				return h("div#color-btn-row", [
-					...Shared.DRAW_COLORS.map(color => colorButton(color)),
-					eraseButton()
+					...Shared.DRAW_COLORS.map(color => btn(color)),
+					btn(erase)
 				]);
 			});
 			
@@ -445,7 +454,7 @@ export default class Drawpad {
 					//h("button.spacer", { attrs: { disabled: true } }),
 					h("button#undo-btn", { on: { click: undo }, attrs: { disabled } }, icon(icons.undo)),
 					h("button#redo-btn", { on: { click: redo }, attrs: { disabled } }, icon(icons.redo)),
-					lineWidthBtn(disabled),
+					weightBtn(disabled),
 					h("button.spacer", { attrs: { disabled: true } }),
 					h(
 						"button#submit-btn",
@@ -473,7 +482,10 @@ class Path {
 	
 	//style: CanvasColorStyle;
 	//lineWidth: number;
-	pointData: Array<number> = [];
+	//pointData: Array<number> = [];
+	
+	x: number[] = [];
+	y: number[] = [];
 	
 	/*constructor(style: CanvasColorStyle, lineWidth: number) {
 		this.style = style;
@@ -481,8 +493,8 @@ class Path {
 		//this.pointData = start.slice();
 	}*/
 	*points(): Iterable<Point> {
-		for (let i = 0; i < this.pointData.length; i += 2)
-			yield [this.pointData[i], this.pointData[i + 1]];
+		for (let i = 0; i < this.x.length; i++)
+			yield [this.x[i], this.y[i]];
 	}
 	*segments(): Iterable<[Point, Point]> {
 		let prev: Point | undefined;
@@ -494,24 +506,55 @@ class Path {
 	}
 	
 	length(): number {
-		return Math.floor(this.pointData.length/2);
+		return this.x.length;
 	}
 	isEmpty(): boolean {
-		return this.pointData.length < 2;
+		return this.length() === 0;
 	}
 	
 	start(): Point | undefined {
 		if (this.isEmpty()) return;
-		return [this.pointData[0], this.pointData[1]];
+		return [this.x[0], this.y[0]];
 	}
 	end(): Point | undefined {
 		if (this.isEmpty()) return;
-		return [this.pointData.at(-2)!, this.pointData.at(-1)!];
+		return [this.x.at(-1)!, this.y.at(-1)!];
 	}
 	
 	push(x: number, y: number) {
-		this.pointData.push(x);
-		this.pointData.push(y);
+		this.x.push(x);
+		this.y.push(y);
+	}
+	/*smooth() {
+		if (this.isEmpty()) return;
+		
+		const A = 0.5, B = 1.0 - A;
+		let x = [], y = [];
+		x.push(this.x[0]);
+		y.push(this.y[0]);
+		for (const [[x1, y1], [x2, y2]] of this.segments()) {
+			x.push(x1 * B + x2 * A, x1 * A + x2 * B);
+			y.push(y1 * B + y2 * A, y1 * A + y2 * B);
+		}
+		x.push(this.x.at(-1)!);
+		y.push(this.y.at(-1)!);
+		this.x = x;
+		this.y = y;
+	}*/
+	smooth() {
+		/* this could use some improvements, but it's a good start */
+		if (this.isEmpty()) return;
+		let x = [], y = [];
+		x.push(this.x[0]);
+		y.push(this.y[0]);
+		for (const [[x1, y1], [x2, y2]] of this.segments()) {
+			x.push(x1 * 0.5 + x2 * 0.5);
+			y.push(y1 * 0.5 + y2 * 0.5);
+		}
+		x.push(this.x.at(-1)!);
+		y.push(this.y.at(-1)!);
+		this.x = x;
+		this.y = y;
 	}
 }
 
@@ -519,13 +562,6 @@ class Canvas {
 	
 	ctx: CanvasRenderingContext2D;
 	
-	//ctxs: Array<CanvasRenderingContext2D>;
-	//layer: number = 0;
-	
-	
-	/*get ctx(): CanvasRenderingContext2D {
-		return this.ctxs[this.layer];
-	}*/
 	get element(): HTMLCanvasElement {
 		return this.ctx.canvas;
 	}
@@ -737,7 +773,7 @@ class Canvas {
 		//this.useFill();
 		this.ctx.fillRect(x, y, w, h);
 	}
-	/*
+	
 	strokeRect(x: number, y: number, w: number, h: number): void {
 		//this.useStroke();
 		this.ctx.strokeRect(x, y, w, h);
@@ -764,7 +800,7 @@ class Canvas {
 		this.ctx.fill();
 		this.ctx.stroke();
 	}
-	*/
+	
 	
 	line(x1: number, y1: number, x2: number, y2: number): void {
 		this.ctx.beginPath();

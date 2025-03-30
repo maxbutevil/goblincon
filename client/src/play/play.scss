@@ -108,7 +108,7 @@
 		
 	#color-btn-row {
 		@extend %btn-row;
-		aspect-ratio: 10 / 1;
+		aspect-ratio: 12 / 1;
 		
 		button {
 			border: $border-weight;

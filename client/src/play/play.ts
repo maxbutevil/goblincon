@@ -26,7 +26,7 @@ const INC = new ReceiveIndex({
 	error: Val.STR,
 	
 	accepted: { playerId: Val.NUM, token: Val.NUM },
-	inLobby: { playerCount: Val.optional(Val.NUM) }, //promoted: Val.BOOL },
+	inLobby: { playerCount: Val.orNullish(Val.NUM) }, //promoted: Val.BOOL },
 	//inGame: Val.NONE, // eventually needs to hold the settings
 	inDrawblins: Val.NONE,
 	inDating: Val.NONE,
@@ -340,9 +340,9 @@ function landing() {
 		tray(iconBtn(helpIcon, () => helpOpen.mutate(curr => !curr)))
 	]);
 }
-function lobby(playerCount: number | undefined) {
+function lobby(playerCount: number | null | undefined) {
 	
-	const promoted = playerCount !== undefined;
+	const promoted = playerCount != undefined;
 	
 	function iconSelect() {
 		

@@ -3,6 +3,10 @@ export { default as undo } from "./undo.png"
 export { default as redo } from "./redo.png"
 export { default as thin } from "./thin.png"
 export { default as thick } from "./thick.png"
+export { default as eraseThin } from "./erase_thin.png"
+export { default as eraseThick } from "./erase_thick.png"
+
+
 export { default as help } from "./help.png"
 export { default as exit } from "./exit.png"
 //export { default as showBachelor } from "./show_bachelor.png"

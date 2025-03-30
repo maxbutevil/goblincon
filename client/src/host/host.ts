@@ -107,6 +107,7 @@ function lobby() {
 			h("div#lobby", {}, [
 				h("div#overview.tab", {}, [
 					h("h2", "Lobby"),
+					
 					h("div", [
 						h("h3", "Join Code"),
 						h("div#join-code", {}, Room.joinCode),
@@ -115,6 +116,14 @@ function lobby() {
 							h("button", { on: { click: copyLink } }, "Copy Link")
 						]),
 					]),
+					h("div",
+						{ style: { fontSize: "0.7em" } },
+						[
+							"(Join at ",
+							h("u", Shared.httpsRoot),
+							")"
+						]
+					),
 					playerList()
 				]),
 				s(mode.changed, () => {
