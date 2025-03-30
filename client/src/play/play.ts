@@ -376,19 +376,10 @@ function lobby(playerCount: number | undefined) {
 	let startInterface: VNode[] = [];
 	if (promoted) {
 		
-		let blurb;
-		if (playerCount < Shared.MIN_PLAYER_COUNT)
-			blurb = `${playerCount} players (not enough)`;
-		else
-			blurb = `${playerCount} players`;
-		
-		/*if (playerCount <= 1) {
-			blurb = "1 player (not enough)";
-		} else if (playerCount == 2) {
-			blurb = "2 players (not recommended)";
-		} else {
-			blurb = `${playerCount} players`;
-		}*/
+		const canStart = playerCount >= Shared.MIN_PLAYER_COUNT;
+		const blurb = canStart ?
+			`${playerCount} players` :
+			`${playerCount} players (not enough)`;
 		
 		startInterface = [
 			h("div", "Start the game when everybody's in!"),
@@ -396,8 +387,8 @@ function lobby(playerCount: number | undefined) {
 			h(
 				"button#start-btn",
 				{
-					on: { click: () => OUT.send("startGame", undefined) },
-					attrs: { disabled: playerCount <= 1 }
+					on: { click: () => OUT.send("startGame") },
+					attrs: { disabled: !canStart }
 				},
 				"Start"
 			),

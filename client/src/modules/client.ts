@@ -1,8 +1,8 @@
 
 //import Client from "../modules/client"
 //import Extract, { SendIndex, ReceiveIndex } from "./modules/extract"
-import State from "./state"
-import Signal from "./signal"
+import State from "./micron/state"
+import Signal from "./micron/signal"
 import { SendIndex, ReceiveIndex } from "./validate"
 
 export enum Connection {
@@ -12,15 +12,6 @@ export enum Connection {
 }
 
 const HEARTBEAT_INTERVAL_MS = 45 * 1000;
-
-const REJOIN_DELAY_INITIAL = 125;
-const REJOIN_DELAY_MAX = 16000;
-
-type RejoinStrategy = {
-	maxDelayMs: number,
-	initialDelayMs: number,
-	
-};
 
 type Message = { type: string, data: any };
 class Client {
@@ -40,7 +31,6 @@ class Client {
 	
 	// internal state
 	private ws: WebSocket | undefined;
-	private reconnectAttempt = 0;
 	private heartbeatTimeout: NodeJS.Timeout | undefined;
 	private readonly heartbeatCallback = () => this.send(""); // cached callback
 	
@@ -56,7 +46,7 @@ class Client {
 		this.resetHeartbeat();
 		
 		this.ws.onopen = () => {
-			console.log("WebSocket connection opened!");
+			console.info("WebSocket connection opened!");
 			this.state.set(Connection.OPEN);
 		};
 		this.ws.onclose = (ev) => {

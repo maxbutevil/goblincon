@@ -1,4 +1,5 @@
 
+@use "flow.scss" as *;
 @forward "flow.scss";
 @forward "components.scss";
 
@@ -7,12 +8,13 @@
 	user-select: none;
 }
 
-html, body {
+html {
+	@include column(flex-start, stretch);
 	height: 100%;
-	display: flex;
-	flex-direction: column;
 }
 body {
+	@include column(flex-start, stretch);
+	height: calc(100% - 1em);
 	margin: 0.5em;
 	font-family: Arial;
 	background-color: #eee0d0;

@@ -3,11 +3,6 @@
 
 import { Shared } from "../modules/"
 
-/*enum State {
-	REJOIN
-	CONNECTED
-}*/
-
 export default class Session {
 	
 	static readonly MIN_NAME_LEN = 2;
@@ -29,11 +24,11 @@ export default class Session {
 	
 	static storePlayerName() {
 		try { localStorage.setItem("playerName", this.playerName); }
-		catch(e) { console.log("localStorage error:", e); }
+		catch(e) { console.warn("localStorage error:", e); }
 	}
 	static setPlayerIcon(newIcon: number) {
 		try { localStorage.setItem("playerIcon", (this.playerIcon = newIcon).toString()); }
-		catch(e) { console.log("localStorage error:", e); }
+		catch(e) { console.warn("localStorage error:", e); }
 	}
 	
 	static storeRejoinInfo(id: number, token: number) {
@@ -97,27 +92,12 @@ export default class Session {
 		if (!baseUrl) return null;
 		return baseUrl + "&manual=true";
 	}
-	
 }
-
-
-
-// no rejoin info
-// 
-
-
-
 
 /*function store(key: string, value: string) {
 	try { localStorage.setItem("playerName", playerName); }
 	catch(e) { console.log("localStorage error:", e); }
-}*/
-
-
-/*static storePlayerId() {
-	try { localStorage.setItem("playerId", playerId.toString()); }
-	catch(e) { console.log("localStorage error:", e); }
-}*/
+}
 
 /* strip out URL parameters */
 window.addEventListener("load", () => {

@@ -21,7 +21,7 @@ import Drawpad from "./play/drawpad"
 import { submission, submissionGrid } from "./host/components";
 import { NameOverlay } from "./play/components"
 
-const testPage = projector(drawingSuitorTest);
+const testPage = projector(drawingTest);
 
 const testPlayer = new Player(0, "test freak man", 0);
 const testDrawing = assets.testDrawing;
@@ -199,6 +199,13 @@ function drawingSuitorTest() {
 		),
 		//mountedBtn(showBachelorIcon, toggle)
 	]);
+}
+
+function drawingTest() {
+	const drawpad = new Drawpad({
+		onSubmit: (drawing) => {}
+	});
+	return h("div.tab", drawpad.view());
 }
 
 mount(h("div#dating.mode", s(testPage)));

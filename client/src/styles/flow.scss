@@ -39,6 +39,12 @@
 		gap: list.nth($args, 3);
 	}
 }
+@mixin row($args...) {
+	@include flex(row nowrap, $args...);
+}
+@mixin column($args...) {
+	@include flex(column nowrap, $args...);
+}
 
 @mixin vflow($gap: 0.3em) {
 	@include flex(column nowrap, $gap);

@@ -1,11 +1,6 @@
 
 @use "../styles/index.scss" as *;
 
-body {
-	/*position: fixed;*/
-	font-size: 16px;
-}
-
 #help-popup {
 	@include popup;
 	justify-content: space-between;
@@ -16,6 +11,7 @@ body {
 }
 #bachelor-popup {
 	@include popup;
+	background-color: #eee;
 }
 #name-popup {
 	@include popup;
@@ -71,7 +67,8 @@ body {
 /* Drawpad */
 #drawpad {
 	
-	$border-style: 4px solid black;
+	$border-weight: 4px solid;
+	$border-style: $border-weight black;
 	
 	width: min(94vw, 77vh);
 	
@@ -91,7 +88,7 @@ body {
 	
 	%btn-row {
 		
-		aspect-ratio: 10 / 1;
+		//aspect-ratio: 12 / 1;
 		
 		@include flex(row nowrap);
 		
@@ -111,13 +108,17 @@ body {
 		
 	#color-btn-row {
 		@extend %btn-row;
+		aspect-ratio: 12 / 1;
+		
 		button {
-			border: 0.2em solid;
+			border: $border-weight;
 		}
 	}
 	
 	#action-btn-row {
 		@extend %btn-row;
+		aspect-ratio: 10 / 1;
+		
 		.spacer {
 			flex: 2;
 		}
@@ -125,6 +126,7 @@ body {
 			flex: 5;
 			
 			font-size: 1.0em;
+			white-space: nowrap;
 			background-color: #4A5;
 			transition: background-color 0.8s;
 			

@@ -56,7 +56,6 @@ client.closed.listen((ev) => {
 });
 window.addEventListener("DOMContentLoaded", async () => {
 	try {
-		console.log("requesting wake lock");
 		await navigator.wakeLock.request();
 	} catch(err) {
 		console.error("error acquiring wake lock:", err);

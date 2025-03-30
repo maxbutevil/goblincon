@@ -84,9 +84,15 @@
 	@include flex(column nowrap, space-between, center);
 	padding: 0.2em;
 	
-	background-color: #ddd;
+	background-color: #eee;
 	border: 3px solid black;
 	border-radius: 8px;
+	
+	/*.img-ctr {
+		>img {
+			
+		}
+	}*/
 	
 	>img {
 		flex: 1 1 0;
@@ -122,9 +128,9 @@
 		@include flex(row wrap, flex-start, flex-start);
 		font-size: 2.4em;
 		.player-icon {
-			animation: fadeIn 0.6s;
+			animation: fadeIn 0.7s;
 			@keyframes fadeIn {
-				0% { opacity: 0; rotate: -25deg; }
+				0% { opacity: 0; rotate: -30deg; }
 				50% { opacity: 0.5; rotate: 25deg; }
 				100% { opacity: 1; rotate: 0deg; }
 			}

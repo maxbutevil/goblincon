@@ -1,6 +1,6 @@
 
 
-import Signal from "./signal"
+import Signal from "./micron/signal"
 
 type ValidatorMethod<T> = (value: any) => value is T; //((value: any) => T);
 type ValidatorMap<T> = { [key in keyof T]: Validator<T[key]> };
@@ -9,7 +9,7 @@ export type Validated<T> = T extends Validator<infer X> ? X : never;
 
 export default class Val {
 	
-	static NONE: ValidatorMethod<undefined> = (value: any): value is undefined => value == undefined;
+	static NONE: ValidatorMethod<void> = (value: any): value is undefined => value == undefined;
 	static ANY: ValidatorMethod<any> = (value: any): value is any => true;
 	static BOOL = Val.simple<boolean>("boolean");
 	static NUM = Val.simple<number>("number");
@@ -106,73 +106,49 @@ export class ReceiveIndex<I extends Index> {
 		return type in this.extractors;
 	}
 	handle(type: keyof I, data: any): boolean {
-		//let type = message.type as keyof I;
-		//let data = message.data;
-		
-		//if (!(type in this.extractors))
-		//	throw new Error(`Unrecognized message type: ${String(type)} | ${data}`);
 		if (!(type in this.extractors))
 			return Signal.UNHANDLED;
 		if (!(type in this.signals)) {
-			console.error(`Unhandled message type: ${String(type)} | `, data);
+			console.error(`unhandled message type: ${String(type)} | `, data);
 			return Signal.HANDLED;
 		}
 		
 		if (Val.is(this.extractors[type], data)) {
 			if (data) {
-				console.log(`${String(type)} | ${JSON.stringify(data)}`);
+				console.info(`recv: ${String(type)} | ${JSON.stringify(data)}`);
 			} else {
-				console.log(`${String(type)}`);	
+				console.info(`recv: ${String(type)}`);	
 			}
 			
 			this.signals[type]!.emit(data);
 		} else {
-			console.error(`Invalid message data: ${String(type)} | `, data);
+			console.error(`invalid message data: ${String(type)} | `, data);
 			return Signal.HANDLED;
 		}
 		return Signal.HANDLED;
-		
-		/*let extracted;
-		try {
-			extracted = Val.unsafe(this.extractors[type], data);
-		} catch(err) {
-			console.error(`Invalid message data: ${String(type)} | ${data} | ${err}`);
-			return Signal.HANDLED;
-		}
-		
-		console.log(`Message received: ${String(type)} | ${JSON.stringify(data)}`);
-		this.signals[type]!.emit(extracted);
-		return Signal.HANDLED;*/
 	}
 	
 }
 
 export class SendIndex<I extends Index> {
 	
-	//send = new Signal<string>();
 	outgoing = new Signal<[string]>();
 	
-	//private sender: (encoded: string) => any;
-	constructor(_: I/*, sender: (encoded: string) => any*/) {
-		//this.sender = sender;
-	}
+	constructor(_: I) { /* Argument is just for type inference */}
 	encode<K extends keyof I>(type: K, data: Validated<I[K]>): string {
 		return data == undefined ? 
 			JSON.stringify({ type }) :
 			JSON.stringify({ type, data });
 	}
-	send<K extends keyof I>(type: K, data: Validated<I[K]>) {
-		//this.sender(this.encode(type, data));
-		const handled = this.outgoing.handle(this.encode(type, data));
+	send<K extends keyof I>(type: Validated<I[K]> extends void ? K : never): void;
+	send<K extends keyof I>(type: K, data: Validated<I[K]>): void;
+	send<K extends keyof I>(type: K, data: Validated<I[K]> | undefined = undefined): void {
+		const encoded = this.encode(type, data as Validated<I[K]>)
+		const handled = this.outgoing.handle(encoded);
 		if (!handled)
 			console.warn(`unsent outgoing message: ${String(type)} |`, data);
 		else
 			console.info(`sent: ${String(type)} |`, data);
-		//this.outgoing.emit(data);
 	}
-	/*sendUnit<K extends keyof I: Validated<I[K]> extends undefined ? K : never) {
-		this.outgoing.emit(this.encode(type, undefined));
-	}*/
-	
 }
 
