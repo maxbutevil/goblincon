@@ -104,6 +104,11 @@ function drawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: strin
 	});
 	const countdown = Countdown.fromSecs(secsLeft, 4);
 	countdown.onFinish(() => drawpad.submit());
+	countdown.onThreshold(15, () => {
+		if (nameOverlay && nameOverlay.name === undefined) {
+			overlay.set(nameView);
+		}
+	});
 	
 	function nameView() {
 		return nameOverlay!.view(drawpad.isSubmitted());
