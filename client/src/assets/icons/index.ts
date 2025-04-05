@@ -13,3 +13,7 @@ export { default as exit } from "./exit.png"
 export { default as vs } from "./vs.png"
 export { default as bachelor } from "./text_bachelor.png"
 export { default as name } from "./text_name.png"
+
+export { default as questionMark } from "./question_mark.png";
+export { default as heart } from "./heart.png";
+export { default as heartbreak } from "./heartbreak.png";

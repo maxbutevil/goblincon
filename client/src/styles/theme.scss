@@ -1,0 +1,26 @@
+
+
+//$border: 3px solid black;
+//$border-radius: 8px;
+
+$background-color: #eee0d0;
+$border-weight: 3px;
+$border-radius: 8px;
+
+
+@mixin border {
+	border: $border-weight solid black;
+	border-radius: $border-radius;
+}
+@mixin background {
+	background-color: $background-color;
+}
+
+@mixin panel($padding: 1em) {
+	@include border;
+	@include background;
+	padding: $padding;
+}
+
+
+

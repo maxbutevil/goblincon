@@ -39,8 +39,7 @@ const page = projector(loading);
 const mode = new Setting<typeof Dating | typeof Drawblins>(
 	"Game Mode",
 	[ Drawblins, Dating ],
-	1,
-	(m) => m.name
+	{ key: "gameMode", initial: 1, stringifier: (m) => m.name }
 );
 // not the most elegant solution, but this stops the error page from showing when we click a link
 let unloading = false; 
@@ -149,7 +148,7 @@ function playerList() {
 	return s(signals, () => {
 		
 		let status: string;
-		let list = Array.from(Room.players.values())
+		let list = Room.players()
 			.map((player) => Player.view(player));
 		
 		if (Room.playerCount() === 0) {

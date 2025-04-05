@@ -3,7 +3,8 @@ import {
 	State,
 	h, s, defer,
 	Shared, PlayerIcons,
-	VNode, VNodeChildren, VNodeChildElement
+	VNode, VNodeChildren, VNodeChildElement,
+	cleanup
 } from "./modules/"
 
 export function logo() {
@@ -17,46 +18,12 @@ export function logo() {
 	]);
 }
 
-/*export function countdown(endTime: number, onFinish?: () => void) {
-	
-	let secondsLeft = new State<number>(NaN);
-	let interval: NodeJS.Timeout | undefined;
-	
-	const tick = () => {
-		let delta = endTime - Date.now() - 50;
-		let newSeconds = Math.ceil(delta/1000);
-		
-		if (newSeconds <= 0) {
-			secondsLeft.set(0);
-			clearInterval(interval);
-			
-			if (onFinish)
-				onFinish();
-		}
-		else {
-			secondsLeft.set(newSeconds);
-		}
-	};
-	
-	interval = setInterval(tick, 200);
-	tick();
-	
-	defer(() => clearInterval(interval));
-	return s(secondsLeft, (curr) => {
-		const style = curr <= 3 ? { color: "red" } : { color: "black" };
-		return h("div.countdown", { style }, curr.toString());
-	});
-}*/
-
 export function idlePage(header: string, ...subheaders: string[]) {
 	return h("div#idle.tab", [
 		h("h1", header),
 		...subheaders.map((s) => h("h2", s)),
 	]);
 }
-/*export function img(src: string): VNode {
-	return h("img", { attrs: { src }});
-}*/
 
 export function voteButtons(choices: string[], submit: (choice: string) => void): VNode[] {
 	return choices.map(choice => {
@@ -85,7 +52,6 @@ export function mountedBtns(btnArgs: Array<[string, () => any]>): VNode {
 	const btns = btnArgs.map(data => iconBtn(...data));
 	return h("div#mounted-btns", btns);
 }*/
-
 /*export function endTime(secsLeft: number, secsBuffer: number): number {
 	return Date.now() + 1000 * (secsLeft - secsBuffer);
 }*/
@@ -132,11 +98,14 @@ export class Countdown {
 		return cd.view();
 	}
 	static fromSecs(secsLeft: number, secsBuffer = 0): Countdown {
-		return new Countdown(Date.now() + 1000 * (secsLeft - secsBuffer));
+		return new Countdown(Countdown.endTime(secsLeft, secsBuffer));
+	}
+	static endTime(secsLeft: number, secsBuffer = 0): number {
+		return Date.now() + 1000 * (secsLeft - secsBuffer);
 	}
 	
 	view(): VNode {
-		defer(() => clearInterval(this.interval));
+		cleanup(() => clearInterval(this.interval));
 		return s(this.secondsLeft, (curr) => {
 			const style = curr <= 3 ? { color: "red" } : { color: "black" };
 			return h("div.countdown", { style }, curr.toString());

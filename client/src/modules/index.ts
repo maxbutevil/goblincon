@@ -1,6 +1,7 @@
 
 export * from "./micron"
-export { Signal, State } from "./micron"
+export * as Micron from "./micron"
+//export { Signal, State } from "./micron"
 
 export { default as Val } from "./validate"
 export * from "./validate"

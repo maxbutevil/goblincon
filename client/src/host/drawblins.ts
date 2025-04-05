@@ -5,22 +5,20 @@ import {
 	Val, ReceiveIndex, SendIndex,
 	h, s, defer, projector, VNode,
 	
-	client
+	Shared, client
 } from "../modules/"
 
 import * as Room from "./room"
 import { Player, ScoreMap } from "./room"
 import { Mode, Setting } from "./mode"
 import * as PlayerIcons from "../modules/player_icons"
-import { submission, submissionGrid } from "./components"
-
-
-//import { motion } from "framer-motion"
+import { Countdown } from "../components"
+import { submission, submissionGrid, ReadyDisplay } from "./components"
+import { DRAWING_BUFFER_SECS } from '../modules/shared';
 
 const INC = new ReceiveIndex({
-	
-	"drawing": { goblinName: Val.STR },
-	"voting": Val.NONE,
+	"drawing": { goblinName: Val.STR, secsLeft: Val.NUM },
+	"voting": { secsLeft: Val.NUM },
 	"showingVotes": Val.NONE,
 	"showingScores": Val.NONE,
 	
@@ -32,10 +30,26 @@ const OUT = new SendIndex({
 });
 
 const mode = new Mode("drawblins", view, {
-	roundCount: new Setting("Number of Rounds", [ 1, 2, 3, 5, 8 ]),
-	drawTimeFactor: Setting.multiplier("Drawing Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ]),
-	voteTimeFactor: Setting.multiplier("Voting Time", [ 0.5, 0.8, 1.0, 1.3, 2.0 ]),
-	scoreTimeFactor: Setting.multiplier("Scoring Time", [0.7, 1.0, 1.3])
+	roundCount: new Setting(
+		"Number of Rounds",
+		[ 1, 2, 3, 5, 8 ],
+		{ key: "drawblinsRoundCount" }
+	),
+	drawTimeFactor: Setting.multiplier(
+		"Drawing Time",
+		[ 0.5, 0.8, 1.0, 1.3, 2.0 ],
+		{ key: "drawblinsDrawTimeFactor" }
+	),
+	voteTimeFactor: Setting.multiplier(
+		"Voting Time",
+		[ 0.5, 0.8, 1.0, 1.3, 2.0 ],
+		{ key: "drawblinsVoteTimeFactor" }
+	),
+	scoreTimeFactor: Setting.multiplier(
+		"Scoring Time",
+		[0.7, 1.0, 1.3],
+		{ key: "drawblinsScoreTimeFactor" }
+	)
 });
 
 export default mode;
@@ -55,18 +69,12 @@ export function view() {
 	scores.reset();
 	defer(
 		client.use(INC, OUT),
-		INC.subscribe("drawing", ({ goblinName }) => {
+		INC.subscribe("drawing", ({ goblinName, secsLeft }) => {
 			rounds.push(new Round(goblinName));
-			page.put(drawing);
+			page.put(drawing, secsLeft);
 		}),
-		INC.subscribe("voting", () => page.put(voting)),
+		INC.subscribe("voting", ({ secsLeft }) => page.put(voting, secsLeft)),
 		INC.subscribe("showingScores", () => page.put(showingScores)),
-		INC.subscribe("drawingSubmitted", ({ playerId, drawing }) => {
-			currentRound().handleDrawing(playerId, drawing);
-		}),
-		INC.subscribe("voteSubmitted", ({ playerId, forId }) => {
-			currentRound().handleVote(playerId, forId);
-		})
 	);
 	return h("div#drawblins.mode", s(page));
 }
@@ -76,21 +84,36 @@ function starting() {
 		h("h1", "Game Starting!")
 	);
 }
-function drawing() {
+function drawing(secsLeft: number) {
+	
+	const readyDisplay = new ReadyDisplay(Room.players(), secsLeft, Shared.DRAWING_BUFFER_SECS);
+	
+	defer(INC.subscribe("drawingSubmitted", ({ playerId, drawing }) => {
+		currentRound().handleDrawing(playerId, drawing);
+		readyDisplay.ready(playerId);
+	}));
+	
 	return h(
 		"div#drawing.tab",
 		[
 			h("h2", "Draw a creature named..."),
-			h("h1", currentRound().goblinName)
+			h("h1", currentRound().goblinName),
+			readyDisplay.view()
 		]
 	);
 }
-function voting() {
+function voting(secsLeft: number) {
 	
 	const voteQueue = new Room.VoteQueue();
+	const readyDisplay = new ReadyDisplay(Room.players(), secsLeft, Shared.VOTING_BUFFER_SECS);
 	const round = currentRound();
+	//let showing = false;
 	
 	defer(
+		INC.subscribe("voteSubmitted", ({ playerId, forId }) => {
+			currentRound().handleVote(playerId, forId);
+			readyDisplay.ready(playerId);
+		}),
 		INC.subscribe("showingVotes", () => {
 			const votes = round.votesReceived;
 			// Increase scores
@@ -100,22 +123,23 @@ function voting() {
 			voteQueue.start(votes);
 		})
 	);
-	
-	return s(voteQueue.update, () => {
-		
-		let submissions: VNode[] = [];
-		for (const id of Room.playerIds()) {
-			const drawing = round.drawings[id];
-			if (drawing != undefined)
-				submissions.push(submission(id, drawing, { voteIds: voteQueue.votes[id] }));
-		}
-		
-		return h("div#voting.tab", [
-			h("div", `Vote for your favorite ${round.goblinName}!`),
-			h("div.submission-ctr", submissionGrid(submissions))
-		]);
-	});
-	
+	return h("div#voting.tab", [
+		h("div", `Vote for your favorite ${round.goblinName}!`),
+		s(voteQueue.update, () => {
+			let submissions: VNode[] = [];
+			for (const [id, player] of Room.playerMap) {
+				const drawing = round.drawings[id];
+				if (drawing !== undefined) {
+					const voteIds = voteQueue.get(id);
+					const votes = Room.players(voteIds);
+					submissions.push(submission(player, { drawing }, { votes }));
+				}
+			}
+			
+			return submissionGrid(submissions)
+		}),
+		readyDisplay.view()
+	]);
 }
 function showingScores() {
 	return h(

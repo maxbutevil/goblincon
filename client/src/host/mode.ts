@@ -7,6 +7,11 @@ import Signal from "../modules/micron/signal"
 type SettingRemote<S> = S extends Setting<infer T> ? T : never;
 type SettingMap = { [key: string]: Setting<any> };
 type SettingMapRemote<M extends SettingMap> = { [K in keyof M]: SettingRemote<M[K]> };
+type SettingOptions<T> = {
+	initial?: number,
+	key?: string,
+	stringifier?: (raw: T) => string,
+};
 
 export class Setting<T = number> {
 	
@@ -17,26 +22,67 @@ export class Setting<T = number> {
 	initial: number;
 	current: number;
 	stringifier: (v: T) => string;
+	key?: string;
 	
-	constructor(name: string, choices: T[], initialIndex = Math.floor(choices.length/2), stringifier: ((v: T) => string) = (v => String(v))) {
+	constructor(name: string, choices: T[], options: SettingOptions<T> = {}) {
+		this.name = name;
+		this.choices = choices;
+		this.key = options.key;
+		this.stringifier = options.stringifier ?? ((v) => String(v));
+		this.initial = options.initial ?? Math.floor(this.choices.length/2);
+		
+		this.current = this.initial;
+		if (this.key) {
+			const stored = localStorage.getItem(this.key);
+			if (stored) {
+				const index = this.find(stored);
+				if (index !== undefined) {
+					this.current = index;
+				} else {
+					//localStorage.deleteItem(this.key);
+				}
+			}
+		}
+	}
+	
+	
+	/*constructor(name: string, choices: T[], initialIndex = Math.floor(choices.length/2), stringifier: ((v: T) => string) = (v => String(v))) {
 		this.name = name;
 		this.choices = choices;
 		this.current = this.initial = initialIndex;
 		this.stringifier = stringifier;
+	}*/
+	static multiplier(name: string, choices: number[], { initial, key, precision }: { initial?: number, key?: string, precision?: number } = {}): Setting<number> {
+		const stringifier = ((v: number) => Number(v).toFixed(precision ?? 1) + "x");
+		return new Setting(name, choices, { initial, key, stringifier });
 	}
-	static multiplier(name: string, choices: number[], currentIndex = Math.floor(choices.length/2), precision = 1): Setting<number> {
-		return new Setting(name, choices, currentIndex, (v) => Number(v).toFixed(precision) + "x")
-	}
-	static boolean(name: string, current = false, trueLabel = "Yes", falseLabel = "No"): Setting<boolean> {
-		let currentIndex = current ? 1 : 0;
-		return new Setting(name, [false, true], currentIndex, (v) => v ? trueLabel : falseLabel);
+	static boolean(name: string, { initial, key, trueLabel, falseLabel }: { initial?: boolean, key?: string, trueLabel?: string, falseLabel?: string } = {}): Setting<boolean> {
+		const stringifier = ((v: boolean) => v ? (trueLabel ?? "Yes") : (falseLabel ?? "No"));
+		return new Setting(name, [false, true], {
+			initial: initial === true ? 1 : 0,
+			key,
+			stringifier
+		});
 	}
 	
 	set(newCurrent: number) {
 		if (this.current !== newCurrent) {
 			this.current = newCurrent;
+			if (this.key) {
+				try {
+					localStorage.setItem(this.key, this.getString());
+				} catch(e) { console.error(e); }
+			}
 			this.changed.emit();
 		}
+	}
+	find(value: string): number | undefined {
+		for (let i = 0; i < this.choices.length; i++) {
+			if (this.getString(i) === value) {
+				return i;
+			}
+		}
+		return undefined;
 	}
 	reset() {
 		this.set(this.initial);
@@ -109,6 +155,7 @@ export class Mode<S extends SettingMap> {
 	settings: Settings<S>;
 	
 	view: () => VNode;
+	//recapView?: () => VNode;
 	
 	constructor(name: string, view: () => VNode, settingMap: S) {
 		this.name = name;

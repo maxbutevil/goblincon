@@ -202,7 +202,7 @@ function landing() {
 			if (!curr) {
 				return h("!");
 			} else {
-				return h("div#overlay-shadow", { on: { click: close } },
+				return h("div#overlay", { on: { click: close } },
 					h("div#help-popup.popup.vflow", [
 						h("div", [
 							h("h2", "How to Play"),
@@ -252,7 +252,7 @@ function landing() {
 	function pasteCode(ev: ClipboardEvent) {
 		
 		function extractUrlCode(content: string): string | undefined {
-			if (!content.toLowerCase().startsWith("https:")) return;
+			//if (!content.toLowerCase().startsWith("https:")) return;
 			if (!URL.canParse(content)) return;
 			const url = new URL(content);
 			if (url.hostname !== window.location.hostname) return;

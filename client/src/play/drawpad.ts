@@ -261,7 +261,7 @@ export default class Drawpad {
 		function endDraw() {
 			state.set(CanvasState.IDLE);
 			let op = undoStack.at(-1)!;
-			op.path.smooth();
+			op.path.smooth(2);
 			rebuildCanvas();
 		}
 		function handleDraw(ev: PointerEvent) {
@@ -520,11 +520,32 @@ class Path {
 		if (this.isEmpty()) return;
 		return [this.x.at(-1)!, this.y.at(-1)!];
 	}
+	pop(): Point | undefined {
+		if (this.isEmpty()) return undefined;
+		return [this.x.pop()!, this.y.pop()!];
+	}
 	
 	push(x: number, y: number) {
 		this.x.push(x);
 		this.y.push(y);
 	}
+	
+	/*extend(x2: number, y2: number) {
+		if (this.length() <= 1) {
+			this.push(x2, y2);
+			return;
+		}
+		
+		let [x1, y1] = this.pop()!;
+		let dx = x1 - x2, dy = y1 - y2;
+		let d = dx * dx + dy * dy;
+		
+		if (d <= 5 * 5) {
+			this.push(x1 * 0.5 + x2 * 0.5, y1 * 0.5 + y2 * 0.5);
+			this.push(x2, y2);
+		}
+		
+	}*/
 	/*smooth() {
 		if (this.isEmpty()) return;
 		
@@ -541,21 +562,41 @@ class Path {
 		this.x = x;
 		this.y = y;
 	}*/
-	smooth() {
+	
+	smooth(iterations: number) {
 		/* this could use some improvements, but it's a good start */
-		if (this.isEmpty()) return;
-		let x = [], y = [];
-		x.push(this.x[0]);
-		y.push(this.y[0]);
-		for (const [[x1, y1], [x2, y2]] of this.segments()) {
-			x.push(x1 * 0.5 + x2 * 0.5);
-			y.push(y1 * 0.5 + y2 * 0.5);
+		if (this.length() <= 2) return;
+		
+		for (let i = 0; i < iterations; i++) {
+			let smoothed = new Path();
+			smoothed.push(this.x[0], this.y[0]);
+			for (const [[x1, y1], [x2, y2]] of this.segments()) {
+				let dx = x1 - x2, dy = y1 - y2;
+				let d = dx * dx + dy * dy;
+				if (d >= 5 * 5) {
+					smoothed.push(
+						x1 * 0.7 + x2 * 0.3,
+						y1 * 0.7 + y2 * 0.3,
+					);
+					smoothed.push(
+						x1 * 0.25 + x2 * 0.75,
+						y1 * 0.25 + y2 * 0.75
+					);
+				} else {
+					smoothed.push(
+						x1 * 0.5 + x2 * 0.5,
+						y1 * 0.5 + y2 * 0.5
+					);
+				}
+				//let length = (x1 - x2) * (x1 - x2) - (y1 - y2) 
+			}
+			let [ex, ey] = this.end()!;
+			smoothed.push(ex, ey);
+			this.x = smoothed.x;
+			this.y = smoothed.y;
 		}
-		x.push(this.x.at(-1)!);
-		y.push(this.y.at(-1)!);
-		this.x = x;
-		this.y = y;
 	}
+	
 }
 
 class Canvas {

@@ -170,7 +170,7 @@ function drawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 		return nameOverlay!.view(drawpad.isSubmitted());
 	}
 	function bachelorView() {
-		return h("div#overlay-shadow", [
+		return h("div#overlay", [
 			h("div#bachelor-popup", [
 				h("div", [
 					h("div", [

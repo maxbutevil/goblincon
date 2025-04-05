@@ -69,8 +69,8 @@ enum HostMsgIn {
 enum HostMsgOut<'a> {
 	//GameStarted,
 	
-	Drawing { goblin_name: &'a str },
-	Voting,
+	Drawing { goblin_name: &'a str, secs_left: f32 },
+	Voting { secs_left: f32 },
 	ShowingVotes,
 	ShowingScores,
 	
@@ -189,16 +189,13 @@ impl<'a> Game<'a> {
 			})
 			.collect()
 	}
-	/*fn all_submitted(&self) {
-		
-	}*/
 	
 	async fn handle_client_event(&mut self, event: (ClientId, ClientEvent)) -> Result<(), ()> {
 		match event {
 			(ClientId::Host, ClientEvent::Disconnect) =>
 				{ return Err(()) },
 			(ClientId::Player(_player_id), ClientEvent::Disconnect) =>
-				{ /* ClientIndex handles player disconnects for us */},
+				{ /* ClientIndex handles player disconnects for us */ },
 			(ClientId::Host, ClientEvent::Message(msg)) => {
 				tracing::debug!("invalid host message: {msg}");
 			},
@@ -293,7 +290,7 @@ impl<'a> Game<'a> {
 		
 		self.clients.send_all(
 			&PlayerMsgOut::Drawing { goblin_name, secs_left },
-			&HostMsgOut::Drawing { goblin_name /*, secs_left*/ },
+			&HostMsgOut::Drawing { goblin_name, secs_left },
 		).await;
 	}
 	async fn start_vote(&mut self, eligible: [bool; MAX_PLAYER_COUNT]) {
@@ -315,7 +312,7 @@ impl<'a> Game<'a> {
 		
 		self.clients.send_all(
 			&PlayerMsgOut::Voting { choices: &choices, secs_left },
-			&HostMsgOut::Voting {},
+			&HostMsgOut::Voting { secs_left },
 		).await;
 		self.state = State::Vote { eligible, choices, votes: [None; MAX_PLAYER_COUNT] };	
 	}

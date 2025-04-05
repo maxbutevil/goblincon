@@ -26,7 +26,7 @@ export class NameOverlay {
 			if (onClose) onClose();
 		}
 		
-		return h("div#overlay-shadow", [
+		return h("div#overlay", [
 			h("div#name-popup", [
 				h("div.vflow", [
 					h("h2", "Name Your Creature?"),

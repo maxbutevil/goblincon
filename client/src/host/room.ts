@@ -17,7 +17,7 @@ export const playerIconChanged = new Signal<[Player]>();
 export let joinCode = "";
 //export let players: Player[] = [];
 export let leaderId = 255;
-export let players: Map<number, Player> = new Map();
+export let playerMap: Map<number, Player> = new Map();
 
 export function setJoinCode(code: string) {
 	joinCode = code;
@@ -30,14 +30,36 @@ export function setLeaderId(newLeaderId: number) {
 }
 
 export function playerCount() {
-	return players.size;
+	return playerMap.size;
 }
 export function hasPlayer(id: number): boolean {
-	return players.has(id);
+	return playerMap.has(id);
 }
+export function player(id: number): Player | undefined;
+//export function player(id: number[])
 export function player(id: number): Player | undefined {
-	return players.get(id);
+	return playerMap.get(id);
 }
+export function players(ids?: number[]): Player[] {
+	if (ids === undefined) {
+		return Array.from(playerMap.values());
+	} else {
+		const players = [];
+		for (const id of ids) {
+			const player = playerMap.get(id);
+			if (!player) {
+				console.error("player not found");
+			} else {
+				players.push(player);
+			}
+		}
+		return players;
+	}
+}
+
+/*export function players(ids: Iterable<number>): Player[] {
+	const players = 
+}*/
 /*export function playerName(id: number): string | undefined {
 	return player(id)?.name;
 }
@@ -45,7 +67,7 @@ export function playerIcon(id: number): number {
 	return players[id].icon;
 }*/
 export function playerIds(): IterableIterator<number> {
-	return players.keys();
+	return playerMap.keys();
 }
 export function playerView(id: number): VNode | undefined {
 	const _player = player(id);
@@ -72,20 +94,20 @@ client.use(INC, OUT);
 INC.listen("accepted", ({ joinCode }) => setJoinCode(joinCode));
 INC.listen("playerJoined", ({ playerId, name, icon }) => {
 	const player = new Player(playerId, name, icon);
-	players.set(playerId, player);
+	playerMap.set(playerId, player);
 	playerJoined.emit(player);
 });
 INC.listen("playerLeft", ({ playerId }) => {
-	const player = players.get(playerId);
+	const player = playerMap.get(playerId);
 	if (player === undefined) {
 		console.warn("Received playerLeft for player that is not present.");
 	} else {
-		players.delete(playerId);
+		playerMap.delete(playerId);
 		playerLeft.emit(player);
 	}
 });
 INC.listen("playerIconChanged", ({ playerId, icon }) => {
-	const player = players.get(playerId);
+	const player = playerMap.get(playerId);
 	if (player === undefined) {
 		console.warn("Received playerIconChanged for player that is not present.");
 	} else {
@@ -102,7 +124,7 @@ INC.listen("playerDisconnected", ({ playerId }) => {
 });
 client.disconnected.listen(() => {
 	joinCode = "";
-	players.clear();
+	playerMap.clear();
 });
 
 export class Player {
@@ -191,12 +213,15 @@ export class VoteQueue {
 			}
 		}, DELAY_MS);
 	}
+	get(id: number): number[] {
+		return this.votes[id] ??= [];
+	}
 }
 
 export class ScoreMap {
 	scores = new Map<number, number>();
 	
-	reset(/*playerIds: Iterable<number> = players.keys()*/) {
+	reset() {
 		this.scores.clear();
 		for (const id of playerIds())
 			this.scores.set(id, 0);
@@ -243,7 +268,7 @@ export class ScoreMap {
 	}
 	view() {
 		let entries = Array.from(this.sorted()).map(({ id, score }) => {
-			const player = players.get(id)!;
+			const player = playerMap.get(id)!;
 			return h(
 				"div.score-entry",
 				Player.scoredView(player, score)

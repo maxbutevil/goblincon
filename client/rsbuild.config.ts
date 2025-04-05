@@ -5,7 +5,8 @@ import { pluginSass } from '@rsbuild/plugin-sass';
 export default defineConfig({
 	source: {
 		entry: {
-			testing: "./src/testing.ts",
+			"testing/host": "./src/testing_host.ts",
+			"testing/play": "./src/testing_play.ts",
 			host: "./src/host/host.ts",
 			play: "./src/play/play.ts",
 		}

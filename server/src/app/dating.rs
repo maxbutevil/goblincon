@@ -10,9 +10,10 @@ const VOTE_TIME: Duration = Duration::from_secs(20);
 const VOTE_TIME_ONE_SUBMISSION: Duration = Duration::from_secs(15);
 const VOTE_TIME_NO_SUBMISSIONS: Duration = Duration::from_secs(12);
 
-
 const SHOW_VOTES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
 const SHOW_SCORES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
+const RECAP_TIME: DynamicDuration = DynamicDuration::from_secs(180, 0);
+
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -51,9 +52,9 @@ enum HostMsgIn {
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 enum HostMsgOut<'a> {
 	/* State Sync */
-	DrawingBachelors { theme: &'a str },
-	DrawingSuitors,
-	Voting { bachelor_id: PlayerId },
+	DrawingBachelors { secs_left: f32, theme: &'a str },
+	DrawingSuitors { secs_left: f32 },
+	Voting { secs_left: f32, bachelor_id: PlayerId },
 	ShowingVotes,
 	ShowingScores,
 	
@@ -584,7 +585,7 @@ impl<'a> Game<'a> {
 		
 		self.clients.send_all(
 			&PlayerMsgOut::DrawingBachelor { theme, naming, secs_left },
-			&HostMsgOut::DrawingBachelors { theme }
+			&HostMsgOut::DrawingBachelors { theme, secs_left }
 		).await;
 		
 		let submissions = Box::new([const { None }; MAX_PLAYER_COUNT]);
@@ -613,7 +614,9 @@ impl<'a> Game<'a> {
 		);
 		
 		/* Tell host */
-		self.clients.host.send(&HostMsgOut::DrawingSuitors).await;
+		self.clients.host.send(&HostMsgOut::DrawingSuitors {
+			secs_left
+		}).await;
 		
 		/* Tell players */
 		let iter = assignments.bachelors();
@@ -662,7 +665,10 @@ impl<'a> Game<'a> {
 			self.settings.vote_time_factor
 		);
 		
-		self.clients.host.send(&HostMsgOut::Voting { bachelor_id }).await;
+		self.clients.host.send(&HostMsgOut::Voting {
+			bachelor_id,
+			secs_left
+		}).await;
 		for (id, player) in self.clients.players.iter_mut() {
 			if suitor_ids.contains(&(id as PlayerId)) || choices.is_empty() {
 				player.send(&PlayerMsgOut::NotVoting).await;

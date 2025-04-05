@@ -1,5 +1,7 @@
 
 @use "flow.scss" as *;
+@use "theme.scss" as theme;
+//@forward "theme.scss" as theme;
 @forward "flow.scss";
 @forward "components.scss";
 
@@ -17,14 +19,14 @@ body {
 	height: calc(100% - 1em);
 	margin: 0.5em;
 	font-family: Arial;
-	background-color: #eee0d0;
+	background-color: theme.$background-color;
 	//overflow-x: auto;
 }
 
 
 button, input {
 	font-size: 1.0em;
-	border: 3px solid #333;
+	border: theme.$border-weight solid #333;
 	border-radius: 6px;
 	color: black;
 }

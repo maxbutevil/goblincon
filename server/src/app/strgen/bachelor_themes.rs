@@ -56,8 +56,8 @@ const THEMES: &[&str] = &[
 	/* Genre */
 	"Western",
 	"Sci-Fi",
-	"Murder Mystery",
-	"Medical Drama",
+	"Mystery",
+	//"Medical Drama",
 	"Comedy",
 	"Cartoon",
 	

@@ -47,7 +47,7 @@
 }
 
 @mixin vflow($gap: 0.3em) {
-	@include flex(column nowrap, $gap);
+	@include column($gap);
 	text-align: center;
 }
 @mixin popup {
@@ -69,7 +69,7 @@
 }
 .mode {
 	flex: auto;
-	@include flex;
+	@include vflow;
 }
 .tab {
 	flex: auto;

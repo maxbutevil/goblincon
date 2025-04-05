@@ -177,6 +177,16 @@ export function defer(...callbacks: Cleanup[]) {
 export function cleanup(...callbacks: Cleanup[]) {
   Ref.addCleanup(...callbacks);
 }
+export function timeout(ms: number, callback: () => void): NodeJS.Timeout {
+  const timeout = setTimeout(callback, ms);
+  Ref.addDeferred(() => clearTimeout(timeout));
+  return timeout;
+}
+export function interval(ms: number, callback: () => void): NodeJS.Timer {
+  const interval = setInterval(callback, ms);
+  Ref.addDeferred(() => clearInterval(interval));
+  return interval;
+}
 
 /* Internal debug functions for dumping state of VNode tree to the console */
 /* Currently unused */

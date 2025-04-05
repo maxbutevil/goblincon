@@ -3,6 +3,8 @@
 
 .countdown {
 	font-size: 1.6em;
+	text-align: center;
+	min-width: 3ch;
 }
 
 .player-icon {
@@ -12,12 +14,13 @@
 	flex: 0 0 $size;
 }
 .player-view {
-	@include flex(row nowrap, 0.3em);
+	@include row(0.3em);
 	font-size: 1.3em;
+	text-wrap: nowrap;
 }
 
 .multi-btn {
-	@include flex(row nowrap, center);
+	@include row(center);
 	font-size: 0.9em;
 	
 	button {
@@ -41,19 +44,19 @@
 
 #logo {
 	#icon-row {
-		@include flex(row nowrap, center);
+		@include row(center);
 		font-size: 1.6em;
 	}
 }
 
-#overlay-shadow {
+#overlay {
 	position: fixed;
 	top: 0;
 	left: 0;
 	bottom: 0;
 	right: 0;
 	
-	@include flex(column nowrap, center, center);
+	@include column(center, center);
 	padding: none;
 	
 	border: none;
@@ -77,64 +80,60 @@
 	position: fixed;
 	left: 0.5em;
 	bottom: 0.5em;
-	@include flex(row nowrap, 0.5em);
+	@include row(0.5em);
 }
 
-.submission-panel {
-	@include flex(column nowrap, space-between, center);
-	padding: 0.2em;
-	
-	background-color: #eee;
-	border: 3px solid black;
-	border-radius: 8px;
-	
-	/*.img-ctr {
-		>img {
-			
-		}
-	}*/
-	
-	>img {
-		flex: 1 1 0;
-		min-width: 0;
-		min-height: 0;
-		aspect-ratio: 1;
-	}
-}
 .submission {
-	@extend .submission-panel;
+	@include column(space-between, center);
 	//height: auto;
 	min-width: 0;
 	min-height: 0;
-	aspect-ratio: 6 / 7;
+	aspect-ratio: 9 / 10;
 	flex: 0 0 auto;
-	/*aspect-ratio: 7 / 8;
-	height: 88%;*/
-	//flex: 1 1 auto;
-	//flex: 0 1 content;
+	
+	padding: 0.2em;
+	background-color: #eee;
+	border: 3px solid black;
+	border-radius: 8px;
 	
 	position: relative;
 	
 	.name {
 		font-size: 1.3em;
+		text-wrap: nowrap;
 	}
-	.vote-ctr {
-		position: absolute;
-		top: 2%;
-		left: 2%;
-		right: 2%;
-		bottom: 2%;
+	.img-ctr {
 		
-		@include flex(row wrap, flex-start, flex-start);
-		font-size: 2.4em;
-		.player-icon {
-			animation: fadeIn 0.7s;
-			@keyframes fadeIn {
-				0% { opacity: 0; rotate: -30deg; }
-				50% { opacity: 0.5; rotate: 25deg; }
-				100% { opacity: 1; rotate: 0deg; }
+		flex: 1 1 0;
+		min-width: 0;
+		min-height: 0;
+		aspect-ratio: 1;
+		position: relative;
+		
+		.drawing {
+			max-width: 100%;
+			min-width: 100%;
+		}
+		
+		.vote-ctr {
+			position: absolute;
+			top: 2%;
+			left: 2%;
+			right: 2%;
+			bottom: 2%;
+			
+			@include flex(row wrap, flex-start, flex-start);
+			font-size: 2.4em;
+			.player-icon {
+				animation: fadeIn 0.7s;
+				@keyframes fadeIn {
+					0% { opacity: 0; rotate: -30deg; }
+					50% { opacity: 0.5; rotate: 25deg; }
+					100% { opacity: 1; rotate: 0deg; }
+				}
 			}
 		}
 	}
+	
 }
 

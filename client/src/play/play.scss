@@ -58,9 +58,6 @@
 			text-align: center;
 			font-size: 1.6em;
 		}
-		.countdown {
-			text-align: center;
-		}
 	}
 }
 
@@ -72,7 +69,7 @@
 	
 	width: min(94vw, 77vh);
 	
-	@include flex(column nowrap, center, stretch);
+	@include column(center, stretch);
 	
 	border: $border-style;
 	touch-action: pinch-zoom;
