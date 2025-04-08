@@ -133,12 +133,13 @@
 			font-size: 1.2em;
 			
 			.player-icon {
-				transform: translate(0.6em, 0.6em) scale(2, 2);
+				$transform: translate(0.6em, 0.6em) scale(2, 2);
+				transform: $transform;
 				animation: fadeIn 0.7s;
 				@keyframes fadeIn {
-					0% { opacity: 0; rotate: -30deg; }
-					45% { opacity: 0.5; rotate: 25deg; }
-					100% { opacity: 1; rotate: 0deg; }
+					0% { opacity: 0; transform: $transform rotate(-30deg); }
+					45% { opacity: 0.5; transform: $transform rotate(25deg); }
+					100% { opacity: 1; transform: $transform rotate(0deg); }
 				}
 			}
 		}

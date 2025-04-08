@@ -99,7 +99,7 @@ export class ReadyDisplay {
 		this.countdown?.stop();
 	}
 	view(): VNode {
-		return s(this.update, () => h("div#ready-icons", [
+		return s(this.update, () => h("div#ready-display", [
 			this.countdown?.view(),
 			...this.players.map((player) => {
 				const ready = this.readied.includes(player.id);

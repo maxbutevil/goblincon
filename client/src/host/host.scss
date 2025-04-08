@@ -2,7 +2,7 @@
 @use "../styles/index.scss" as *;
 @use "../styles/theme.scss" as theme;
 
-$ready-icons-space: calc(3rem + 2px + 2 * theme.$border-weight);
+$ready-display-space: calc(3rem + 2px + 2 * theme.$border-weight);
 
 .score-entry-ctr {
 	min-width: 16em;
@@ -17,7 +17,7 @@ $ready-icons-space: calc(3rem + 2px + 2 * theme.$border-weight);
 .submission-ctr {
 	flex: 1 1 0;
 	width: 96vw;
-	margin-bottom: $ready-icons-space;
+	margin-bottom: $ready-display-space;
 	@include column(center, stretch, 0.6em);
 	
 	.submission-row {
@@ -41,7 +41,7 @@ $ready-icons-space: calc(3rem + 2px + 2 * theme.$border-weight);
 }
 
 
-#ready-icons {
+#ready-display {
 	position: fixed;
 	bottom: 0.5rem;
 	@include row(2px);
@@ -49,7 +49,17 @@ $ready-icons-space: calc(3rem + 2px + 2 * theme.$border-weight);
 	
 	.player-icon {
 		font-size: 2rem;
+		transition: filter 0.15s;
+		&:not(.disabled) {
+			animation: bounce 0.3s;
+			@keyframes bounce {
+				0% { transform: translateY(0em); }
+				50% { transform: translateY(-0.4em); }
+				100% { transform: translateY(0em); }
+			}
+		}
 	}
+	
 }
 
 #lobby {

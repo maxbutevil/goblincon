@@ -44,7 +44,7 @@ const testSubmission = {
 const testClose = () => console.log("close");
 
 //const testPage = projector(matchupReviewTest);
-const testPage = projector(matchupReviewTest);
+const testPage = projector(submissionGridTest);
 
 function matchupSummary() {
 	return h("div.matchup", [
@@ -143,7 +143,9 @@ function submissionGridTest() {
 		return h(
 			"div.tab",
 			{ on: { click: () => {
-				count.set(count.get() + 1);
+				readyDisplay.ready(count.get() - 1);
+				count.mutate(curr => curr + 1);
+				
 				readyDisplay.stopCountdown();
 			} } },
 			[

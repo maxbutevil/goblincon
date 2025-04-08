@@ -167,7 +167,6 @@ function voting(bachelorId: number, secsLeft: number) {
 		readyDisplay.ready(id);
 	}
 	
-	
 	// Ensure that suitors show up in the same order on host and in votes
 	matchup.suitors.sort((a, b) => a.id - b.id);
 	
@@ -184,6 +183,7 @@ function voting(bachelorId: number, secsLeft: number) {
 			// Start revealing votes
 			const votes = matchup.suitors.map(suitor => suitor.votes);
 			voteQueue.start(votes);
+			readyDisplay.stopCountdown();
 		})
 	);
 	
