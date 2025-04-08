@@ -1,7 +1,7 @@
 
 import {
 	State,
-	h, s, defer,
+	h, s, defer, Micron,
 	Shared, PlayerIcons,
 	VNode, VNodeChildren, VNodeChildElement,
 	cleanup
@@ -86,6 +86,8 @@ export class Countdown {
 		
 		this.interval = setInterval(tick, 200);
 		tick();
+		
+		Micron.maybeDefer(() => clearInterval(this.interval));
 	}
 	static simple(endTime: number, onFinish?: () => void): VNode {
 		const cd = new Countdown(endTime);
@@ -104,11 +106,18 @@ export class Countdown {
 		return Date.now() + 1000 * (secsLeft - secsBuffer);
 	}
 	
+	stop() {
+		this.secondsLeft.set(-1);
+		clearInterval(this.interval);
+	}
 	view(): VNode {
-		cleanup(() => clearInterval(this.interval));
 		return s(this.secondsLeft, (curr) => {
-			const style = curr <= 3 ? { color: "red" } : { color: "black" };
-			return h("div.countdown", { style }, curr.toString());
+			if (curr < 0) {
+				return h("div.countdown", "0");
+			} else {
+				const style = curr <= 3 ? { color: "red" } : { color: "black" };
+				return h("div.countdown", { style }, curr.toString());
+			}
 		});
 	}
 	onThreshold(time: number, callback: () => any): Countdown {
@@ -117,6 +126,77 @@ export class Countdown {
 	}
 	onFinish(callback: () => any): Countdown {
 		return this.onThreshold(0, callback);
+	}
+}
+
+
+
+type AutoscrollOptions = {
+	strength: number,
+	tickMs: number,
+	startMs: number,
+	restartMs?: number
+};
+export class Autoscroll {
+	
+	interval?: NodeJS.Timeout;
+	direction = 1;
+	elm?: HTMLElement;
+	
+	strength: number;
+	tickMs: number;
+	startMs: number;
+	restartMs?: number;
+	
+	constructor(options: Partial<AutoscrollOptions> = {}) {
+		this.strength = options.strength ?? 25;
+		this.tickMs = options.tickMs ?? 100;
+		this.startMs = options.startMs ?? 600;
+		this.restartMs = options.restartMs;
+		
+		Micron.maybeDefer(() => clearInterval(this.interval));
+	}
+	private tick() {
+		if (!this.elm || !document.contains(this.elm) || this.elm.clientHeight >= this.elm.scrollHeight) {
+			this.stop();
+			return;
+		}
+		
+		if (this.direction === -1 && this.elm.scrollTop <= 0) {
+			this.direction = 1;
+			this.restart();
+		} else if (this.direction === 1 && this.elm.scrollTop >= this.elm.scrollHeight - this.elm.clientHeight - 2) {
+			this.direction = -1;
+			this.restart();
+		} else {
+			this.elm.scrollBy({
+				top: this.strength * this.direction,
+				behavior: "smooth"
+			});
+		}
+	}
+	private next(delayMs = 0) {
+		clearInterval(this.interval);
+		setTimeout(() => {
+			this.interval = setInterval(
+				this.tick.bind(this),
+				this.tickMs
+			);
+		}, delayMs);
+	}
+	private restart() {
+		if (this.restartMs !== undefined) {
+			this.next(this.restartMs);
+		}
+	}
+	start(elm: HTMLElement) {
+		this.direction = 1;
+		this.elm = elm;
+		this.next(this.startMs);
+	}
+	stop() {
+		clearInterval(this.interval);
+		this.elm?.scrollBy(0, 0);
 	}
 }
 

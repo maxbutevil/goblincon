@@ -17,7 +17,7 @@ import * as PlayerIcon from "./modules/player_icons"
 
 import { Player } from "./host/room";
 
-import { Countdown, tray, iconBtn } from "./components"
+import { Countdown, tray, iconBtn, Autoscroll } from "./components"
 import Drawpad from "./play/drawpad"
 import { submission, submissionGrid, ReadyDisplay } from "./host/components";
 //import { NameOverlay } from "./play/components"
@@ -29,16 +29,22 @@ import { submission, submissionGrid, ReadyDisplay } from "./host/components";
 
 const testPlayer = new Player(0, "freak #1", 0);
 const testPlayer2 = new Player(1, "freak #2", 1);
-const testPlayers = [testPlayer, testPlayer2];
+//const testPlayers = [testPlayer, testPlayer2];
+
+const testPlayers: Player[] = [];
+for (let i = 0; i < 16; i++) {
+	testPlayers.push(new Player(i, `freak #${i}`, i % 7));
+}
+
 const testSubmission = {
 	drawing: assets.testDrawing,
-	name: "Ok Buddy"
+	name: "Test Submission"
 };
 //const testName = "Mr. Griddles";
 const testClose = () => console.log("close");
 
 //const testPage = projector(matchupReviewTest);
-const testPage = projector(submissionGridTest);
+const testPage = projector(matchupReviewTest);
 
 function matchupSummary() {
 	return h("div.matchup", [
@@ -67,103 +73,79 @@ function matchupSummaryThree() {
 		h("div.spacer"),
 	]);
 }
-function matchupReview({ close }: { close: () => void }) {
+
+
+function matchupReview() {
 	
-	let interval: NodeJS.Timeout;
-	let scroll = 1;
-	const readyDisplay = new ReadyDisplay(testPlayers);
+	const autoscroll = new Autoscroll({
+		strength: 25,
+		startMs: 600,
+		restartMs: 1200
+	});
 	
-	defer(() => clearInterval(interval));
-	
-	function stopScroll() {
-		scroll = 0;
-		document.documentElement.scrollBy(0, 0);
-	}
-	function initScroll() {
-		
-		const scrollStrength = 25;
-		const scrollDelayMs = 100;
-		const startDelayMs = 1600;
-		
-		const elm = document.documentElement;
-		if (elm.clientHeight >= elm.scrollHeight) {
-			return;
-		}
-		function nextScroll() {
-			clearInterval(interval);
-			setTimeout(() => {
-				interval = setInterval(() => {
-					if (scroll === 0) {
-						clearInterval(interval);
-						return;
-					}
-					if (scroll === -1 && elm.scrollTop <= 0) {
-						scroll = 1;
-						nextScroll();
-					} else if (scroll === 1 && elm.scrollTop >= elm.scrollHeight - elm.clientHeight - 2) {
-						scroll = -1;
-						nextScroll();
-					} else {
-						elm.scrollBy({
-							top: scroll * scrollStrength,
-							behavior: "smooth"
-						});
-					}
-				}, scrollDelayMs);
-			}, startDelayMs);
-		}
-		nextScroll();
-	}
 	return h("div#recap",
 		{
 			on: {
-				wheel: stopScroll,
-				click: stopScroll,
+				wheel: () => autoscroll.stop(),
+				click: () => autoscroll.stop(),
 			},
 			hook: {
-				insert: initScroll
+				insert: () => {
+					const elm = document.getElementById("dating-recap-popup");
+					if (elm) autoscroll.start(elm);
+				}
 			},
 		},
 		[
-			h("div#matchups", [
+			h("h1", "Recap"),
+			h("div.round", [
 				h("h2", "Round One: Abcde"),
 				matchupSummary(),
 				matchupSummaryTwo(),
+			]),
+			h("div.round", [
 				h("h2", "Round Two: Abcde"),
 				matchupSummaryThree(),
 				matchupSummary(),
-			]),
-			readyDisplay.view()
-			/*readyIcons({
-				players: [testPlayer, testPlayer2],
-				isReady: () => false,
-				countdown: Countdown.secs(Date.now() + 100 * 1000),
-			}),*/
+			])
+			//readyDisplay.view()
 		]
 	);
 }
 function matchupReviewTest() {
-	return matchupReview({
-		close: testClose,
-		
-	});
+	
+	return h("div#overlay", [
+		h("div#dating-recap-popup.popup", [
+			matchupReview(),
+			h("button", "Close")
+		])
+	]);
+	
+	return matchupReview();
 }
 
 function submissionGridTest() {
 	
 	const count = new State(1);
-	const player = new Player(0, "test", 0);
-	const readyDisplay = new ReadyDisplay(testPlayers, 100, 2);
-	readyDisplay.ready(0);
+	const readyDisplay = new ReadyDisplay(testPlayers, 205, 2);
+	for (let i = 0; i < 16; i++) {
+		//readyDisplay.ready(i);
+	}
+	//readyDisplay.ready(0);
 	
 	return s(count, curr => {
 		const submissions = [];
 		for (let i = 0; i < curr; i++) {
-			submissions.push(submission(player, testSubmission));
+			submissions.push(submission(testPlayer, testSubmission, {
+				votes: testPlayers
+			}));
 		}
 		return h(
 			"div.tab",
-			{ on: { click: () => count.set(count.get() + 1) } },
+			{ on: { click: () => {
+				count.set(count.get() + 1);
+				readyDisplay.stopCountdown();
+			} } },
 			[
 				h("div", `Vote for your favorite ${"goblinName"}!`),
 				submissionGrid(submissions),
@@ -208,7 +190,7 @@ function oldDrawingSuitorTest() {
 	};
 	function overlay() {
 		return h("div#overlay",/* { on: { click: toggle } }, */ [
-			h("div#bachelor-popup", [
+			h("div#bachelor-popup.popup", [
 				h("div.vflow", [
 					h("div", [
 						h("h2", "Your Bachelor(ette)"),

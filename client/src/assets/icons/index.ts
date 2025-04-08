@@ -6,13 +6,13 @@ export { default as thick } from "./thick.png"
 export { default as eraseThin } from "./erase_thin.png"
 export { default as eraseThick } from "./erase_thick.png"
 
-
 export { default as help } from "./help.png"
 export { default as exit } from "./exit.png"
 //export { default as showBachelor } from "./show_bachelor.png"
 export { default as vs } from "./vs.png"
-export { default as bachelor } from "./text_bachelor.png"
-export { default as name } from "./text_name.png"
+export { default as bachelor } from "./bachelor.png"
+export { default as name } from "./name.png"
+export { default as recap } from "./recap.png"
 
 export { default as questionMark } from "./question_mark.png";
 export { default as heart } from "./heart.png";

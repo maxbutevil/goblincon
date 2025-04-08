@@ -76,13 +76,11 @@ function matchupReview({ close }: { close: () => void }) {
 	const startDelayMs = 1600;
 	
 	//let interval = interval();
-	defer(
-		Signal.keydown.subscribe((ev) => {
-			if (ev.key === "Escape") {
-				close();
-			}
-		}),
-	);
+	defer(Signal.keydown.subscribe((ev) => {
+		if (ev.key === "Escape") {
+			close();
+		}
+	}));
 	
 	function stopScroll() {
 		scroll = 0;
@@ -210,7 +208,7 @@ function oldDrawingSuitorTest() {
 	};
 	function overlay() {
 		return h("div#overlay",/* { on: { click: toggle } }, */ [
-			h("div#bachelor-popup", [
+			h("div#bachelor-popup.popup", [
 				h("div.vflow", [
 					h("div", [
 						h("h2", "Your Bachelor(ette)"),

@@ -25,8 +25,8 @@ body {
 
 
 button, input {
+	@include theme.border;
+	border-color: #333;
 	font-size: 1.0em;
-	border: theme.$border-weight solid #333;
-	border-radius: 6px;
 	color: black;
 }

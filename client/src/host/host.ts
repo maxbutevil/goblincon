@@ -2,21 +2,22 @@
 import "./host.scss"
 
 import {
+	Signal, State,
 	Val, ReceiveIndex, SendIndex,
 	client,
 	Shared,
-	h, s, c, projector, mount, VNode
+	h, s, c, defer, projector, mount, VNode
 } from "../modules/"
 import {
 	logo,
 	tray,
 	iconBtn
 } from "../components"
-import { exit as exitIcon } from "../assets/icons/"
+import * as icons from "../assets/icons/"
 
 import * as Room from "./room"
 import { Player } from "./room"
-import { Setting } from "./mode"
+import { Mode, Setting } from "./mode"
 import Drawblins from "./drawblins"
 import Dating from "./dating"
 
@@ -41,8 +42,8 @@ const mode = new Setting<typeof Dating | typeof Drawblins>(
 	[ Drawblins, Dating ],
 	{ key: "gameMode", initial: 1, stringifier: (m) => m.name }
 );
-// not the most elegant solution, but this stops the error page from showing when we click a link
-let unloading = false; 
+//let prevMode: Mode<any> | undefined = undefined;
+let unloading = false; // not the most elegant solution, but this stops the error page from showing when we click a link
 
 client.closed.listen((ev) => {
 	if (!unloading) {
@@ -87,6 +88,11 @@ function loading() {
 }
 function lobby() {
 	
+	const overlay = new State<null | ((close: () => void) => VNode)>(null);
+	defer(Signal.keydown.subscribe((ev) => {
+		if (ev.key === "Escape") overlay.set(null);
+	}));
+	
 	function copy(text: string) {
 		navigator.clipboard.writeText(text).catch(() => {
 			console.error("Couldn't write to clipboard; check browser settings.");
@@ -106,7 +112,6 @@ function lobby() {
 			h("div#lobby", {}, [
 				h("div#overview.tab", {}, [
 					h("h2", "Lobby"),
-					
 					h("div", [
 						h("h3", "Join Code"),
 						h("div#join-code", {}, Room.joinCode),
@@ -133,7 +138,14 @@ function lobby() {
 					]);
 				})
 			]),
-			tray(iconBtn(exitIcon, () => location.href = "/"))
+			s(overlay, curr => curr ? curr(() => overlay.set(null)) : h("!")),
+			tray(
+				iconBtn(icons.exit, () => location.href = "/"),
+				c(
+					Room.recap !== undefined &&
+					iconBtn(icons.recap, () => overlay.toggle(Room.recap!, null))
+				)
+			)
 		]
 	);
 }

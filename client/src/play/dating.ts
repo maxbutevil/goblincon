@@ -80,9 +80,9 @@ function starting() {
 function drawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: string) {
 	
 	const overlay = new State<null | typeof nameView>(null);
-	const nameOverlay = c(naming && new NameOverlay({
+	const nameOverlay = (!naming) ? null : new NameOverlay({
 		onClose: () => overlay.set(null)
-	}));
+	});
 	
 	defer(Signal.keydown.subscribe((ev) => {
 		if (ev.key === "Escape") overlay.set(null);
@@ -131,9 +131,9 @@ function drawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 	//let name: string | undefined = undefined; // undefined = never opened name overlay
 	
 	const overlay = new State<null | typeof bachelorView>(bachelorView);
-	const nameOverlay = c(naming && new NameOverlay({
+	const nameOverlay = (!naming) ? null : new NameOverlay({
 		onClose: () => overlay.set(null)
-	}));
+	})
 	defer(Signal.keydown.subscribe((ev) => {
 		if (ev.key === "Escape") overlay.set(null);
 	}));
@@ -171,7 +171,7 @@ function drawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 	}
 	function bachelorView() {
 		return h("div#overlay", [
-			h("div#bachelor-popup", [
+			h("div#bachelor-popup.popup", [
 				h("div", [
 					h("div", [
 						h("h2", "Your Bachelor(ette)"),

@@ -51,8 +51,6 @@ client.disconnected.listen(() => {
 	
 });
 client.closed.listen((ev) => {
-	
-	
 	// Possible issue:
 	// if the server somehow connects client,
 	// then immediately disconnects it without a reason

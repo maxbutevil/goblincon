@@ -8,15 +8,17 @@ import {
 } from "../modules/"
 import * as Room from "./room"
 import { Player } from "./room"
-import { Submission } from "../modules/submission"
 import { Countdown } from "../components"
+import type { Submission } from "../modules/submission"
 
 export function submission(player: Player, content: Submission, { votes }: { votes?: Player[] } = {}) {
 	
 	const { drawing, name } = content;
 	const filename = `goblincon-${name ?? "unnamed"}`;
 	
-	const voteIcons = votes && votes.length > 0 && votes.map(player => Player.iconView(player));
+	const voteIcons = votes && votes.length > 0 && votes.map(player =>
+		Player.iconView(player)
+	);
 	const votesCtr = c(voteIcons && h("div.vote-ctr", voteIcons));
 	//const votesCtr = c(votes && votes.length > 0 && h("div.vote-ctr", Player.iconView(vote)));
 	
@@ -62,10 +64,11 @@ export function submissionGrid(submissions: VNode[]): VNode {
 	
 	let fontSize = "1em";
 	switch (rows.length) {
-		case 0: case 1: case 2: break;
+		case 0: case 1: break;
+		case 2: fontSize = "0.9em"; break;
 		case 3: fontSize = "0.8em"; break;
-		case 4: fontSize = "0.6em"; break;
-		default: fontSize = "0.5em"; break;
+		case 4: fontSize = "0.7em"; break;
+		default: fontSize = "0.6em"; break;
 	}
 	
 	return h(
@@ -74,11 +77,6 @@ export function submissionGrid(submissions: VNode[]): VNode {
 		rows.map(row => h("div.submission-row", row))
 	);
 }
-
-type ReadyIconsOptions = {
-	secsLeft?: number
-};
-
 
 export class ReadyDisplay {
 	
@@ -97,15 +95,15 @@ export class ReadyDisplay {
 		this.readied.push(id);
 		this.update.emit();
 	}
-	view() {
+	stopCountdown() {
+		this.countdown?.stop();
+	}
+	view(): VNode {
 		return s(this.update, () => h("div#ready-icons", [
 			this.countdown?.view(),
 			...this.players.map((player) => {
 				const ready = this.readied.includes(player.id);
-				return h("div.icon-wrap",
-					{ class: { ready } },
-					Player.iconView(player)
-				);
+				return Player.iconView(player, !ready);
 			})
 		]));
 	}

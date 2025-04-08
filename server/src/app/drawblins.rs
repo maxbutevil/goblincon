@@ -75,7 +75,8 @@ enum HostMsgOut<'a> {
 	ShowingScores,
 	
 	DrawingSubmitted { player_id: PlayerId, drawing: &'a str },
-	VoteSubmitted { player_id: PlayerId, for_id: PlayerId }
+	VoteSubmitted { player_id: PlayerId, for_id: PlayerId },
+	//Finished,
 }
 
 #[derive(Deserialize)]
@@ -98,7 +99,8 @@ enum PlayerMsgOut<'a> {
 	DoneDrawing,
 	DoneVoting,
 	ShowingVotes,
-	ShowingScores
+	ShowingScores,
+	//Finished,
 }
 
 //impl Send for PlayerMsgOut<'_> {}

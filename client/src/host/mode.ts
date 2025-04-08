@@ -149,6 +149,14 @@ export class Settings<M extends SettingMap> {
 	}
 }
 
+/*export class Mode<S extends SettingMap> {
+	name: string;
+	settings: Settings<S>;
+	
+	View: () => VNode;
+	Recap?: () => VNode;
+}*/
+
 export class Mode<S extends SettingMap> {
 	
 	name: string;

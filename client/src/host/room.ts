@@ -18,6 +18,7 @@ export let joinCode = "";
 //export let players: Player[] = [];
 export let leaderId = 255;
 export let playerMap: Map<number, Player> = new Map();
+export let recap: undefined | ((close: () => void) => VNode);
 
 export function setJoinCode(code: string) {
 	joinCode = code;
@@ -69,6 +70,11 @@ export function playerIcon(id: number): number {
 export function playerIds(): IterableIterator<number> {
 	return playerMap.keys();
 }
+export function setRecap(newRecap: undefined | ((close: () => void) => VNode)) {
+	recap = newRecap;
+}
+
+
 export function playerView(id: number): VNode | undefined {
 	const _player = player(id);
 	return _player && Player.view(_player)
@@ -137,12 +143,13 @@ export class Player {
 		this.name = name;
 		this.icon = icon;
 	}
-	static iconView(player: Player) {
-		return PlayerIcons.view(player.icon, player.color);
+	static iconView(player: Player, disabled = false) {
+		return PlayerIcons.view(player.icon, player.color, disabled);
 	}
-	static view(player: Player) {
+	
+	static view(player: Player, disabled = false) {
 		return h("div.player-view", [
-			Player.iconView(player),
+			Player.iconView(player, disabled),
 			player.name
 		]);
 	}

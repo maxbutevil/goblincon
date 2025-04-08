@@ -2,7 +2,7 @@
 @use "../styles/index.scss" as *;
 
 #help-popup {
-	@include popup;
+	//@include popup;
 	justify-content: space-between;
 	/*height: 100%;*/
 	
@@ -10,12 +10,12 @@
 	.small { font-size: 0.86em; }
 }
 #bachelor-popup {
-	@include popup;
+	//@include popup;
 	background-color: #eee;
 }
-#name-popup {
-	@include popup;
-}
+/*#name-popup {
+	//@include popup;
+}*/
 
 /* Landing */
 %menu-tab {

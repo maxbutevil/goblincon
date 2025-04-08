@@ -82,11 +82,6 @@ export default mode;
 let rounds: Round[] = [];
 let scores = new ScoreMap();
 function currentRound(): Round { return rounds.at(-1)!; }
-/*function getSummaryMatchups(): Matchup[] {
-	return rounds.flatMap(round => {
-		return round.matchupOrder.map(m => round.matchups.get(m)!)
-	}).reverse();
-}*/
 
 const page = projector(starting);
 
@@ -106,8 +101,10 @@ function view() {
 	);
 	rounds = [];
 	scores.reset();
+	defer(setRecap);
 	return h("div#dating.mode", s(page));
 }
+
 function starting() {
 	return idlePage("Game Starting!", "(Dating Mode)", "Get ready to draw!");
 }
@@ -130,6 +127,12 @@ function drawingBachelors(theme: string, secsLeft: number) {
 function drawingSuitors(secsLeft: number) {
 	
 	const readyDisplay = new ReadyDisplay(Room.players(), secsLeft, Shared.DRAWING_BUFFER_SECS);
+	for (const bachelorId of Room.playerIds()) {
+		if (!currentRound().matchups.has(bachelorId)) {
+			// this player didn't submit a bachelor, and therefore won't be submitting a suitor
+			readyDisplay.ready(bachelorId);
+		}
+	}
 	
 	defer(
 		INC.subscribe("suitorSubmitted", ({ playerId, bachelorId, submission }) => {
@@ -157,8 +160,13 @@ function voting(bachelorId: number, secsLeft: number) {
 	const matchup = round.matchup(bachelorId)!;
 	const bachelor = Room.player(bachelorId)!;
 	
-	const readyDisplay = new ReadyDisplay(Room.players(), secsLeft, Shared.VOTING_BUFFER_SECS);
 	const voteQueue = new Room.VoteQueue();
+	const readyDisplay = new ReadyDisplay(Room.players(), secsLeft, Shared.VOTING_BUFFER_SECS);
+	for (const { id } of matchup.suitors) {
+		// suitors won't be voting since their own submission is being voted on
+		readyDisplay.ready(id);
+	}
+	
 	
 	// Ensure that suitors show up in the same order on host and in votes
 	matchup.suitors.sort((a, b) => a.id - b.id);
@@ -178,15 +186,6 @@ function voting(bachelorId: number, secsLeft: number) {
 			voteQueue.start(votes);
 		})
 	);
-	
-	function isReady({ id }: Player) {
-		for (const suitor of matchup.suitors) {
-			if (suitor.votes.includes(id)) {
-				return true;
-			}
-		}
-		return false;
-	}
 	
 	return h("div#voting.tab", [
 		s(voteQueue.update, () => {
@@ -214,23 +213,37 @@ function voting(bachelorId: number, secsLeft: number) {
 		readyDisplay.view()
 	]);
 }
+
+function setRecap() {
+	let needsRecap = false;
+	for (const round of rounds) {
+		if (round.matchups.size > 0) {
+			needsRecap = true;
+			break;
+		}
+	}
+	
+	if (needsRecap) {
+		Room.setRecap(recapOverlay);
+	}
+}
 function matchupRecap(matchup: Matchup): VNode {
 	const { bachelorId, bachelorSubmission, suitors } = matchup;
 	const bachelorNode = submission(Room.player(bachelorId)!, bachelorSubmission);
 	
-	let children;
-	
 	function spacer() {
 		return h("div.spacer");
 	}
-	function icon(delta: number): string {
+	function icon(delta: number) {
+		let src;
 		if (delta > 0) {
-			return icons.heart;
+			src = icons.heart;
 		} else if (delta < 0) {
-			return icons.heartbreak;
+			src = icons.heartbreak;
 		} else {
-			return icons.questionMark;
+			src = icons.questionMark;
 		}
+		return h("img", { attrs: { src } });
 	}
 	
 	const sel = "div.matchup";
@@ -266,14 +279,31 @@ function matchupRecap(matchup: Matchup): VNode {
 		return h("!");
 	}
 }
-function roundRecap(round: Round, i: number): VNode[] {
+function roundRecap(round: Round, i: number): VNode | null {
 	const matchups = round.sortedMatchups();
-	return [
-		h(`Round ${i}: ${round.theme}`),
-		...matchups.map(matchupRecap)
-	];
+	if (matchups.length === 0) {
+		return null;
+	} else {
+		return h("div.round", [
+			h("h2", `Round ${i+1}: ${round.theme}`),
+			...matchups.map(matchupRecap)
+		]);
+	}
 }
-function recap() {
-	return h("div#recap.tab", rounds.flatMap(roundRecap));
+function recapOverlay(close: () => void) {
+	return h("div#overlay", [
+		h("div#dating-recap.popup", [
+			h("div#recap", [
+				h("h1", "Recap"),
+				...rounds.map(roundRecap),
+			]),
+			h("button",
+				{ on: { click: close } },
+				"Close"
+			)
+		])
+	]);
 }
+
+
 

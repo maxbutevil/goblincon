@@ -14,7 +14,6 @@ const SHOW_VOTES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
 const SHOW_SCORES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
 const RECAP_TIME: DynamicDuration = DynamicDuration::from_secs(180, 0);
 
-
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
@@ -62,6 +61,7 @@ enum HostMsgOut<'a> {
 	BachelorSubmitted { player_id: PlayerId, submission: &'a Submission },
 	SuitorSubmitted { player_id: PlayerId, bachelor_id: PlayerId, submission: &'a Submission },
 	VoteSubmitted { player_id: PlayerId, for_id: PlayerId },
+	//Finished,
 }
 
 #[derive(Deserialize)]
@@ -70,7 +70,7 @@ enum HostMsgOut<'a> {
 enum PlayerMsgIn {
 	BachelorSubmission { submission: Submission },
 	SuitorSubmission { bachelor_id: PlayerId, submission: Submission },
-	VoteSubmission { for_name: String }
+	VoteSubmission { for_name: String },
 }
 
 #[derive(Serialize, Clone)]
@@ -92,6 +92,8 @@ enum PlayerMsgOut<'a> {
 	//DoneShipping,
 	DoneVoting,
 	NotVoting, // for when your own submission is being voted on
+	
+	//Finished,
 }
 
 type PlayerMap<T> = [T; MAX_PLAYER_COUNT];
@@ -410,9 +412,6 @@ impl<'a> Game<'a> {
 		}
 		Ok(())
 	}
-	//async fn handle_host_message(&mut self, message: HostMsgIn) {
-		
-	//}
 	async fn handle_player_message(&mut self, player_id: PlayerId, msg: PlayerMsgIn) {
 		match msg {
 			PlayerMsgIn::BachelorSubmission { submission } =>

@@ -2,22 +2,25 @@
 
 import Signal from "./signal"
 import State from "./state"
-export { Signal, State };
+import Ctx, { Cleanup, Builder } from "./ctx"
+export { Signal, State, Ctx };
+export type { Cleanup, Builder }; // Probably unnecessary
+
+import { Projector, Nav, projector, navigator } from "./projector"
+export { Projector, Nav, projector, navigator };
 
 import {
-  init,
-  classModule,
-  styleModule,
-  attributesModule,
-  eventListenersModule,
+  //patch,
+  mount,
   
   h,
   VNode,
   VNodeChildren,
   VNodeChildElement,
-} from "snabbdom";
+} from "./snabbdom";
 export {
   h,
+  mount
 };
 export type {
   VNode,
@@ -25,48 +28,11 @@ export type {
   VNodeChildElement,
 };
 
-/* SnabbDOM config */
-const patch = init([
-  classModule,
-  styleModule,
-  attributesModule,
-  eventListenersModule,
-], undefined, {
-  //experimental: { fragments: true }
-});
-export function mount(vnode: VNode, id = "root") {
-  let element = document.getElementById(id);
-  if (element == null) {
-    console.error(`Error in mount(): element with id ${id} does not exist`);
-    return null;
-  }
-  return patch(element, vnode);
-}
-
-type Cleanup = () => void;
-type Builder<A extends any[] = []> = (...args: A) => VNode;
-
-/* Exposed constructors */
-export function projector<A extends any[]>(initialBuilder: (...args: A) => VNode, ...initialArgs: A) {
-  if (initialArgs.length === 0) {
-    return new Projector(initialBuilder);
-  } else {
-    return new Projector(() => initialBuilder(...initialArgs));
-  }
-}
-export function persistor<A extends any[]>(initialBuilder: (...args: A) => VNode, ...initialArgs: A) {
-  if (initialArgs.length === 0) {
-    return new Persistor(initialBuilder);
-  } else {
-    return new Persistor(() => initialBuilder(...initialArgs));
-  }
-}
-
 
 
 /* Lets us more-easily create clean short-circuiting conditional expressions */
 // Eg: c(condition && h("!"))
-export function c<T extends {} = VNode>(exp: T | null | undefined | boolean | number | string): T | undefined {
+export function c(exp: VNode | null | undefined | boolean | number | string): VNode | undefined {
   return (exp !== null && typeof exp === "object") ? exp : undefined;
 }
 
@@ -76,9 +42,9 @@ export function s<T extends any[]>(s: Signal<T>, builder: Builder<T | []>): VNod
 export function s<T extends any[]>(s: Signal<T>[], builder: Builder<T | []>): VNode;
 export function s(builder: Builder<[() => void]>): VNode;
 export function s(p: Projector): VNode;
-export function s(p: Persistor): VNode;
+export function s(p: Nav): VNode;
 export function s(
-  d: State<any> | Signal<any> | Signal<any>[] | Builder<[() => void]> | Projector | Persistor,
+  d: State<any> | Signal<any> | Signal<any>[] | Builder<[() => void]> | Projector | Nav,
   builder?: Builder<any> | undefined
 ) {
   if (Array.isArray(d)) {
@@ -95,8 +61,8 @@ export function s(
       return monoSignaled(d, builder as Builder<any>);
     } else if (d instanceof Projector) {
       return projected(d);
-    } else if (d instanceof Persistor) {
-      return persisted(d);
+    } else if (d instanceof Nav) {
+      return navigated(d);
     } else if (typeof d === "function") {
       return contained(d);
     }
@@ -111,17 +77,17 @@ export function projected(projector: Projector): VNode {
     (builder) => (builder ?? projector.initial)()
   );
 }
-export function persisted(persistor: Persistor): VNode {
+export function navigated(navigator: Nav): VNode {
   return stateful(
-    persistor.state,
+    navigator.state,
     (builder) => builder()
   );
 }
 export function stateful<T>(state: State<T>, builder: (curr: T) => VNode): VNode {
   const rebuild = (_from: T, _curr: T) => {
-    ref.rebuild(() => builder(state.get()));
+    ctx.rebuild(() => builder(state.get()));
   };
-  let [ref, vnode] = Ref.build(
+  let [ctx, vnode] = Ctx.build(
     () => builder(state.get()),
     state.changed.subscribe(rebuild)
   );
@@ -136,18 +102,18 @@ export function signaled<T extends any[]>(signals: Signal<T> | Signal<T>[], buil
   }
 }
 export function monoSignaled<T extends any[]>(signal: Signal<T>, builder: Builder<T>) {
-  let ref: Ref, vnode: VNode;
-  const rebuild = (...args: T) => ref.rebuild(() => builder(...args));
-  [ref, vnode] = Ref.build(
+  let ctx: Ctx, vnode: VNode;
+  const rebuild = (...args: T) => ctx.rebuild(() => builder(...args));
+  [ctx, vnode] = Ctx.build(
     builder as () => VNode,
     signal.subscribe(rebuild)
   );
   return vnode;
 }
 export function multiSignaled<T extends any[]>(signals: Signal<T>[], builder: Builder<T | []>): VNode {
-  let ref: Ref, vnode: VNode;
-  const rebuild = (...args: T) => ref.rebuild(() => builder(...args));
-  [ref, vnode] = Ref.build(
+  let ctx: Ctx, vnode: VNode;
+  const rebuild = (...args: T) => ctx.rebuild(() => builder(...args));
+  [ctx, vnode] = Ctx.build(
     builder as Builder,
     Signal.bundle(...signals.map(signal => signal.subscribe(rebuild)))
   );
@@ -157,288 +123,46 @@ export function multiSignaled<T extends any[]>(signals: Signal<T>[], builder: Bu
 export function contained(builder: (rerender: () => void) => VNode) {
   // "self contained" stateful vnode
   // rerenders itself rather than responding to external state
-  let ref: Ref, vnode: VNode;
+  let ctx: Ctx, vnode: VNode;
   const _builder = () => builder(rerender);
   const rerender = () => {
-    ref.rebuild(_builder);
+    ctx.rebuild(_builder);
   };
-  [ref, vnode] = Ref.build(_builder, null);
+  [ctx, vnode] = Ctx.build(_builder, null);
   return vnode;
 }
 
 /* In-node Utility Functions */
-/* Registers a callback to be executed when the containing ref rerenders or is destroyed */
+/* Are we currently building a ctx? */
+/*export function hasContext(): boolean {
+  return Ctx.hasContext();
+}*/
+/* Registers a callback to be executed when the containing ctx rerenders or is destroyed */
 export function defer(...callbacks: Cleanup[]) {
-  Ref.addDeferred(...callbacks);
+  Ctx.defer(...callbacks);
 }
-/* Registers a callback to be executed when the containing ref is destroyed */
+/* Registers a callback to be executed when the containing ctx is destroyed */
+// Prefer using defer when possible
 // Will NOT be registered after the initial build, to avoid re-registering the same callback
 // For this reason, conditionally registering cleanup functions is an anti-pattern
 export function cleanup(...callbacks: Cleanup[]) {
-  Ref.addCleanup(...callbacks);
+  Ctx.cleanup(...callbacks);
 }
+export function maybeDefer(...callbacks: Cleanup[]) {
+  if (Ctx.exists()) Ctx.defer(...callbacks);
+}
+export function maybeCleanup(...callbacks: Cleanup[]) {
+  if (Ctx.exists()) Ctx.cleanup(...callbacks);
+}
+
+/* These are likely to change */
 export function timeout(ms: number, callback: () => void): NodeJS.Timeout {
   const timeout = setTimeout(callback, ms);
-  Ref.addDeferred(() => clearTimeout(timeout));
+  Ctx.defer(() => clearTimeout(timeout));
   return timeout;
 }
 export function interval(ms: number, callback: () => void): NodeJS.Timer {
   const interval = setInterval(callback, ms);
-  Ref.addDeferred(() => clearInterval(interval));
+  Ctx.defer(() => clearInterval(interval));
   return interval;
-}
-
-/* Internal debug functions for dumping state of VNode tree to the console */
-/* Currently unused */
-function dump(vnode: VNode, err = false) {
-      
-  function inner(vnode: VNode | string, out: string[], depth: number) {
-    if (typeof vnode === "string") {
-      out.push(`"${vnode}"`);
-      return;
-    }
-    let tag = document.contains(vnode.elm!) ? " (+)" : "";
-    out.push(`${"-".repeat(depth)}${vnode.sel}${tag}`);
-    if (vnode.children) {
-      for (const child of vnode.children)
-        inner(child, out, depth + 1);
-    }
-  }
-  
-  let out: string[] = [];
-  inner(vnode, out, 0);
-  (err ? console.error : console.warn)(out.join("\n"))
-}
-function dumpErr(vnode: VNode) {
-  dump(vnode, true);
-}
-
-
-class Ref {
-  
-  /* This is used to pass evil secret arguments to the stateful node functions */
-  private static stack: Ref[] = [];
-  private static isInitialBuild = false;
-  
-  node: VNode | Ref = null as unknown as VNode;
-  children?: Ref[];
-  deferreds?: Cleanup[];
-  cleanups?: Cleanup[] | null; // null = this node has been cleaned up
-  
-  constructor(node: VNode | Ref = null as unknown as VNode) {
-    this.node = node;
-  }
-  static addDeferred(...callbacks: Cleanup[]) {
-    let ref = this.stack.at(-1);
-    if (ref === undefined) {
-      console.error("attempted to register deferred callback while ref stack empty");
-      return;
-    }
-    
-    ref.addDeferred(...callbacks);
-  }
-  static addCleanup(...callbacks: Cleanup[]) {
-    let ref = this.stack.at(-1);
-    if (ref === undefined) {
-      console.error("attempted to register cleanup callback while ref stack empty");
-      return;
-    }
-    
-    if (Ref.isInitialBuild) {
-      // cleanup callbacks should only be added on the initial build, NOT on rebuilds
-      ref.addCleanup(...callbacks);
-    }
-  }
-  static build(builder: () => VNode, cleanup: Cleanup | null): [Ref, VNode] {
-    let ref = new Ref();
-    if (cleanup) ref.addCleanup(cleanup);
-    
-    Ref.isInitialBuild = true;
-    let vnode = ref.build(builder);
-    Ref.isInitialBuild = false;
-    
-    // add as child of parent
-    let parent = Ref.stack.at(-1);
-    if (parent) (parent.children ??= []).push(ref);
-    
-    return [ref, vnode];
-  }
-  
-  addDeferred(...callbacks: Cleanup[]) {
-    (this.deferreds ??= []).push(...callbacks);
-  }
-  addCleanup(...callbacks: Cleanup[]) {
-    if (this.cleanups === null) {
-      console.error("added cleanup to destroyed ref");
-    } else {
-      (this.cleanups ??= []).push(...callbacks);
-    }
-  }
-  
-  build(builder: () => VNode): VNode {
-    
-    Ref.stack.push(this);
-    let vnode = builder();
-    Ref.stack.pop();
-    
-    /* Check if ref is stacked (points to another ref rather than a vnode) */
-    if (this.children && this.children.length === 1) {
-      if (vnode === this.children[0].vnode()) {
-        this.node = this.children[0];
-        this.children = undefined;
-        return vnode;
-      }
-    }
-    
-    return this.node = vnode;
-  }
-  rebuild(builder: () => VNode) {
-    
-    if (this.cleanups === null) {
-      console.warn("Ref attempted to rebuild after being destroyed.");
-      return;
-    }
-    
-    //if (this.cleanup == null) return;
-    
-    let oldVnode = Ref.consume(this.node);
-    if (this.children) {
-      this.destroyChildren();
-      this.children = undefined;
-    }
-    if (this.deferreds) {
-      for (const callback of this.deferreds)
-        callback();
-      this.deferreds = undefined;
-    }
-    
-    let newVnode = this.build(builder);
-    let tail = this.tail();
-    try {
-      
-      patch(oldVnode, newVnode);
-      
-      /*
-      console.log("patched:", newVnode.sel);
-      dump(oldVnode);
-      dump(newVnode);
-      */
-      
-      // This appeases SnabbDOM and lets it do proper DOM updates in the future
-      // It's necessary because ancestors of this Ref will hold a reference to the VNode tree
-      // Their copy of the VNode tree will not be updated when this one rerenders
-      // The outdated VNode tree will cause SnabbDOM to break on rerender
-      // We get around this by putting our new node into the existing VNode tree
-      oldVnode.elm = newVnode.elm;
-      oldVnode.data = newVnode.data;
-      oldVnode.children = newVnode.children;
-      
-      oldVnode.key = newVnode.key;
-      oldVnode.sel = newVnode.sel;
-      oldVnode.text = newVnode.text;
-      tail.node = oldVnode; // Not sure if necessary
-    } catch(e) {
-      console.error("error patching:", newVnode.sel);
-      console.error(e);
-      dumpErr(oldVnode);
-      dumpErr(newVnode);
-    }
-  }
-  static consume(curr: Ref | VNode): VNode {
-    if (curr instanceof Ref) {
-      return curr.destroy();
-    } else {
-      return curr;
-    }
-  }
-  destroy(): VNode {
-    if (this.cleanups === null) {
-      console.warn("ref destroyed after it has already cleaned up");
-    } else {
-      
-      /*if (VERBOSE) {
-        if (this.node instanceof Ref)
-          console.log(`reference cleaning up (stacked)`);
-        else
-          console.log(`reference cleaning up (${this.node.sel})`);
-      }*/
-      
-      if (this.deferreds) {
-        for (const callback of this.deferreds)
-          callback();
-      }
-      if (this.cleanups) {
-        for (const callback of this.cleanups)
-          callback();
-      }
-      this.cleanups = null;
-    }
-    
-    this.destroyChildren();
-    
-    if (this.node instanceof Ref)
-      return this.node.destroy();
-    else
-      return this.node;
-  }
-  destroyChildren() {
-    if (this.children) {
-      for (const child of this.children)
-        child.destroy();
-    }
-  }
-  tail(): Ref {
-    if (this.node instanceof Ref)
-      return this.node.tail();
-    return this;
-  }
-  vnode(): VNode {
-    if (this.node instanceof Ref)
-      return this.node.vnode();
-    return this.node;
-  }
-  
-}
-
-const EMPTY_BUILDER = () => h("!");
-
-class Projector {
-  
-  readonly signal = new Signal<[Builder]>();
-  readonly initial: Builder;
-  
-  constructor(initialBuilder: Builder) {
-    this.initial = initialBuilder;
-  }
-  put<A extends any[]>(builder: (...args: A) => VNode, ...builderArgs: A) {
-    if (builderArgs.length === 0) {
-      this.signal.emit(builder);
-    } else {
-      this.signal.emit(() => builder(...builderArgs));
-    }
-  }
-  clear() {
-    this.signal.emit(EMPTY_BUILDER);
-  }
-  reset() {
-    this.signal.emit(this.initial);
-  }
-}
-class Persistor {
-  
-  readonly state: State<Builder>;
-  
-  constructor(initialBuilder: Builder) {
-    this.state = new State(initialBuilder);
-  }
-  put<A extends any[]>(builder: (...args: A) => VNode, ...builderArgs: A) {
-    if (builderArgs.length === 0) {
-      this.state.set(builder);
-    } else {
-      this.state.set(() => builder(...builderArgs));
-    }
-  }
-  clear() {
-    this.state.set(EMPTY_BUILDER);
-  }
 }

@@ -1,4 +1,4 @@
-
+@use "theme.scss" as theme;
 @use "flow.scss" as *;
 
 .countdown {
@@ -12,6 +12,10 @@
 	width: $size;
 	height: $size;
 	flex: 0 0 $size;
+	
+	&.disabled {
+		filter: brightness(50%) grayscale(50%);
+	}
 }
 .player-view {
 	@include row(0.3em);
@@ -84,23 +88,22 @@
 }
 
 .submission {
-	@include column(space-between, center);
-	//height: auto;
+	
 	min-width: 0;
 	min-height: 0;
 	aspect-ratio: 9 / 10;
 	flex: 0 0 auto;
-	
-	padding: 0.2em;
-	background-color: #eee;
-	border: 3px solid black;
-	border-radius: 8px;
-	
 	position: relative;
+	@include column(space-between, center);
+	@include theme.panel(0.2em);
+	background-color: #eee;
+	//height: auto;
+	
+	
 	
 	.name {
 		font-size: 1.3em;
-		text-wrap: nowrap;
+		//text-wrap: nowrap;
 	}
 	.img-ctr {
 		
@@ -117,18 +120,24 @@
 		
 		.vote-ctr {
 			position: absolute;
-			top: 2%;
-			left: 2%;
-			right: 2%;
-			bottom: 2%;
+			top: 0.1em;
+			left: 0.1em;
+			right: 1.2em;
+			bottom: 0.1em;
 			
 			@include flex(row wrap, flex-start, flex-start);
-			font-size: 2.4em;
+			align-content: flex-start;
+			//gap: 10px;
+			gap: 0;
+			
+			font-size: 1.2em;
+			
 			.player-icon {
+				transform: translate(0.6em, 0.6em) scale(2, 2);
 				animation: fadeIn 0.7s;
 				@keyframes fadeIn {
 					0% { opacity: 0; rotate: -30deg; }
-					50% { opacity: 0.5; rotate: 25deg; }
+					45% { opacity: 0.5; rotate: 25deg; }
 					100% { opacity: 1; rotate: 0deg; }
 				}
 			}

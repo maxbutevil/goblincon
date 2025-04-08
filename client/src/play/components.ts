@@ -27,7 +27,7 @@ export class NameOverlay {
 		}
 		
 		return h("div#overlay", [
-			h("div#name-popup", [
+			h("div#name-popup.popup", [
 				h("div.vflow", [
 					h("h2", "Name Your Creature?"),
 					h("input", {

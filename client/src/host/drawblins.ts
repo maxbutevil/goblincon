@@ -11,10 +11,7 @@ import {
 import * as Room from "./room"
 import { Player, ScoreMap } from "./room"
 import { Mode, Setting } from "./mode"
-import * as PlayerIcons from "../modules/player_icons"
-import { Countdown } from "../components"
 import { submission, submissionGrid, ReadyDisplay } from "./components"
-import { DRAWING_BUFFER_SECS } from '../modules/shared';
 
 const INC = new ReceiveIndex({
 	"drawing": { goblinName: Val.STR, secsLeft: Val.NUM },
@@ -24,10 +21,12 @@ const INC = new ReceiveIndex({
 	
 	"drawingSubmitted": { playerId: Val.NUM, drawing: Val.STR },
 	"voteSubmitted": { playerId: Val.NUM, forId: Val.NUM },
+	//"finished": Val.NONE,
 });
 const OUT = new SendIndex({
 	//"terminate": Val.NONE
 });
+
 
 const mode = new Mode("drawblins", view, {
 	roundCount: new Setting(
@@ -51,7 +50,6 @@ const mode = new Mode("drawblins", view, {
 		{ key: "drawblinsScoreTimeFactor" }
 	)
 });
-
 export default mode;
 
 
@@ -67,6 +65,8 @@ function currentRound(): Round {
 export function view() {
 	rounds = [];
 	scores.reset();
+	
+	//defer(setRecap);
 	defer(
 		client.use(INC, OUT),
 		INC.subscribe("drawing", ({ goblinName, secsLeft }) => {
@@ -78,6 +78,17 @@ export function view() {
 	);
 	return h("div#drawblins.mode", s(page));
 }
+/*function setRecap() {
+	if (rounds.length === 0) {
+		return;
+	} else if (rounds.length === 1 && rounds[0].) {
+		
+	}
+}
+function recapView() {
+	return h("!");
+}*/
+
 function starting() {
 	return h(
 		"div#starting.tab",
@@ -121,6 +132,7 @@ function voting(secsLeft: number) {
 				scores.add(id, votes[id]?.length ?? 0);
 			// Start revealing votes
 			voteQueue.start(votes);
+			readyDisplay.stopCountdown();
 		})
 	);
 	return h("div#voting.tab", [
@@ -135,7 +147,6 @@ function voting(secsLeft: number) {
 					submissions.push(submission(player, { drawing }, { votes }));
 				}
 			}
-			
 			return submissionGrid(submissions)
 		}),
 		readyDisplay.view()

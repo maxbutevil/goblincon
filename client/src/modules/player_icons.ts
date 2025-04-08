@@ -2,10 +2,7 @@
 import iconMap from "../assets/players/"
 import Canvas from "./canvas"
 
-//export type IconKey = keyof typeof icons;
-
 export const icons: string[] = Object.values(iconMap);
-
 
 const bases: HTMLImageElement[] = new Array(icons.length);
 const cache: { [key: string]: string }[] = new Array(icons.length);
@@ -50,8 +47,11 @@ export function cacheColor(color: string) {
 }
 
 import { h } from "./micron"
-export function view(icon: number, color: string) {
-	return h("img.player-icon", { attrs: { src: get(icon, color) } });
+export function view(icon: number, color: string, disabled = false) {
+	return h("img.player-icon", {
+		attrs: { src: get(icon, color) },
+		class: { disabled }
+	});
 }
 
 export function count(): number {

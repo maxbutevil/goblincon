@@ -28,25 +28,26 @@ const CORE_COLORS = [
 	"#ee9900", // orange
 	"#e9e900", // yellow
 	"#00ee00", // green
-	"#0099ff", // light blue
-	"#2233ff", // blue
+	"#3399ff", // light blue
+	"#2244ff", // blue
 	"#9900ee", // purple
 	"#ff88bb", // pink
-	"#885522", // brown
-	"#bbbbbb", // gray
+	"#995533", // brown
 ];
 export const DRAW_COLORS = [
 	...CORE_COLORS,
+	"#bbbbbb", // gray
 	"#000000", // black
 ];
 export const PLAYER_COLORS = [
 	...CORE_COLORS,
-	"#880000", // dark red
-	"#008800", // dark green
-	"#0000BB", // dark blue
 	"#ffaa77", // beige
 	"#eeeeee", // light gray,
+	"#bbbbbb", // gray
 	"#666666", // dark gray
+	"#990000", // dark red
+	"#009900", // dark green
+	"#0022CC	", // dark blue
 ];
 
 export function playerColor(id: number): string {

@@ -44,19 +44,12 @@ $ready-icons-space: calc(3rem + 2px + 2 * theme.$border-weight);
 #ready-icons {
 	position: fixed;
 	bottom: 0.5rem;
-	@include row;
+	@include row(2px);
 	@include theme.panel(2px);
-	.icon-wrap {
-		display: flex;
-		.player-icon {
-			font-size: 2rem;
-		}
-		&:not(.ready) {
-			filter: brightness(50%) grayscale(50%);
-		}
+	
+	.player-icon {
+		font-size: 2rem;
 	}
-	
-	
 }
 
 #lobby {
@@ -81,29 +74,36 @@ $ready-icons-space: calc(3rem + 2px + 2 * theme.$border-weight);
 
 
 
-
-#dating {
+#dating-recap.popup {
+	
+	overflow-y: scroll;
+	width: 96vw;
+	
 	#recap {
-		
 		flex: 1 0 0;
-		align-self: stretch;
+		//align-self: stretch;
 		padding-bottom: 1em;
 		//margin: 1em;
+		width: 100%;
 		
 		@include column(1em);
 		//@include theme.panel;
 		//overflow-y: scroll;
 		
-		#matchups {
+		.round {
 			
-			flex: 1 0 0;
-			align-self: stretch;
-			padding-bottom: $ready-icons-space;
+			width: 100%;
+			
 			@include column(flex-start, stretch, 1em);
 			
 			.matchup {
+				max-width: 100%;
+				
 				@include row(center, center, 0.5em);
 				
+				.spacer {
+					flex: 0.8 0.8 0;
+				}
 				.submission {
 					flex: 1 1 0;
 				}
@@ -115,11 +115,6 @@ $ready-icons-space: calc(3rem + 2px + 2 * theme.$border-weight);
 					flex: 0.6 1 0;
 				}
 			}
-			
-			.spacer {
-				flex: 0.8 1 0;
-			}
 		}
 	}
 }
-

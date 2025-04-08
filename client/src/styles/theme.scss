@@ -4,7 +4,9 @@
 //$border-radius: 8px;
 
 $background-color: #eee0d0;
-$border-weight: 3px;
+//$background-color-2: #eee;
+
+$border-weight: 3.5px;
 $border-radius: 8px;
 
 
@@ -21,6 +23,11 @@ $border-radius: 8px;
 	@include background;
 	padding: $padding;
 }
-
+/*@mixin btn-panel() {
+	@include border;
+}
+@mixin input-panel() {
+	@include border;
+}*/
 
 
