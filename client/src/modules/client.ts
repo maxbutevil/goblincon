@@ -19,6 +19,8 @@ class Client {
 	// exposed state
 	state = new State(Connection.CLOSED);
 	
+	//pending = this.state.map(s => s === Connection.PENDING);
+	
 	pending = this.state.transitionTo(Connection.PENDING);
 	connected = this.state.transitionTo(Connection.OPEN);
 	disconnected = this.state.transitionFrom(Connection.OPEN);

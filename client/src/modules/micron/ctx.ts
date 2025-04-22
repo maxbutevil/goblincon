@@ -30,9 +30,9 @@ export type Builder<A extends any[] = []> = (...args: A) => VNode;
 
 /* Internal debug functions for dumping state of VNode tree to the console */
 function dump(vnode: VNode, err = false) {
-      
-  function inner(vnode: VNode | string, out: string[], depth: number) {
-    if (typeof vnode === "string") {
+  
+  function inner(vnode: VNodeChildElement, out: string[], depth: number) {
+    if (typeof vnode !== "object" || vnode instanceof Number || vnode instanceof String || vnode === null) {
       out.push(`"${vnode}"`);
       return;
     }
@@ -68,7 +68,7 @@ export default class Ctx {
   static get(): Ctx | undefined {
     return this.stack.at(-1);
   }
-  static build(builder: Builder, cleanup: Cleanup | null): [Ctx, VNode] {
+  static create(builder: Builder, cleanup: Cleanup | null): [Ctx, VNode] {
     const ctx = new Ctx();
     // add as child of parent
     const parent = Ctx.get();
@@ -77,10 +77,9 @@ export default class Ctx {
       (parent.children ??= []).push(ctx);
     }
     
-    const vnode = ctx.build(builder);
-    return [ctx, vnode];
+    ctx.node = ctx.build(builder);
+    return [ctx, ctx.node];
   }
-  
   
   defer(...callbacks: Cleanup[]) {
     (this.deferred ??= []).push(...callbacks);
@@ -90,12 +89,12 @@ export default class Ctx {
     Ctx.stack.push(this);
     const vnode = builder();
     Ctx.stack.pop();
-    return this.node = vnode;
+    return vnode;
   }
   rebuild(builder: Builder) {
     
-    if (!this.node) {
-      console.warn("Ctx attempted to rebuild after being destroyed.");
+    if (this.node === null) {
+      console.warn("ctx attempted to rebuild after being destroyed");
       return;
     }
     
@@ -143,7 +142,6 @@ export default class Ctx {
     }
   }
   destroy() {
-    
     if (this.node === null) {
       console.warn("ctx destroyed after it has already been destroyed, or before it has initialized");
       return;

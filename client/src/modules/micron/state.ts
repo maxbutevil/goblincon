@@ -50,8 +50,8 @@ export default class State<T> {
 	}
 	
 	
-	mapping<O>(mapping: (value: T) => O, eq = defaultEq): Shard<O> {
-		return Shard.mapping(this, mapping, eq);
+	map<O>(mapper: (value: T) => O, eq = defaultEq): Shard<O> {
+		return Shard.map(this, mapper, eq);
 	}
 	filter(filter: (curr: T, from: T) => boolean): Shard<T> {
 		return Shard.filter(this, filter);
@@ -112,11 +112,11 @@ export class Shard<T> extends Signal<[T, T]> {
 		this.get = get;
 	}
 	
-	static mapping<I, O>(state: State<I>, mapping: (value: I) => O, eq = defaultEq): Shard<O> {
-		const shard = new Shard(() => mapping(state.get()));
+	static map<I, O>(state: State<I>, mapper: (value: I) => O, eq = defaultEq): Shard<O> {
+		const shard = new Shard(() => mapper(state.get()));
 		state.changed.listen((curr, from) => {
-			const mappedCurr = mapping(curr);
-			const mappedFrom = mapping(from);
+			const mappedCurr = mapper(curr);
+			const mappedFrom = mapper(from);
 			if (!eq(mappedCurr, mappedFrom)) {
 				shard.emit(mappedCurr, mappedFrom);
 			}

@@ -46,7 +46,7 @@ export default class Drawpad {
 	private readonly submitted = new Signal();
 	private readonly drawModeChanged = new Signal();
 	private readonly state = new State(CanvasState.BLANK);
-	private readonly isDisabled = this.state.mapping(s => s === CanvasState.SUBMITTED);
+	private readonly isDisabled = this.state.map(s => s === CanvasState.SUBMITTED);
 	
 	constructor(options: DrawpadOptions) {
 		this.options = options;

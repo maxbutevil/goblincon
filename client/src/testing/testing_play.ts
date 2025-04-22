@@ -29,6 +29,11 @@ function drawingTest() {
 	return h("div.tab", drawpad.View());
 }
 
+const testSubmission = {
+	drawing: assets.testDrawing,
+	name: "Test Submission"
+};
+
 //mount(drawingTest());
 
 /*mount(
@@ -85,7 +90,7 @@ function mappings() {
 	const state = new State(0);
 	const components = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => {
 		
-		const shard = state.mapping(j => j % i === 0);
+		const shard = state.map(j => j % i === 0);
 		
 		return s(shard, (curr, from) => {
 			console.log(curr, from);
@@ -144,8 +149,104 @@ function evil() {
 	));
 }
 
-mount(evil());
+function DrawingSuitorTest() {
+	
+	const reset = new Signal();
+	const naming = true;
+	const secsLeft = 16;
+	const bachelorSubmission = testSubmission;
+	
+	function Inner() {
+		const overlay = new State<null | typeof Bachelor>(Bachelor);
+		const nameOverlay = (!naming) ? null : new NameOverlay({
+			onClose: () => overlay.set(null)
+		})
+		defer(Signal.keydown.subscribe((ev) => {
+			if (ev.key === "Escape") overlay.set(null);
+		}));
+		
+		
+		//const nameOverlayView = nameOverlay?.view.bind(nameOverlay);
+		const drawpad = new Drawpad({
+			onSubmit: (drawing) => {
+				//const submission = { drawing, name: nameOverlay?.name };
+				//OUT.send("suitorSubmission", { bachelorId, submission });
+				overlay.set(null);
+				reset.emit();
+			},
+			onStartSubmit: () => {
+				if (nameOverlay && nameOverlay.name === undefined) {
+					overlay.set(Name);
+					return false;
+				}
+				return true;
+			}
+		});
+		const countdown = Countdown.fromSecs(secsLeft, 4);
+		countdown.onFinish(() => drawpad.submit());
+		countdown.onThreshold(15, () => {
+			if (nameOverlay && !nameOverlay.name) {
+				overlay.set(Name);
+			}
+		});
+		
+		defer(Signal.keydown.subscribe((ev) => {
+			if (ev.key === "Escape") overlay.set(null);
+		}));
+		
+		function Name() {
+			return nameOverlay!.View(drawpad.isSubmitted());
+		}
+		function Bachelor() {
+			return h("div#overlay", [
+				h("div#bachelor-popup.popup", [
+					h("div", [
+						h("div", [
+							h("h2", "Your Bachelor(ette)"),
+							h("div",
+								{ style: { fontSize: "0.86em" } },
+								"Use this as inspiration for your suitor drawing!"
+							),
+						]),
+						h("div#bachelor-ctr", [
+							c(bachelorSubmission.name && h("div#bachelor-name",
+								{ style: { fontSize: "1.1em" } },
+								bachelorSubmission.name
+							)),
+							h("img", { attrs: { src: bachelorSubmission.drawing }}),
+						]),
+					]),
+					h("button",
+						{ on: { click: () => overlay.set(null) } },
+						"Start Drawing!"
+					)
+				])
+			]);
+		}
+		//const countdown = new Countdown();
+		
+		return h("div#draw-suitor.tab", [
+			h("div#info", [
+				h("div", "Draw a suitor for your bachelor(ette)"),
+				countdown.View()
+			]),
+			drawpad.View(),
+			//h("button", { on: { click: toggle } }, "See Bachelor"),
+			s(overlay, curr => (!curr) ? h("!") : curr()),
+			//s(overlayOpen, curr => curr ? overlay() : h("!")),
+			Tray(
+				IconBtn(icons.bachelor, () => overlay.toggle(Bachelor, null)),
+				c(nameOverlay && IconBtn(icons.name, () => overlay.toggle(Name, null)))
+			),
+			//mountedBtn(showBachelorIcon, toggle)
+		]);
+	}
+	
+	return s(reset, Inner);
+}
 
+//mount(evil());
+mount(DrawingSuitorTest());
 
 /*mount(
 	stateful(state, (curr) => {

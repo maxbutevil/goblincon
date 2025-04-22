@@ -128,8 +128,12 @@ INC.listen("playerReconnected", ({ playerId }) => {
 INC.listen("playerDisconnected", ({ playerId }) => {
 	
 });
+client.connected.listen(() => {
+	recap = undefined;
+});
 client.disconnected.listen(() => {
 	joinCode = "";
+	leaderId = 255;
 	playerMap.clear();
 });
 

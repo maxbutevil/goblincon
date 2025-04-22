@@ -10,10 +10,10 @@
   "devDependencies": {
     "@rsbuild/core": "^1.2.18",
     "@rsbuild/plugin-sass": "^1.2.2",
+    "snabbdom": "^3.6.2",
     "typescript": "^5.5.2"
   },
   "dependencies": {
-    "goblincon": "file:",
-    "snabbdom": "^3.6.2"
+    "goblincon": "file:"
   }
 }

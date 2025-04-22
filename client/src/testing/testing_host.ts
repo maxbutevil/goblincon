@@ -181,53 +181,7 @@ function datingVoteTest() {
 	]);
 }
 
-function oldDrawingSuitorTest() {
-	
-	const secsLeft = 20;
-	const bachelorDrawing = testSubmission;
-	
-	const overlayOpen = new State(true);
-	function toggle() {
-		overlayOpen.mutate(curr => !curr);
-	};
-	function overlay() {
-		return h("div#overlay",/* { on: { click: toggle } }, */ [
-			h("div#bachelor-popup.popup", [
-				h("div.vflow", [
-					h("div", [
-						h("h2", "Your Bachelor(ette)"),
-						h("div", "Use this as inspiration for your suitor drawing!"),
-					]),
-					h("div.bachelor-ctr", [
-						h("img", { attrs: { src: bachelorDrawing.drawing }}),
-					])
-				]),
-				h("button", { on: { click: toggle } }, "Start Drawing!")
-			])
-		]);
-	}
-	
-	const drawpad = new Drawpad({
-		onSubmit: (drawing) => {
-			//OUT.send("suitorSubmission", { bachelorId, drawing, name: undefined });
-		}
-	});
-	const countdown = Countdown.fromSecs(secsLeft);
-	countdown.onThreshold(10, () => console.log("abcde"));
-	countdown.onFinish(() => console.log("hello world"));
-	
-	return h("div#draw-suitor.tab", [
-		h("div#info", [
-			h("div", "Draw a suitor for your bachelor(ette)"),
-			countdown.View(),
-			//Countdown.secs(secsLeft, 4, () => drawpad.submit()),
-		]),
-		drawpad.View(),
-		//h("button", { on: { click: toggle } }, "See Bachelor"),
-		s(overlayOpen, curr => curr ? overlay() : h("!")),
-		Tray(IconBtn(icons.bachelor, toggle))
-	]);
-}
+
 
 mount(h("div#dating.mode", s(testPage)));
 

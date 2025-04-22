@@ -94,7 +94,7 @@ function baseView<T extends any[], I extends any[]>(signal: Signal<T>, builder: 
   const rebuild = (...args: T) => {
     ctx.rebuild(() => builder(...args));
   };
-  const [ctx, vnode] = Ctx.build(
+  const [ctx, vnode] = Ctx.create(
     () => builder(...initial),
     signal.subscribe(rebuild)
   );
@@ -104,12 +104,22 @@ function baseMultiView<T extends any[], I extends any[]>(signal: Signal<T>[], bu
   const rebuild = (...args: T) => {
     ctx.rebuild(() => builder(...args));
   };
-  const [ctx, vnode] = Ctx.build(
+  const [ctx, vnode] = Ctx.create(
     () => builder(...initial),
     Signal.bundle(...signal.map(s => s.subscribe(rebuild)))
   );
   return vnode;
 };
+export function containedView(builder: (rerender: () => void) => VNode) {
+  // "self contained" stateful vnode
+  // rerenders itself rather than responding to external state
+  let ctx: Ctx, vnode: VNode;
+  const cachedBuilder = () => builder(rerender);
+  const rerender = () => ctx.rebuild(cachedBuilder);
+  [ctx, vnode] = Ctx.create(cachedBuilder, null);
+  return vnode;
+}
+
 export function stateView<T>(state: State<T>, builder: (curr: T, from: T | undefined) => VNode): VNode {
   return baseView(
     state.changed, 
@@ -126,16 +136,6 @@ export function signalView<T extends any[]>(signal: Signal<T>, builder: Builder<
 }
 export function multiSignalView<T extends any[]>(signals: Signal<T>[], builder: Builder<T | []>): VNode {
   return baseMultiView(signals, builder);
-}
-
-export function containedView(builder: (rerender: () => void) => VNode) {
-  // "self contained" stateful vnode
-  // rerenders itself rather than responding to external state
-  let ctx: Ctx, vnode: VNode;
-  const cachedBuilder = () => builder(rerender);
-  const rerender = () => ctx.rebuild(cachedBuilder);
-  [ctx, vnode] = Ctx.build(cachedBuilder, null);
-  return vnode;
 }
 
 /* In-node Utility Functions */
