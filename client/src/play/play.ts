@@ -15,9 +15,9 @@ import * as Drawblins from "./drawblins"
 import * as Dating from "./dating"
 
 import {
-	logo,
-	tray,
-	iconBtn
+	Logo,
+	Tray,
+	IconBtn
 } from "../components"
 import { help as helpIcon } from "../assets/icons/"
 
@@ -37,12 +37,12 @@ const OUT = new SendIndex({
 	changeIcon: { icon: Val.NUM }
 });
 
-const page = projector(landing);
+const page = projector(Landing);
 const status = projector(() => h("!"));
 let hasAttemptedAutoRejoin = false;
 
 client.pending.listen(() => {
-	status.put(info, "Connecting...");
+	status.put(Info, "Connecting...");
 });
 client.connected.listen(() => {
 	hasAttemptedAutoRejoin = false;
@@ -64,21 +64,21 @@ client.closed.listen((ev) => {
 			hasAttemptedAutoRejoin = true;
 			attemptRejoin();
 		} else {
-			page.put(landing);
-			status.put(error, "Connection error");
+			page.put(Landing);
+			status.put(Error, "Connection error");
 		}
 	} else {
 		
 		function _error(msg: string = ev.reason) {
-			page.put(landing);
-			status.put(error, msg);
+			page.put(Landing);
+			status.put(Error, msg);
 		}
 		function _info(msg: string = ev.reason) {
-			page.put(landing);
-			status.put(info, msg);
+			page.put(Landing);
+			status.put(Info, msg);
 		}
 		function _reset() {
-			page.put(landing);
+			page.put(Landing);
 			status.reset();
 		}
 		
@@ -135,14 +135,14 @@ window.addEventListener("beforeunload", () => {
 	client.close();
 });
 
-function info(message: string) {
+function Info(message: string) {
 	return h(`div#status.info`, message);
 }
-function error(message: string) {
+function Error(message: string) {
 	return h(`div#status.error`, message);
 }
 
-function landing() {
+function Landing() {
 	
 	const helpOpen = new State(false);
 	
@@ -153,7 +153,6 @@ function landing() {
 		}
 	}
 	
-	//function joinGame(code: string, name: string) {
 	function attemptJoin() {
 	
 		if (!client.state.is(Connection.CLOSED))
@@ -163,13 +162,13 @@ function landing() {
 		const name = Session.playerName;
 		
 		if (name.length < Session.MIN_NAME_LEN)
-			return status.put(error, "Name too short");
+			return status.put(Error, "Name too short");
 		if (name.length > Session.MAX_NAME_LEN)
-			return status.put(error, "Name too long");
+			return status.put(Error, "Name too long");
 		if (code.length < Session.CODE_LEN)
-			return status.put(error, "Invalid code (not long enough)");
+			return status.put(Error, "Invalid code (not long enough)");
 		if (code.length > Session.CODE_LEN)
-			return status.put(error, "Invalid code (too long?? somehow???)");
+			return status.put(Error, "Invalid code (too long?? somehow???)");
 		
 		if (Session.canManualRejoin()) {
 			Session.pullRejoinInfo();
@@ -180,8 +179,41 @@ function landing() {
 			attemptConnect(Session.joinUrl());
 		}
 	}
+	function pasteCode(ev: ClipboardEvent) {
+		
+		function extractUrlCode(content: string): string | undefined {
+			//if (!content.toLowerCase().startsWith("https:")) return;
+			if (!URL.canParse(content)) return;
+			const url = new URL(content);
+			if (url.hostname !== window.location.hostname) return;
+			const code = url.searchParams.get("code");
+			if (!code) return;
+			if (code.length !== Session.CODE_LEN) return;
+			return code;
+		}
+		
+		const content = ev.clipboardData?.getData("text");
+		const elm = ev.currentTarget as HTMLInputElement;
+		if (!content) return;
+		if (content.length === 5) {
+			Session.joinCode = elm.value = content;
+			return;
+		}
+		
+		//const elm = document.querySelector("#code-input") as HTMLInputElement;
+		Session.joinCode = elm.value = "";
+		ev.preventDefault();
+		
+		const code = extractUrlCode(content);
+		if (code) {
+			Session.joinCode = elm.value = code;
+		} else {
+			status.put(Error, "Clipboard does not contain a code");
+		}
+		
+	}
 	
-	function helpPopup() {
+	function HelpPopup() {
 		
 		function b(content: string): VNode {
 			return h("b", { style: { fontWeight: "bold" }}, content);
@@ -237,7 +269,7 @@ function landing() {
 			}
 		});
 	}
-	function hostLink() {
+	function HostLink() {
 		const canHost = !Shared.isMobileClient;
 		if (!canHost) {
 			return null
@@ -247,43 +279,10 @@ function landing() {
 			}, "Hosting a game? Click here");
 		}
 	}
-	function pasteCode(ev: ClipboardEvent) {
-		
-		function extractUrlCode(content: string): string | undefined {
-			//if (!content.toLowerCase().startsWith("https:")) return;
-			if (!URL.canParse(content)) return;
-			const url = new URL(content);
-			if (url.hostname !== window.location.hostname) return;
-			const code = url.searchParams.get("code");
-			if (!code) return;
-			if (code.length !== Session.CODE_LEN) return;
-			return code;
-		}
-		
-		const content = ev.clipboardData?.getData("text");
-		const elm = ev.currentTarget as HTMLInputElement;
-		if (!content) return;
-		if (content.length === 5) {
-			Session.joinCode = elm.value = content;
-			return;
-		}
-		
-		//const elm = document.querySelector("#code-input") as HTMLInputElement;
-		Session.joinCode = elm.value = "";
-		ev.preventDefault();
-		
-		const code = extractUrlCode(content);
-		if (code) {
-			Session.joinCode = elm.value = code;
-		} else {
-			status.put(error, "Clipboard does not contain a code");
-		}
-		
-	}
-	
+
 	return h("div#landing.tab", [
 		h("div", [
-			logo(),
+			Logo(),
 			s(client.state, curr => {
 				
 				const disabled = (curr !== Connection.CLOSED);
@@ -333,16 +332,16 @@ function landing() {
 			}),
 			s(status)
 		]),
-		hostLink(),
-		helpPopup(),
-		tray(iconBtn(helpIcon, () => helpOpen.mutate(curr => !curr)))
+		HostLink(),
+		HelpPopup(),
+		Tray(IconBtn(helpIcon, () => helpOpen.mutate(curr => !curr)))
 	]);
 }
-function lobby(playerCount: number | null | undefined) {
+function Lobby(playerCount: number | null | undefined) {
 	
 	const promoted = playerCount != undefined;
 	
-	function iconSelect() {
+	function IconSelect() {
 		
 		return s(rerender => {
 			
@@ -396,7 +395,7 @@ function lobby(playerCount: number | null | undefined) {
 	return h("div#lobby.tab", [
 		h("div", [
 			h("h1", "Lobby"),
-			iconSelect(),
+			IconSelect(),
 			...startInterface
 		]),
 		h(
@@ -413,11 +412,11 @@ function attemptConnect(url: string | null) {
 function attemptRejoin() {
 	attemptConnect(Session.rejoinUrl());
 }
-function app() {
+function App() {
 	client.use(INC, OUT);
 	INC.listen("terminated", () => Session.clearRejoinInfo());
 	INC.listen("accepted", ({ playerId, token }) => Session.storeRejoinInfo(playerId, token));
-	INC.listen("inLobby", ({ playerCount }) => page.put(lobby, playerCount));
+	INC.listen("inLobby", ({ playerCount }) => page.put(Lobby, playerCount));
 	INC.listen("inDrawblins", () => page.put(Drawblins.view));
 	INC.listen("inDating", () => page.put(Dating.view));
 	
@@ -425,6 +424,6 @@ function app() {
 	return s(page);
 }
 
-mount(app());
+mount(App());
 
 

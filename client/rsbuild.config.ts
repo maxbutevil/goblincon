@@ -1,12 +1,13 @@
-import { defineConfig } from '@rsbuild/core';
+import { defineConfig, RsbuildEntryDescription } from '@rsbuild/core';
 import { pluginSass } from '@rsbuild/plugin-sass';
 
 
-export default defineConfig({
+
+export default defineConfig(({ env }) => ({
 	source: {
 		entry: {
-			"testing/host": "./src/testing_host.ts",
-			"testing/play": "./src/testing_play.ts",
+			"testing/host": { html: env === "development", import: "./src/testing/testing_host.ts" },
+			"testing/play": { html: env === "development", import: "./src/testing/testing_play.ts" },
 			host: "./src/host/host.ts",
 			play: "./src/play/play.ts",
 		}
@@ -30,6 +31,6 @@ export default defineConfig({
 	},
 	plugins: [pluginSass()],
 	output: {
-		minify: false,
+		//minify: false,
 	},
-});
+}));

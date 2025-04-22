@@ -1,6 +1,6 @@
 
 
-import { h, signaled, VNode } from "../modules/micron"
+import { h, s, VNode } from "../modules/micron"
 import Signal from "../modules/micron/signal"
 //import * as Utils from "../utils"
 
@@ -103,10 +103,10 @@ export class Setting<T = number> {
 		return this.stringifier(this.get(i));
 	}
 	
-	view(): VNode {
+	View(): VNode {
 		return h("div.setting-select", { key: this.name }, [
 			h("div.name", {}, this.name),
-			signaled(this.changed, () => {
+			s(this.changed, () => {
 				return h("div.multi-btn", this.choices.map((_, i) => {
 					return h(
 						"button",
@@ -145,7 +145,7 @@ export class Settings<M extends SettingMap> {
 	
 	*views(): Iterable<VNode> {
 		for (const setting of Object.values(this.map))
-			yield setting.view();
+			yield setting.View();
 	}
 }
 

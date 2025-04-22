@@ -42,14 +42,11 @@ type DrawpadOptions = {
 
 export default class Drawpad {
 	
+	private readonly options: DrawpadOptions;
 	private readonly submitted = new Signal();
 	private readonly drawModeChanged = new Signal();
-	private readonly options: DrawpadOptions;
-	readonly state = new State(CanvasState.BLANK);
-	
-	//private onSubmit = 
-	
-	
+	private readonly state = new State(CanvasState.BLANK);
+	private readonly isDisabled = this.state.mapping(s => s === CanvasState.SUBMITTED);
 	
 	constructor(options: DrawpadOptions) {
 		this.options = options;
@@ -76,21 +73,17 @@ export default class Drawpad {
 		return this.state.is(CanvasState.SUBMITTED);
 	}
 	
-	/*private applyMode(mode: DrawMode = this.drawMode) {
-		
-	}*/
-	
-	view() {
+	View() {
 		
 		const { onSubmit, onStartSubmit } = this.options;
-		const { state, submitted, drawModeChanged } = this;
+		const { state, isDisabled, submitted, drawModeChanged } = this;
+		
 		const penIcon = Canvas.create(128, 128);
 		
 		let undoStack: Array<DrawOperation> = [];
 		let redoStack: Array<DrawOperation> = [];
 		let backup: ImageData | undefined;
 		let backupIndex = 0;
-		//let drawMode: DrawMode = { type: "draw", weight: "thin", color: "#000000" };
 		let drawMode: DrawMode = { color: "#000000", weight: "thin" };
 		
 		let canvas: Canvas | null = null;
@@ -312,43 +305,52 @@ export default class Drawpad {
 			onSubmit(drawingData);
 		}
 		
-		function weightBtn(disabled: boolean) {
-			return s(drawModeChanged, () => {
-				
-				let iconSrc;
-				if (drawMode.color === erase) {
-					iconSrc = drawMode.weight === "thin" ? icons.eraseThin : icons.eraseThick;
-					
-				} else {
-					penIcon.clear();
-					penIcon.setFillStyle(drawMode.color);
-					penIcon.fillEllipse(64, 64, drawMode.weight === "thin" ? 25 : 40);
-					iconSrc = penIcon.element.toDataURL();
-				}
-				//const iconSrc = drawMode.weight === "thin" ? icons.thin : icons.thick;
-				
-				
-				
-				
-				return h(
-					"button#weight-btn",
-					{
-						on: {
-							click: () => {
-								if (canChangeMode()) toggleWeight();
-							}
-						},
-						attrs: { disabled }
-					},
-					icon(iconSrc)
-				);
-			});
-		}
-		function colorSelect(disabled: boolean) {
+		function init(vnode: VNode) {
 			
+			if (canvas)
+				return;
+			
+			const ctx = (vnode.elm as HTMLCanvasElement).getContext("2d");
+			
+			if (!ctx)
+				throw new Error("Couldn't get canvas context.");
+			
+			canvas = new Canvas(ctx);
+			//canvas.wipeStyle("white");
+			canvas.clear();
+			canvas.setStrokeStyle("black");
+			canvas.setLineWidth(THIN_LINE_WIDTH);
+			canvas.setLineCap("round");
+			canvas.setLineJoin("round");
+		}
+		
+		
+		let submittingTimeout: NodeJS.Timeout;
+		defer(submitted.subscribe(submit));
+		function startSubmit() {
+			if (!state.is(CanvasState.IDLE)) {
+				return;
+			}
+			if (onStartSubmit) {
+				if (!onStartSubmit()) {
+					return;
+				}
+			}
+			clearTimeout(submittingTimeout);
+			submittingTimeout = setTimeout(submit, 0.7 * 1000);
+		}
+		function cancelSubmit() {
+			clearTimeout(submittingTimeout);
+		}
+		
+		function Icon(src: string) {
+			return h("img", { attrs: { src } });
+		}
+		
+		const colorSelect = s(isDisabled, disabled => {
 			return s(drawModeChanged, () => {
 				
-				function btn(color: typeof erase | string) {
+				function Btn(color: typeof erase | string) {
 					
 					const selected = drawMode.color === color;
 					const click = () => {
@@ -371,106 +373,87 @@ export default class Drawpad {
 							on: { click },
 							attrs: { disabled }
 						},
-						c(color === erase && icon(icons.eraseThick))
+						c(color === erase && Icon(icons.eraseThick))
 					);
 				}
 				
 				return h("div#color-btn-row", [
-					...Shared.DRAW_COLORS.map(color => btn(color)),
-					btn(erase)
+					...Shared.DRAW_COLORS.map(color => Btn(color)),
+					Btn(erase)
 				]);
 			});
-			
-		}
-		
-		function init(vnode: VNode) {
-			
-			if (canvas)
-				return;
-			
-			const ctx = (vnode.elm as HTMLCanvasElement).getContext("2d");
-			
-			if (!ctx)
-				throw new Error("Couldn't get canvas context.");
-			
-			canvas = new Canvas(ctx);
-			//canvas.wipeStyle("white");
-			canvas.clear();
-			canvas.setStrokeStyle("black");
-			canvas.setLineWidth(THIN_LINE_WIDTH);
-			canvas.setLineCap("round");
-			canvas.setLineJoin("round");
-		}
-		
-		function icon(src: string) {
-			return h("img", { attrs: { src } });
-		}
-		let submittingTimeout: NodeJS.Timeout;
-		defer(submitted.subscribe(submit));
-		
-		// This could probably avoid rerendering on every canvas state change
-		return s(state, curr => {
-			
-			//clearTimeout(submittingTimeout);
-			const submitted = curr === CanvasState.SUBMITTED;
-			//const canSubmit = curr === CanvasState.IDLE;
-			const disabled = submitted;
-			
-			function startSubmit() {
-				if (!state.is(CanvasState.IDLE)) {
-					return;
+		});
+		const actionSelect = s(isDisabled, (disabled) => {
+			const weightBtn = s(drawModeChanged, () => {
+				
+				let iconSrc;
+				if (drawMode.color === erase) {
+					iconSrc = drawMode.weight === "thin" ? icons.eraseThin : icons.eraseThick;
+					
+				} else {
+					penIcon.clear();
+					penIcon.setFillStyle(drawMode.color);
+					penIcon.fillEllipse(64, 64, drawMode.weight === "thin" ? 25 : 40);
+					iconSrc = penIcon.element.toDataURL();
 				}
-				if (onStartSubmit) {
-					if (!onStartSubmit()) {
-						return;
-					}
-				}
-				clearTimeout(submittingTimeout);
-				submittingTimeout = setTimeout(submit, 0.7 * 1000);
-			}
-			function cancelSubmit() {
-				clearTimeout(submittingTimeout);
-			}
-			
-			return h("div#drawpad", [
-				colorSelect(disabled),
-				h("canvas#canvas", {
-					attrs: {
-						width: 360,
-						height: 360
-					},
-					on: {
-						pointerdown: handleStartDraw,
-						pointerup: handleEndDraw,
-						pointerleave: handleEndDraw,
-						pointermove: handleDraw
-					},
-					hook: {
-						create: (_emptyVnode, vnode) => init(vnode),
-						update: (_oldVnode, vnode) => init(vnode)
-					}
-				}, "You don't have canvas support!"),
-				h("div#action-btn-row", [
-					//h("button.spacer", { attrs: { disabled: true } }),
-					h("button#undo-btn", { on: { click: undo }, attrs: { disabled } }, icon(icons.undo)),
-					h("button#redo-btn", { on: { click: redo }, attrs: { disabled } }, icon(icons.redo)),
-					weightBtn(disabled),
-					h("button.spacer", { attrs: { disabled: true } }),
-					h(
-						"button#submit-btn",
-						{
-							on: {
-								pointerdown: startSubmit,
-								pointerup: cancelSubmit,
-								pointerleave: cancelSubmit
-							},
-							attrs: { disabled: submitted }
+				
+				return h(
+					"button#weight-btn",
+					{
+						on: {
+							click: () => {
+								if (canChangeMode()) toggleWeight();
+							}
 						},
-						submitted ? "Submitted!" : "Hold to Submit"
-					)
-				])
+						attrs: { disabled }
+					},
+					Icon(iconSrc)
+				);
+			});
+			
+			return h("div#action-btn-row", [
+				//h("button.spacer", { attrs: { disabled: true } }),
+				h("button#undo-btn", { on: { click: undo }, attrs: { disabled } }, Icon(icons.undo)),
+				h("button#redo-btn", { on: { click: redo }, attrs: { disabled } }, Icon(icons.redo)),
+				weightBtn,
+				h("button.spacer", { attrs: { disabled: true } }),
+				h(
+					"button#submit-btn",
+					{
+						on: {
+							pointerdown: startSubmit,
+							pointerup: cancelSubmit,
+							pointerleave: cancelSubmit
+						},
+						attrs: { disabled }
+					},
+					disabled ? "Submitted!" : "Hold to Submit"
+				)
 			])
 		});
+		
+		return h("div#drawpad", [
+			colorSelect,
+			h("canvas#canvas", {
+				attrs: {
+					width: 360,
+					height: 360
+				},
+				on: {
+					pointerdown: handleStartDraw,
+					pointerup: handleEndDraw,
+					pointerleave: handleEndDraw,
+					pointermove: handleDraw
+				},
+				hook: {
+					create: (_emptyVnode, vnode) => init(vnode),
+					update: (_oldVnode, vnode) => init(vnode)
+				}
+			}, "You don't have canvas support!"),
+			actionSelect
+		]);
+		
+		
 	}
 }
 

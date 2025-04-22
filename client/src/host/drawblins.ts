@@ -11,7 +11,7 @@ import {
 import * as Room from "./room"
 import { Player, ScoreMap } from "./room"
 import { Mode, Setting } from "./mode"
-import { submission, submissionGrid, ReadyDisplay } from "./components"
+import { Submission, SubmissionGrid, ReadyDisplay } from "./components"
 
 const INC = new ReceiveIndex({
 	"drawing": { goblinName: Val.STR, secsLeft: Val.NUM },
@@ -53,7 +53,7 @@ const mode = new Mode("drawblins", view, {
 export default mode;
 
 
-const page = projector(starting);
+const page = projector(Starting);
 
 let rounds: Round[];
 let scores = new ScoreMap();
@@ -71,10 +71,10 @@ export function view() {
 		client.use(INC, OUT),
 		INC.subscribe("drawing", ({ goblinName, secsLeft }) => {
 			rounds.push(new Round(goblinName));
-			page.put(drawing, secsLeft);
+			page.put(Drawing, secsLeft);
 		}),
-		INC.subscribe("voting", ({ secsLeft }) => page.put(voting, secsLeft)),
-		INC.subscribe("showingScores", () => page.put(showingScores)),
+		INC.subscribe("voting", ({ secsLeft }) => page.put(Voting, secsLeft)),
+		INC.subscribe("showingScores", () => page.put(ShowingScores)),
 	);
 	return h("div#drawblins.mode", s(page));
 }
@@ -89,13 +89,13 @@ function recapView() {
 	return h("!");
 }*/
 
-function starting() {
+function Starting() {
 	return h(
 		"div#starting.tab",
 		h("h1", "Game Starting!")
 	);
 }
-function drawing(secsLeft: number) {
+function Drawing(secsLeft: number) {
 	
 	const readyDisplay = new ReadyDisplay(Room.players(), secsLeft, Shared.DRAWING_BUFFER_SECS);
 	
@@ -109,11 +109,11 @@ function drawing(secsLeft: number) {
 		[
 			h("h2", "Draw a creature named..."),
 			h("h1", currentRound().goblinName),
-			readyDisplay.view()
+			readyDisplay.View()
 		]
 	);
 }
-function voting(secsLeft: number) {
+function Voting(secsLeft: number) {
 	
 	const voteQueue = new Room.VoteQueue();
 	const readyDisplay = new ReadyDisplay(Room.players(), secsLeft, Shared.VOTING_BUFFER_SECS);
@@ -144,21 +144,21 @@ function voting(secsLeft: number) {
 				if (drawing !== undefined) {
 					const voteIds = voteQueue.get(id);
 					const votes = Room.players(voteIds);
-					submissions.push(submission(player, { drawing }, { votes }));
+					submissions.push(Submission(player, { drawing }, { votes }));
 				}
 			}
-			return submissionGrid(submissions)
+			return SubmissionGrid(submissions)
 		}),
-		readyDisplay.view()
+		readyDisplay.View()
 	]);
 }
-function showingScores() {
+function ShowingScores() {
 	return h(
 		"div#showing-scores.tab",
 		[
 			h("h1", "Scores"),
 			h("h2", `Round ${rounds.length}/${mode.setting("roundCount")}`),
-			scores.view()
+			scores.View()
 		]
 	);
 }

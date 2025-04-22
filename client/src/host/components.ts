@@ -6,20 +6,20 @@ import {
 	Signal,
 	//Shared, PlayerIcons,
 } from "../modules/"
-import * as Room from "./room"
 import { Player } from "./room"
 import { Countdown } from "../components"
-import type { Submission } from "../modules/submission"
+import type { SubmissionData } from "../modules/submission_data"
 
-export function submission(player: Player, content: Submission, { votes }: { votes?: Player[] } = {}) {
+export function Submission(player: Player, data: SubmissionData, { votes }: { votes?: Player[] } = {}) {
 	
-	const { drawing, name } = content;
+	const { drawing, name } = data;
 	const filename = `goblincon-${name ?? "unnamed"}`;
 	
-	const voteIcons = votes && votes.length > 0 && votes.map(player =>
-		Player.iconView(player)
+	const votesCtr = c(
+		votes &&
+		votes.length > 0 &&
+		h("div.vote-ctr", votes.map(player => player.IconView()))
 	);
-	const votesCtr = c(voteIcons && h("div.vote-ctr", voteIcons));
 	//const votesCtr = c(votes && votes.length > 0 && h("div.vote-ctr", Player.iconView(vote)));
 	
 	//const playerView = typeof player === "number" ? Room.playerView(player) : Player.view(player);
@@ -34,11 +34,11 @@ export function submission(player: Player, content: Submission, { votes }: { vot
 					votesCtr
 				]
 			),
-			Player.view(player)
+			player.View()
 		]
 	);
 }
-export function submissionGrid(submissions: VNode[]): VNode {
+export function SubmissionGrid(submissions: VNode[]): VNode {
 	/* This is a nightmare, but so are 2D flexbox layouts */
 	/* And it works! */
 	let aspectRatio = window.innerWidth / (window.innerHeight - 60);
@@ -98,12 +98,12 @@ export class ReadyDisplay {
 	stopCountdown() {
 		this.countdown?.stop();
 	}
-	view(): VNode {
+	View(): VNode {
 		return s(this.update, () => h("div#ready-display", [
-			this.countdown?.view(),
+			this.countdown?.View(),
 			...this.players.map((player) => {
 				const ready = this.readied.includes(player.id);
-				return Player.iconView(player, !ready);
+				return player.IconView(!ready);
 			})
 		]));
 	}

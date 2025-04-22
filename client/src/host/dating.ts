@@ -14,15 +14,15 @@ import {
 import * as Room from "./room"
 import { Player, ScoreMap } from "./room"
 import { Mode, Setting } from "./mode"
-import { Submission, SUBMISSION } from "../modules/submission"
+import { SubmissionData, SUBMISSION_DATA } from "../modules/submission_data"
 import { Suitor, Matchup, Round } from "./dating_data"
 
 import {
 	Countdown,
-	idlePage
+	IdlePage
 } from "../components"
 import {
-	submission,
+	Submission,
 	ReadyDisplay
 } from "./components"
 import * as icons from "../assets/icons"
@@ -36,8 +36,8 @@ const INC = new ReceiveIndex({
 	"showingVotes": Val.NONE,
 	"showingScores": Val.NONE,
 	
-	"bachelorSubmitted": { submission: SUBMISSION, playerId: Val.NUM },
-	"suitorSubmitted": { submission: SUBMISSION, playerId: Val.NUM, bachelorId: Val.NUM },
+	"bachelorSubmitted": { submission: SUBMISSION_DATA, playerId: Val.NUM },
+	"suitorSubmitted": { submission: SUBMISSION_DATA, playerId: Val.NUM, bachelorId: Val.NUM },
 	"voteSubmitted": { playerId: Val.NUM, forId: Val.NUM },
 });
 const OUT = new SendIndex({
@@ -83,20 +83,20 @@ let rounds: Round[] = [];
 let scores = new ScoreMap();
 function currentRound(): Round { return rounds.at(-1)!; }
 
-const page = projector(starting);
+const page = projector(Starting);
 
 function view() {
 	defer(
 		client.use(INC, OUT),
 		INC.subscribe("drawingBachelors", ({ theme, secsLeft }) => {
 			rounds.push(new Round(theme));
-			page.put(drawingBachelors, theme, secsLeft);
+			page.put(DrawingBachelors, theme, secsLeft);
 		}),
-		INC.subscribe("drawingSuitors", ({ secsLeft }) => page.put(drawingSuitors, secsLeft)),
-		INC.subscribe("showingScores", () => page.put(showingScores)),
+		INC.subscribe("drawingSuitors", ({ secsLeft }) => page.put(DrawingSuitors, secsLeft)),
+		INC.subscribe("showingScores", () => page.put(ShowingScores)),
 		INC.subscribe("voting", ({ bachelorId, secsLeft }) => {
 			currentRound().handleMatchup(bachelorId);
-			page.put(voting, bachelorId, secsLeft);
+			page.put(Voting, bachelorId, secsLeft);
 		}),
 	);
 	rounds = [];
@@ -105,10 +105,10 @@ function view() {
 	return h("div#dating.mode", s(page));
 }
 
-function starting() {
-	return idlePage("Game Starting!", "(Dating Mode)", "Get ready to draw!");
+function Starting() {
+	return IdlePage("Game Starting!", "(Dating Mode)", "Get ready to draw!");
 }
-function drawingBachelors(theme: string, secsLeft: number) {
+function DrawingBachelors(theme: string, secsLeft: number) {
 	
 	const readyDisplay = new ReadyDisplay(Room.players(), secsLeft, Shared.DRAWING_BUFFER_SECS);
 	
@@ -121,10 +121,10 @@ function drawingBachelors(theme: string, secsLeft: number) {
 		h("h1", "Draw your Bachelor!"),
 		h("h3", "Draw a creature that fits the theme:"),
 		h("h2", theme),
-		readyDisplay.view()
+		readyDisplay.View()
 	]);
 }
-function drawingSuitors(secsLeft: number) {
+function DrawingSuitors(secsLeft: number) {
 	
 	const readyDisplay = new ReadyDisplay(Room.players(), secsLeft, Shared.DRAWING_BUFFER_SECS);
 	for (const bachelorId of Room.playerIds()) {
@@ -144,17 +144,17 @@ function drawingSuitors(secsLeft: number) {
 	return h("div#drawing-suitors.tab", [
 		h("h1", "Draw your Suitors!"),
 		h("h2", "Draw creatures that would make good partners for the bachelors you have received"),
-		readyDisplay.view()
+		readyDisplay.View()
 	]);
 }
-function showingScores() {
+function ShowingScores() {
 	return h("div#showing-scores.tab", [
 		h("h1", "Scores"),
 		h("h2", `Round ${rounds.length}/${mode.setting("roundCount")}`),
-		scores.view()
+		scores.View()
 	]);
 }
-function voting(bachelorId: number, secsLeft: number) {
+function Voting(bachelorId: number, secsLeft: number) {
 	
 	const round = currentRound();
 	const matchup = round.matchup(bachelorId)!;
@@ -190,11 +190,11 @@ function voting(bachelorId: number, secsLeft: number) {
 	return h("div#voting.tab", [
 		s(voteQueue.update, () => {
 			
-			let bachelorDrawing = submission(bachelor, matchup.bachelorSubmission);
+			let bachelorDrawing = Submission(bachelor, matchup.bachelorSubmission);
 			
 			let suitorDrawings = matchup.suitors.map(({ id, submission: _submission }, index) => {
 				const votes = voteQueue.get(index).map(id => Room.player(id)!);
-				return submission(Room.player(id)!, _submission, { votes });
+				return Submission(Room.player(id)!, _submission, { votes });
 			});
 			
 			if (suitorDrawings.length === 2) {
@@ -210,7 +210,7 @@ function voting(bachelorId: number, secsLeft: number) {
 				h("div.submission-row", suitorDrawings)
 			]);
 		}),
-		readyDisplay.view()
+		readyDisplay.View()
 	]);
 }
 
@@ -224,78 +224,80 @@ function setRecap() {
 	}
 	
 	if (needsRecap) {
-		Room.setRecap(recapOverlay);
+		Room.setRecap(RecapOverlay);
 	}
 }
-function matchupRecap(matchup: Matchup): VNode {
-	const { bachelorId, bachelorSubmission, suitors } = matchup;
-	const bachelorNode = submission(Room.player(bachelorId)!, bachelorSubmission);
+function RecapOverlay(close: () => void) {
 	
-	function spacer() {
-		return h("div.spacer");
-	}
-	function icon(delta: number) {
-		let src;
-		if (delta > 0) {
-			src = icons.heart;
-		} else if (delta < 0) {
-			src = icons.heartbreak;
-		} else {
-			src = icons.questionMark;
+	function MatchupRecap(matchup: Matchup): VNode {
+		const { bachelorId, bachelorSubmission, suitors } = matchup;
+		const bachelorNode = Submission(Room.player(bachelorId)!, bachelorSubmission);
+		
+		function spacer() {
+			return h("div.spacer");
 		}
-		return h("img", { attrs: { src } });
+		function icon(delta: number) {
+			let src;
+			if (delta > 0) {
+				src = icons.heart;
+			} else if (delta < 0) {
+				src = icons.heartbreak;
+			} else {
+				src = icons.questionMark;
+			}
+			return h("img", { attrs: { src } });
+		}
+		
+		const sel = "div.matchup";
+		if (suitors.length === 0) {
+			return h(sel, [
+				spacer(),
+				spacer(),
+				bachelorNode,
+				spacer(),
+				spacer(),
+			]);
+		}
+		else if (suitors.length === 1) {
+			const [s] = suitors;
+			return h(sel, [
+				spacer(),
+				bachelorNode,
+				icon(s.points), // question mark if no points, otherwise heart
+				Submission(Room.player(s.id)!, s.submission),
+				spacer(),
+			]);
+		} else if (suitors.length === 2) {
+			const [s1, s2] = suitors;
+			return h(sel, [
+				Submission(Room.player(s1.id)!, s1.submission),
+				icon(s1.points - s2.points),
+				bachelorNode,
+				icon(s2.points - s1.points),
+				Submission(Room.player(s2.id)!, s2.submission)
+			]);
+		} else {
+			console.error("attempted to create recap for matchup with more than 2 suitors")
+			return h("!");
+		}
+	}
+	function RoundRecap(round: Round, i: number): VNode | null {
+		const matchups = round.sortedMatchups();
+		if (matchups.length === 0) {
+			return null;
+		} else {
+			return h("div.round", [
+				h("h2", `Round ${i+1}: ${round.theme}`),
+				...matchups.map(MatchupRecap)
+			]);
+		}
 	}
 	
-	const sel = "div.matchup";
-	if (suitors.length === 0) {
-		return h(sel, [
-			spacer(),
-			spacer(),
-			bachelorNode,
-			spacer(),
-			spacer(),
-		]);
-	}
-	else if (suitors.length === 1) {
-		const [s] = suitors;
-		return h(sel, [
-			spacer(),
-			bachelorNode,
-			icon(s.points), // question mark if no points, otherwise heart
-			submission(Room.player(s.id)!, s.submission),
-			spacer(),
-		]);
-	} else if (suitors.length === 2) {
-		const [s1, s2] = suitors;
-		return h(sel, [
-			submission(Room.player(s1.id)!, s1.submission),
-			icon(s1.points - s2.points),
-			bachelorNode,
-			icon(s2.points - s1.points),
-			submission(Room.player(s2.id)!, s2.submission)
-		]);
-	} else {
-		console.error("attempted to create recap for matchup with more than 2 suitors")
-		return h("!");
-	}
-}
-function roundRecap(round: Round, i: number): VNode | null {
-	const matchups = round.sortedMatchups();
-	if (matchups.length === 0) {
-		return null;
-	} else {
-		return h("div.round", [
-			h("h2", `Round ${i+1}: ${round.theme}`),
-			...matchups.map(matchupRecap)
-		]);
-	}
-}
-function recapOverlay(close: () => void) {
 	return h("div#overlay", [
 		h("div#dating-recap.popup", [
 			h("div#recap", [
 				h("h1", "Recap"),
-				...rounds.map(roundRecap),
+				...rounds.map(RoundRecap),
 			]),
 			h("button",
 				{ on: { click: close } },

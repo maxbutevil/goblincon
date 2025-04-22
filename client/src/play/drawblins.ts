@@ -12,8 +12,8 @@ import Session from "./session"
 import Drawpad from "./drawpad"
 import {
 	Countdown,
-	idlePage,
-	voteButtons
+	IdlePage,
+	VoteButtons
 } from "../components"
 
 //import * as icons from "../assets/icons/"
@@ -35,35 +35,35 @@ const OUT = new SendIndex({
 	"voteSubmission": { forName: Val.STR },
 });
 
-const page = projector(starting);
+const page = projector(Starting);
 
 export function view() {
 	
 	defer(
 		client.use(INC, OUT),
 		INC.subscribe("drawing", ({ goblinName, secsLeft }) => {
-			page.put(drawing, secsLeft, goblinName);
+			page.put(Drawing, secsLeft, goblinName);
 		}),
 		INC.subscribe("voting", ({ choices, secsLeft }) => {
-			page.put(voting, secsLeft, choices);
+			page.put(Voting, secsLeft, choices);
 		}),
-		INC.subscribe("starting", () => page.put(starting)),
-		INC.subscribe("doneDrawing", () => page.put(doneDrawing)),
-		INC.subscribe("doneVoting", () => page.put(doneVoting)),
-		INC.subscribe("showingVotes", () => page.put(showingResults)),
-		INC.subscribe("showingScores", () => page.put(showingResults)),
+		INC.subscribe("starting", () => page.put(Starting)),
+		INC.subscribe("doneDrawing", () => page.put(DoneDrawing)),
+		INC.subscribe("doneVoting", () => page.put(DoneVoting)),
+		INC.subscribe("showingVotes", () => page.put(ShowingResults)),
+		INC.subscribe("showingScores", () => page.put(ShowingResults)),
 	);
 	
 	return h("div#drawblins.mode", s(page));
 }
 
-function starting() {
+function Starting() {
 	return h("div#start.tab", [
 		h("h1", "Game Starting!"),
 		h("h2", "Get ready to draw!")
 	]);
 }
-function drawing(secsLeft: number, goblinName: string) {
+function Drawing(secsLeft: number, goblinName: string) {
 	
 	const drawpad = new Drawpad({
 		onSubmit: (drawing: string) => {
@@ -75,35 +75,34 @@ function drawing(secsLeft: number, goblinName: string) {
 		h("div#info", [
 			h("div", "Draw a creature named:"),
 			h("div#goblin-name", goblinName),
-			Countdown.secs(secsLeft, 4, () => drawpad.submit()),
+			Countdown.Secs(secsLeft, 4, () => drawpad.submit()),
 		]),
-		drawpad.view(),
-		
+		drawpad.View(),
 	]);
 }
-function voting(secsLeft: number, choices: string[]) {
+function Voting(secsLeft: number, choices: string[]) {
 	
 	const submitVote = (forName: string) => {
 		OUT.send("voteSubmission", { forName });
-		page.put(doneVoting);
+		page.put(DoneVoting);
 	};
 	
 	return h("div#vote.tab", [
 		h("h1", "Vote!"),
-		Countdown.secs(secsLeft, 2),
-		...voteButtons(
+		Countdown.Secs(secsLeft, 2),
+		...VoteButtons(
 			choices.filter((choice) => choice !== Session.playerName),
 			submitVote
 		),
 	]);
 }
-function doneDrawing() {
-	return idlePage("You've Submitted!", "Waiting for other players to finish drawing...");
+function DoneDrawing() {
+	return IdlePage("You've Submitted!", "Waiting for other players to finish drawing...");
 }
-function doneVoting() {
-	return idlePage("You've Voted!", "Waiting for other players to vote...");
+function DoneVoting() {
+	return IdlePage("You've Voted!", "Waiting for other players to vote...");
 }
-function showingResults() {
-	return idlePage("Results", "Results are being revealed now");
+function ShowingResults() {
+	return IdlePage("Results", "Results are being revealed now");
 }
 

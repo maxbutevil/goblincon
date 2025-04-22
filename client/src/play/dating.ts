@@ -7,7 +7,7 @@ import {
 	h, s, c, defer, projector,
 	Shared
 } from "../modules/"
-import { Submission, SUBMISSION } from "../modules/submission"
+import { SubmissionData, SUBMISSION_DATA } from "../modules/submission_data"
 
 //import Globals from "./globals"
 
@@ -17,10 +17,10 @@ import Drawpad from "./drawpad"
 import {
 	Countdown,
 	
-	tray,
-	iconBtn,
-	voteButtons,
-	idlePage,
+	Tray,
+	IconBtn,
+	VoteButtons,
+	IdlePage,
 } from "../components"
 import { NameOverlay } from "./components"
 
@@ -29,7 +29,7 @@ const INC = new ReceiveIndex({
 	
 	/* state synchronization */
 	"drawingBachelor": { secsLeft: Val.NUM, naming: Val.BOOL, theme: Val.STR },
-	"drawingSuitor": { secsLeft: Val.NUM, naming: Val.BOOL, bachelorId: Val.NUM, bachelorSubmission: SUBMISSION },
+	"drawingSuitor": { secsLeft: Val.NUM, naming: Val.BOOL, bachelorId: Val.NUM, bachelorSubmission: SUBMISSION_DATA },
 	"voting": { secsLeft: Val.NUM, choices: Val.array(Val.STR) },
 	
 	/* idle states */
@@ -41,45 +41,45 @@ const INC = new ReceiveIndex({
 	"notVoting": Val.NONE,
 });
 const OUT = new SendIndex({
-	"bachelorSubmission": { submission: SUBMISSION },
-	"suitorSubmission": { submission: SUBMISSION, bachelorId: Val.NUM },
+	"bachelorSubmission": { submission: SUBMISSION_DATA },
+	"suitorSubmission": { submission: SUBMISSION_DATA, bachelorId: Val.NUM },
 	"voteSubmission": { forName: Val.STR },
 });
 
-const page = projector(starting);
+const page = projector(Starting);
 
 export function view() {
 	
 	defer(
 		client.use(INC, OUT),
 		INC.subscribe("drawingBachelor", ({ secsLeft, naming, theme }) => {
-			page.put(drawingBachelor, secsLeft, naming, theme);
+			page.put(DrawingBachelor, secsLeft, naming, theme);
 		}),
 		INC.subscribe("drawingSuitor", ({ secsLeft, naming, bachelorId, bachelorSubmission }) => {
-			page.put(drawingSuitor, secsLeft, naming, bachelorId, bachelorSubmission)
+			page.put(DrawingSuitor, secsLeft, naming, bachelorId, bachelorSubmission)
 		}),
 		INC.subscribe("voting", ({ secsLeft, choices }) => {
-			page.put(voting, secsLeft, choices);
+			page.put(Voting, secsLeft, choices);
 		}),
-		INC.subscribe("showingVotes", () => page.put(showingResults)),
-		INC.subscribe("showingScores", () => page.put(showingResults)),
-		INC.subscribe("doneDrawingBachelor", () => page.put(doneDrawing)),
-		INC.subscribe("doneDrawingSuitor", () => page.put(doneDrawing)),
-		INC.subscribe("doneVoting", () => page.put(doneVoting)),
-		INC.subscribe("notVoting", () => page.put(notVoting))
+		INC.subscribe("showingVotes", () => page.put(ShowingResults)),
+		INC.subscribe("showingScores", () => page.put(ShowingResults)),
+		INC.subscribe("doneDrawingBachelor", () => page.put(DoneDrawing)),
+		INC.subscribe("doneDrawingSuitor", () => page.put(DoneDrawing)),
+		INC.subscribe("doneVoting", () => page.put(DoneVoting)),
+		INC.subscribe("notVoting", () => page.put(NotVoting))
 	);
 	
 	return h("div#dating.mode", s(page));
 }
-function starting() {
+function Starting() {
 	return h("div#start.tab", [
 		h("h1", "Game Starting!"),
 		h("h2", "Get ready to draw!")
 	]);
 }
-function drawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: string) {
+function DrawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: string) {
 	
-	const overlay = new State<null | typeof nameView>(null);
+	const overlay = new State<null | typeof NameView>(null);
 	const nameOverlay = (!naming) ? null : new NameOverlay({
 		onClose: () => overlay.set(null)
 	});
@@ -88,7 +88,6 @@ function drawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: strin
 		if (ev.key === "Escape") overlay.set(null);
 	}));
 	
-	
 	const drawpad = new Drawpad({
 		onSubmit: (drawing) => {
 			const submission = { drawing, name: nameOverlay?.name };
@@ -96,7 +95,7 @@ function drawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: strin
 		},
 		onStartSubmit: () => {
 			if (nameOverlay && nameOverlay.name === undefined) {
-				overlay.set(nameView);
+				overlay.set(NameView);
 				return false;
 			}
 			return true;
@@ -106,31 +105,31 @@ function drawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: strin
 	countdown.onFinish(() => drawpad.submit());
 	countdown.onThreshold(15, () => {
 		if (nameOverlay && !nameOverlay.name) {
-			overlay.set(nameView);
+			overlay.set(NameView);
 		}
 	});
 	
-	function nameView() {
-		return nameOverlay!.view(drawpad.isSubmitted());
+	function NameView() {
+		return nameOverlay!.View(drawpad.isSubmitted());
 	}
 	
 	return h("div#draw-bachelor.tab", [
 		h("div#info", [
 			h("div#bachelor-theme", `Theme: ${bachelorTheme}`),
-			countdown.view()
+			countdown.View()
 		]),
-		drawpad.view(),
+		drawpad.View(),
 		s(overlay, curr => (!curr) ? h("!") : curr()),
-		c(nameOverlay && tray(
-			iconBtn(icons.name, () => overlay.toggle(nameView, null))
+		c(nameOverlay && Tray(
+			IconBtn(icons.name, () => overlay.toggle(NameView, null))
 		))
 	]);
 }
-function drawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, bachelorSubmission: Submission) {
+function DrawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, bachelorSubmission: SubmissionData) {
 	
 	//let name: string | undefined = undefined; // undefined = never opened name overlay
 	
-	const overlay = new State<null | typeof bachelorView>(bachelorView);
+	const overlay = new State<null | typeof Bachelor>(Bachelor);
 	const nameOverlay = (!naming) ? null : new NameOverlay({
 		onClose: () => overlay.set(null)
 	})
@@ -148,7 +147,7 @@ function drawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 		},
 		onStartSubmit: () => {
 			if (nameOverlay && nameOverlay.name === undefined) {
-				overlay.set(nameView);
+				overlay.set(Name);
 				return false;
 			}
 			return true;
@@ -158,7 +157,7 @@ function drawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 	countdown.onFinish(() => drawpad.submit());
 	countdown.onThreshold(15, () => {
 		if (nameOverlay && !nameOverlay.name) {
-			overlay.set(nameView);
+			overlay.set(Name);
 		}
 	});
 	
@@ -166,10 +165,10 @@ function drawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 		if (ev.key === "Escape") overlay.set(null);
 	}));
 	
-	function nameView() {
-		return nameOverlay!.view(drawpad.isSubmitted());
+	function Name() {
+		return nameOverlay!.View(drawpad.isSubmitted());
 	}
-	function bachelorView() {
+	function Bachelor() {
 		return h("div#overlay", [
 			h("div#bachelor-popup.popup", [
 				h("div", [
@@ -200,46 +199,46 @@ function drawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 	return h("div#draw-suitor.tab", [
 		h("div#info", [
 			h("div", "Draw a suitor for your bachelor(ette)"),
-			countdown.view()
+			countdown.View()
 		]),
-		drawpad.view(),
+		drawpad.View(),
 		//h("button", { on: { click: toggle } }, "See Bachelor"),
 		s(overlay, curr => (!curr) ? h("!") : curr()),
 		//s(overlayOpen, curr => curr ? overlay() : h("!")),
-		tray(
-			iconBtn(icons.bachelor, () => overlay.toggle(bachelorView, null)),
-			c(nameOverlay && iconBtn(icons.name, () => overlay.toggle(nameView, null)))
+		Tray(
+			IconBtn(icons.bachelor, () => overlay.toggle(Bachelor, null)),
+			c(nameOverlay && IconBtn(icons.name, () => overlay.toggle(Name, null)))
 		),
 		//mountedBtn(showBachelorIcon, toggle)
 	]);
 }
-function voting(secsLeft: number, choices: string[]) {
+function Voting(secsLeft: number, choices: string[]) {
 	
 	function submitVote(forName: string) {
 		OUT.send("voteSubmission", { forName });
-		page.put(doneVoting);
+		page.put(DoneVoting);
 	}
 	
 	return h("div#voting.tab", [
 		h("h1", "Voting!"),
 		h("div", "Vote for your favorite suitor!"),
-		Countdown.secs(secsLeft, 2),
-		...voteButtons(choices, submitVote)
+		Countdown.Secs(secsLeft, 2),
+		...VoteButtons(choices, submitVote)
 	]);
 }
 
-function showingResults() {
-	return idlePage("Results", "Results are being revealed now");
+function ShowingResults() {
+	return IdlePage("Results", "Results are being revealed now");
 }
 
-function doneDrawing() {
-	return idlePage("You've Submitted!", "Waiting for other players to finish drawing...");
+function DoneDrawing() {
+	return IdlePage("You've Submitted!", "Waiting for other players to finish drawing...");
 }
-function doneVoting() {
-	return idlePage("You've Voted!", "Waiting for other players to do the same...");
+function DoneVoting() {
+	return IdlePage("You've Voted!", "Waiting for other players to do the same...");
 }
-function notVoting() {
-	return idlePage("Waiting...", "Waiting for other players to vote...");
+function NotVoting() {
+	return IdlePage("Waiting...", "Waiting for other players to vote...");
 }
 
 

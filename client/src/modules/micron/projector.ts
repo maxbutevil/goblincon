@@ -3,6 +3,7 @@ import State from "./state"
 import Signal from "./signal"
 import { Builder } from "./ctx"
 import { h, VNode, } from "./snabbdom"
+import Ctx from "./ctx"
 
 const EMPTY_BUILDER = () => h("!");
 
@@ -13,6 +14,25 @@ export function projector<A extends any[]>(initialBuilder: (...args: A) => VNode
 export function navigator<A extends any[]>(initialBuilder: (...args: A) => VNode, ...initialArgs: A) {
   return Nav.create(initialBuilder, initialArgs);
 }
+
+/*export class Shards {
+  
+  
+  
+  
+}
+export class Stack {
+  
+  readonly contexts: Ctx[];
+  
+  push<A extends any[]>(builder: (...args: A) => VNode, ...builderArgs: A) {
+    if (builderArgs.length === 0) {
+      this.signal.emit(builder);
+    } else {
+      this.signal.emit(() => builder(...builderArgs));
+    }
+  }
+}*/
 
 export class Projector {
   

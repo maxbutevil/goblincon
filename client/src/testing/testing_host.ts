@@ -1,59 +1,66 @@
 //import "./styles/.scss"
-import "./host/host.scss"
+import "../host/host.scss"
 //import "./host/host.scss"
 //import { exit as exitIcon } from "./assets/icons/"
-import "./assets/icons"
+import "../assets/icons"
 
 import {
+	Micron,
 	Signal, State,
 	h, s, c,
-	projector, cleanup, defer, VNode, mount,
-	Micron,
-} from "./modules"
+	projector, defer, VNode, mount
+} from "../modules"
 
-import * as icons from "./assets/icons"
-import * as assets from "./assets/misc"
-import * as PlayerIcon from "./modules/player_icons"
+import * as icons from "../assets/icons"
+import * as assets from "../assets/misc"
+import * as PlayerIcon from "../modules/player_icons"
 
-import { Player } from "./host/room";
+import { Player } from "../host/room";
 
-import { Countdown, tray, iconBtn } from "./components"
-import Drawpad from "./play/drawpad"
-import { submission, submissionGrid } from "./host/components";
-import { NameOverlay } from "./play/components"
+import { Countdown, Tray, IconBtn, Autoscroll } from "../components"
+import Drawpad from "../play/drawpad"
+import { Submission, SubmissionGrid, ReadyDisplay } from "../host/components";
+//import { NameOverlay } from "./play/components"
 //import { Matchup }
 
 //const testMatchup = new Matchup();
 
 
 
-const testPlayer = new Player(0, "test freak man", 0);
+const testPlayer = new Player(0, "freak #1", 0);
+const testPlayer2 = new Player(1, "freak #2", 1);
+//const testPlayers = [testPlayer, testPlayer2];
+
+const testPlayers: Player[] = [];
+for (let i = 0; i < 16; i++) {
+	testPlayers.push(new Player(i, `freak #${i}`, i % 7));
+}
+
 const testSubmission = {
 	drawing: assets.testDrawing,
-	name: "Ok Buddy"
+	name: "Test Submission"
 };
 //const testName = "Mr. Griddles";
 const testClose = () => console.log("close");
 
-const testPage = projector(matchupReviewTest);
-
+//const testPage = projector(matchupReviewTest);
+const testPage = projector(submissionGridTest);
 
 function matchupSummary() {
-	
 	return h("div.matchup", [
-		submission(testPlayer, testSubmission),
-		h("img", { attrs: { src: icons.vs }}),
-		submission(testPlayer, testSubmission),
-		h("img", { attrs: { src: icons.vs }}),
-		submission(testPlayer, testSubmission),
+		Submission(testPlayer, testSubmission),
+		h("img", { attrs: { src: icons.heart }}),
+		Submission(testPlayer, testSubmission),
+		h("img", { attrs: { src: icons.heartbreak }}),
+		Submission(testPlayer, testSubmission),
 	]);
 }
 function matchupSummaryTwo() {
 	return h("div.matchup", [
 		h("div.spacer"),
-		submission(testPlayer, testSubmission),
-		h("img", { attrs: { src: icons.vs }}),
-		submission(testPlayer, testSubmission),
+		Submission(testPlayer, testSubmission),
+		h("img", { attrs: { src: icons.heart }}),
+		Submission(testPlayer, testSubmission),
 		h("div.spacer"),
 	]);
 }
@@ -61,124 +68,101 @@ function matchupSummaryThree() {
 	return h("div.matchup", [
 		h("div.spacer"),
 		h("div.spacer"),
-		submission(testPlayer, testSubmission),
+		Submission(testPlayer, testSubmission),
 		h("div.spacer"),
 		h("div.spacer"),
 	]);
 }
-function matchupReview({ close }: { close: () => void }) {
+
+
+function matchupReview() {
 	
-	let scroll = 1;
-	let elm: HTMLDivElement | undefined;
-	let interval: NodeJS.Timeout;
-	const scrollStrength = 25;
-	const scrollDelayMs = 100;
-	const startDelayMs = 1600;
+	const autoscroll = new Autoscroll({
+		strength: 25,
+		startMs: 600,
+		restartMs: 1200
+	});
 	
-	//let interval = interval();
-	defer(Signal.keydown.subscribe((ev) => {
-		if (ev.key === "Escape") {
-			close();
-		}
-	}));
-	
-	function stopScroll() {
-		scroll = 0;
-		elm?.scrollBy(0, 0);
-	}
 	return h("div#recap",
 		{
 			on: {
-				wheel: stopScroll,
-				click: stopScroll,
+				wheel: () => autoscroll.stop(),
+				click: () => autoscroll.stop(),
 			},
 			hook: {
-				insert: (vnode) => {
-					elm = vnode.elm as HTMLDivElement;
-					if (elm.clientHeight >= elm.scrollHeight) {
-						return;
-					}
-					function startNextScroll() {
-						clearInterval(interval);
-						setTimeout(() => {
-							interval = setInterval(() => {
-								if (!elm || !document.contains(elm) || scroll === 0) {
-									clearInterval(interval);
-									return;
-								}
-								//console.log(elm.scrollTop, elm.scrollHeight, elm.clientHeight);
-								if (scroll === -1 && elm.scrollTop <= 0) {
-									scroll = 1;
-									startNextScroll();
-								} else if (scroll === 1 && elm.scrollTop >= elm.scrollHeight - elm.clientHeight - 2) {
-									scroll = -1;
-									startNextScroll();
-								} else {
-									elm?.scrollBy({
-										top: scroll * scrollStrength,
-										behavior: "smooth"
-									});
-								}
-							}, scrollDelayMs);
-						}, startDelayMs);
-					}
-					startNextScroll();
+				insert: () => {
+					const elm = document.getElementById("dating-recap-popup");
+					if (elm) autoscroll.start(elm);
 				}
 			},
 		},
 		[
-			h("div#matchups", [
+			h("h1", "Recap"),
+			h("div.round", [
 				h("h2", "Round One: Abcde"),
 				matchupSummary(),
 				matchupSummaryTwo(),
+			]),
+			h("div.round", [
 				h("h2", "Round Two: Abcde"),
 				matchupSummaryThree(),
 				matchupSummary(),
-			]),
-			h("button",
-				{ on: { click: close } },
-				"Close" 
-			)
+			])
+			//readyDisplay.view()
 		]
 	);
-	
-	//return review;
-	
-	//return h("div#overlay", review);
 }
 function matchupReviewTest() {
-	return matchupReview({
-		close: testClose,
-		
-	});
+	
+	return h("div#overlay", [
+		h("div#dating-recap-popup.popup", [
+			matchupReview(),
+			h("button", "Close")
+		])
+	]);
+	
+	return matchupReview();
 }
 
 function submissionGridTest() {
 	
 	const count = new State(1);
-	const player = new Player(0, "test", 0);
+	const readyDisplay = new ReadyDisplay(testPlayers, 205, 2);
+	for (let i = 0; i < 16; i++) {
+		//readyDisplay.ready(i);
+	}
+	//readyDisplay.ready(0);
 	
-	return h(
-		"div.mode",
-		{ on: { click: () => count.set(count.get() + 1) } },
-		s(count, (curr) => {
-			
-			const submissions = [];
-			for (let i = 0; i < curr; i++) {
-				submissions.push(submission(player, testSubmission));
-			}
-			
-			return submissionGrid(submissions);
-		})
-	);
+	return s(count, curr => {
+		const submissions = [];
+		for (let i = 0; i < curr; i++) {
+			submissions.push(Submission(testPlayer, testSubmission, {
+				votes: testPlayers
+			}));
+		}
+		return h(
+			"div.tab",
+			{ on: { click: () => {
+				readyDisplay.ready(count.get() - 1);
+				count.mutate(curr => curr + 1);
+				
+				readyDisplay.stopCountdown();
+			} } },
+			[
+				h("div", `Vote for your favorite ${"goblinName"}!`),
+				SubmissionGrid(submissions),
+				readyDisplay.View()
+			]
+		);
+	});
 }
 
 function datingVoteTest() {
 	
-	let bachelorDrawing = submission(testPlayer, testSubmission);
+	let bachelorDrawing = Submission(testPlayer, testSubmission);
 	let suitorDrawings = [
-		submission(testPlayer, testSubmission),
-		submission(testPlayer, testSubmission)
+		Submission(testPlayer, testSubmission),
+		Submission(testPlayer, testSubmission)
 	];
 	
 	if (suitorDrawings.length === 2) {
@@ -235,103 +219,14 @@ function oldDrawingSuitorTest() {
 	return h("div#draw-suitor.tab", [
 		h("div#info", [
 			h("div", "Draw a suitor for your bachelor(ette)"),
-			countdown.view(),
+			countdown.View(),
 			//Countdown.secs(secsLeft, 4, () => drawpad.submit()),
 		]),
-		drawpad.view(),
+		drawpad.View(),
 		//h("button", { on: { click: toggle } }, "See Bachelor"),
 		s(overlayOpen, curr => curr ? overlay() : h("!")),
-		tray(iconBtn(icons.bachelor, toggle))
+		Tray(IconBtn(icons.bachelor, toggle))
 	]);
-}
-function drawingSuitorTest() {
-	
-	const secsLeft = 25;
-	const bachelorDrawing = testSubmission.drawing;
-	const naming: boolean = true;
-	
-	const overlay = new State<null | typeof bachelorView>(bachelorView);
-	const nameOverlay = c<NameOverlay>(naming && new NameOverlay({
-		onClose: () => overlay.set(null)
-	}));
-	//const nameOverlayView = nameOverlay?.view.bind(nameOverlay);
-	const drawpad = new Drawpad({
-		onSubmit: (drawing) => {
-			//OUT.send("suitorSubmission", { bachelorId, drawing, name: nameOverlay?.name });
-			overlay.set(null);
-		},
-		onStartSubmit: () => {
-			if (nameOverlay && nameOverlay.name === undefined) {
-				overlay.set(nameView);
-				return false;
-			}
-			return true;
-		}
-	});
-	const countdown = Countdown.fromSecs(secsLeft, 4);
-	countdown.onFinish(() => drawpad.submit());
-	countdown.onThreshold(15, () => {
-		if (nameOverlay && nameOverlay.name === undefined) {
-			overlay.set(nameView);
-		}
-	});
-	
-	defer(Signal.keydown.subscribe((ev) => {
-		if (ev.key === "Escape") overlay.set(null);
-	}));
-	
-	function nameView() {
-		return nameOverlay!.view(drawpad.isSubmitted());
-	}
-	function bachelorView() {
-		return h("div#overlay", [
-			h("div#bachelor-popup", [
-				h("div.vflow", [
-					h("div.vflow", [
-						h("h2", "Your Bachelor(ette)"),
-						h("div",
-							{ style: { fontSize: "0.86em" } },
-							"Use this as inspiration for your suitor drawing!"
-						),
-					]),
-					h("div#bachelor-ctr", [
-						h("div#bachelor-name",
-							{ style: { fontSize: "1.1em" } },
-							"abcde"
-						),
-						h("img", { attrs: { src: bachelorDrawing }}),
-					]),
-				]),
-				h("button",
-					{ on: { click: () => overlay.set(null) } },
-					"Start Drawing!"
-				)
-			])
-		]);
-	}
-	//const countdown = new Countdown();
-	return h("div#draw-suitor.tab", [
-		h("div#info", [
-			h("div", "Draw a suitor for your bachelor(ette)"),
-			countdown.view()
-		]),
-		drawpad.view(),
-		//h("button", { on: { click: toggle } }, "See Bachelor"),
-		s(overlay, curr => (!curr) ? h("!") : curr()),
-		//s(overlayOpen, curr => curr ? overlay() : h("!")),
-		tray(
-			iconBtn(icons.bachelor, () => overlay.toggle(bachelorView, null)),
-			c(nameOverlay && iconBtn(icons.name, () => overlay.toggle(nameView, null)))
-		),
-		//mountedBtn(showBachelorIcon, toggle)
-	]);
-}
-
-function drawingTest() {
-	const drawpad = new Drawpad({
-		onSubmit: (drawing) => {}
-	});
-	return h("div.tab", drawpad.view());
 }
 
 mount(h("div#dating.mode", s(testPage)));
@@ -418,7 +313,7 @@ mount(h("div#dating.mode", s(testPage)));
 
 /*const count = new State([1, 1]);
 
-function submission(): VNode {
+function Submission(): VNode {
 	
 	const playerName = "joe";
 	const drawing = icons.erase;
@@ -478,7 +373,7 @@ mount(
 					//let submissions: (VNode | null)[] = [];
 					for (let i = 0; i < submissionCount; i++) {
 						let row = Math.floor(i/rowWidth);
-						rows[row].push(submission());
+						rows[row].push(Submission());
 					}
 					
 					let selector = rowCount <= 1 ? "div.submission-ctr.single-row" : "div.submission-ctr";

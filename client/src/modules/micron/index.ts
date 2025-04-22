@@ -2,6 +2,7 @@
 
 import Signal from "./signal"
 import State from "./state"
+import { Shard } from "./state"
 import Ctx, { Cleanup, Builder } from "./ctx"
 export { Signal, State, Ctx };
 export type { Cleanup, Builder }; // Probably unnecessary
@@ -37,132 +38,132 @@ export function c(exp: VNode | null | undefined | boolean | number | string): VN
 }
 
 /* General function for all stateful nodes */
-export function s<T>(s: State<T>, builder: Builder<[T]>): VNode;
+export function s<T>(s: State<T>, builder: Builder<[T, T | undefined]>): VNode;
+export function s<T>(s: Shard<T>, builder: Builder<[T, T | undefined]>): VNode;
 export function s<T extends any[]>(s: Signal<T>, builder: Builder<T | []>): VNode;
 export function s<T extends any[]>(s: Signal<T>[], builder: Builder<T | []>): VNode;
 export function s(builder: Builder<[() => void]>): VNode;
 export function s(p: Projector): VNode;
 export function s(p: Nav): VNode;
 export function s(
-  d: State<any> | Signal<any> | Signal<any>[] | Builder<[() => void]> | Projector | Nav,
-  builder?: Builder<any> | undefined
+  d: State<any> | Shard<any> | Signal<any> | Signal<any>[] | Builder<[() => void]> | Projector | Nav,
+  builder?: any
 ) {
   if (Array.isArray(d)) {
-    if (d.length === 0 || d[0] === undefined) {
-      console.error("Building stateful component with empty array of dependencies");
-      return (builder as Builder<any>)(); // no reason to change
-    } else {
-      return multiSignaled(d, builder as Builder<any>);
+    if (d.length === 0) {
+      console.error("stateful node has an empty dependency array");
     }
+    return multiSignalView(d, builder as Builder<any>);
   } else {
     if (d instanceof State) {
-      return stateful(d, builder as Builder<any>);
+      return stateView(d, builder as Builder<any>);
+    } else if (d instanceof Shard) { // must come before Signal, since Shard inherits from it
+      return shardView(d, builder);
     } else if (d instanceof Signal) {
-      return monoSignaled(d, builder as Builder<any>);
+      return signalView(d, builder as Builder<any>);
     } else if (d instanceof Projector) {
-      return projected(d);
+      return projectorView(d);
     } else if (d instanceof Nav) {
-      return navigated(d);
+      return navView(d);
     } else if (typeof d === "function") {
-      return contained(d);
+      return containedView(d);
+    } else {
+      console.error("stateful node has an invalid dependency: ", d);
+      return h("!");
     }
   }
 }
 
 /* Specific kinds of stateful nodes */
 /* Not recommended to use these, but they're slightly more efficient */
-export function projected(projector: Projector): VNode {
-  return monoSignaled<[Builder]>(
+export function projectorView(projector: Projector): VNode {
+  return baseView(
     projector.signal,
-    (builder) => (builder ?? projector.initial)()
+    (builder) => builder(),
+    projector.initial
   );
 }
-export function navigated(navigator: Nav): VNode {
-  return stateful(
+export function navView(navigator: Nav): VNode {
+  return stateView(
     navigator.state,
     (builder) => builder()
   );
 }
-export function stateful<T>(state: State<T>, builder: (curr: T) => VNode): VNode {
-  const rebuild = (_from: T, _curr: T) => {
-    ctx.rebuild(() => builder(state.get()));
-  };
-  let [ctx, vnode] = Ctx.build(
-    () => builder(state.get()),
-    state.changed.subscribe(rebuild)
-  );
-  return vnode;
-}
 
-export function signaled<T extends any[]>(signals: Signal<T> | Signal<T>[], builder: Builder<T | []>): VNode {
-  if (Array.isArray(signals)) {
-    return multiSignaled(signals, builder);
-  } else {
-    return monoSignaled(signals, builder);
-  }
-}
-export function monoSignaled<T extends any[]>(signal: Signal<T>, builder: Builder<T>) {
-  let ctx: Ctx, vnode: VNode;
-  const rebuild = (...args: T) => ctx.rebuild(() => builder(...args));
-  [ctx, vnode] = Ctx.build(
-    builder as () => VNode,
+function baseView<T extends any[], I extends any[]>(signal: Signal<T>, builder: Builder<T | I>, ...initial: I): VNode {
+  const rebuild = (...args: T) => {
+    ctx.rebuild(() => builder(...args));
+  };
+  const [ctx, vnode] = Ctx.build(
+    () => builder(...initial),
     signal.subscribe(rebuild)
   );
   return vnode;
-}
-export function multiSignaled<T extends any[]>(signals: Signal<T>[], builder: Builder<T | []>): VNode {
-  let ctx: Ctx, vnode: VNode;
-  const rebuild = (...args: T) => ctx.rebuild(() => builder(...args));
-  [ctx, vnode] = Ctx.build(
-    builder as Builder,
-    Signal.bundle(...signals.map(signal => signal.subscribe(rebuild)))
+};
+function baseMultiView<T extends any[], I extends any[]>(signal: Signal<T>[], builder: Builder<T | I>, ...initial: I): VNode {
+  const rebuild = (...args: T) => {
+    ctx.rebuild(() => builder(...args));
+  };
+  const [ctx, vnode] = Ctx.build(
+    () => builder(...initial),
+    Signal.bundle(...signal.map(s => s.subscribe(rebuild)))
   );
   return vnode;
+};
+export function stateView<T>(state: State<T>, builder: (curr: T, from: T | undefined) => VNode): VNode {
+  return baseView(
+    state.changed, 
+    builder,
+    state.get(),
+    undefined // no "from" value yet
+  );
+}
+export function shardView<T>(shard: Shard<T>, builder: (curr: T, from: T | undefined) => VNode): VNode {
+  return baseView(shard, builder, shard.get(), undefined);
+}
+export function signalView<T extends any[]>(signal: Signal<T>, builder: Builder<T | []>) {
+  return baseView(signal, builder);
+}
+export function multiSignalView<T extends any[]>(signals: Signal<T>[], builder: Builder<T | []>): VNode {
+  return baseMultiView(signals, builder);
 }
 
-export function contained(builder: (rerender: () => void) => VNode) {
+export function containedView(builder: (rerender: () => void) => VNode) {
   // "self contained" stateful vnode
   // rerenders itself rather than responding to external state
   let ctx: Ctx, vnode: VNode;
-  const _builder = () => builder(rerender);
-  const rerender = () => {
-    ctx.rebuild(_builder);
-  };
-  [ctx, vnode] = Ctx.build(_builder, null);
+  const cachedBuilder = () => builder(rerender);
+  const rerender = () => ctx.rebuild(cachedBuilder);
+  [ctx, vnode] = Ctx.build(cachedBuilder, null);
   return vnode;
 }
 
 /* In-node Utility Functions */
-/* Are we currently building a ctx? */
-/*export function hasContext(): boolean {
-  return Ctx.hasContext();
-}*/
+export function ctx(): Ctx | undefined {
+  return Ctx.get();
+}
 /* Registers a callback to be executed when the containing ctx rerenders or is destroyed */
 export function defer(...callbacks: Cleanup[]) {
-  Ctx.defer(...callbacks);
+  const ctx = Ctx.get();
+  if (ctx) {
+    ctx.defer(...callbacks);
+  } else {
+    console.error("called defer() without a valid containing context (consider using ctx()?.defer() instead)");
+  }
 }
-/* Registers a callback to be executed when the containing ctx is destroyed */
-// Prefer using defer when possible
-// Will NOT be registered after the initial build, to avoid re-registering the same callback
-// For this reason, conditionally registering cleanup functions is an anti-pattern
-export function cleanup(...callbacks: Cleanup[]) {
-  Ctx.cleanup(...callbacks);
-}
-export function maybeDefer(...callbacks: Cleanup[]) {
-  if (Ctx.exists()) Ctx.defer(...callbacks);
-}
-export function maybeCleanup(...callbacks: Cleanup[]) {
-  if (Ctx.exists()) Ctx.cleanup(...callbacks);
-}
+/* Defer, but if we don't have a valid containing context, do nothing instead of erroring */
+/*export function maybeDefer(...callbacks: Cleanup[]) {
+  Ctx.get()?.defer(...callbacks);
+}*/
 
 /* These are likely to change */
 export function timeout(ms: number, callback: () => void): NodeJS.Timeout {
   const timeout = setTimeout(callback, ms);
-  Ctx.defer(() => clearTimeout(timeout));
+  Ctx.get()?.defer(() => clearTimeout(timeout));
   return timeout;
 }
 export function interval(ms: number, callback: () => void): NodeJS.Timer {
   const interval = setInterval(callback, ms);
-  Ctx.defer(() => clearInterval(interval));
+  Ctx.get()?.defer(() => clearInterval(interval));
   return interval;
 }

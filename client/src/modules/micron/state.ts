@@ -1,87 +1,41 @@
 
 import Signal from "./signal"
 
-type StatePool<T> = T | Array<T> | typeof State.ANY;
+function defaultEq<T>(curr: T, from: T): boolean {
+	return curr === from;
+}
+function defaultMapping<T>(value: T): T {
+	return value;
+}
 
 export default class State<T> {
 	
-	static readonly ANY = Symbol();
+	readonly changed = new Signal<[curr: T, from: T]>();
 	
-	readonly changed = new Signal<[from: T, to: T]>();
-	curr: T;
+	protected curr: T;
+	readonly eq: (curr: T, from: T) => boolean;
 	
-	private cmpDepth: number;
-	private signalEntries = new Array<{ signal: Signal<[T, T]>, from: StatePool<T>, to: StatePool<T> }>();
-	
-	constructor(initial: T, cmpDepth = 0) {
+	constructor(initial: T, eq: typeof defaultEq = defaultEq) {
 		this.curr = initial;
-		this.cmpDepth = cmpDepth;
-	}
-	static shallow<T>(initial: T): State<T> {
-		return new State(initial, 0);
-	}
-	static deep<T>(initial: T): State<T> {
-		return new State(initial, Infinity);
-	}
-	
-	static cmp<T>(one: T, two: T, depth: number): boolean {
-		if (typeof one !== typeof two)
-			return false;
-		
-		if (depth > 0 && typeof one === 'object') {
-			for (const key in one)
-				if (!this.cmp(one[key], two[key], depth - 1))
-					return false;
-			
-			return true;
-		} else {
-			return one === two;
-		}
-	}
-	
-	private handleChanged(from: T, to: T): void {
-		this.changed.emit(from, to);
-		
-		for (const entry of this.signalEntries)
-			if (this.stateMatch(entry.from, from) && this.stateMatch(entry.to, to))
-				entry.signal.emit(from, to);
-	}
-	
-	private cmp(one: T, two: T): boolean {
-		return State.cmp(one, two, this.cmpDepth);
-	}
-	private stateMatch(pool: StatePool<T>, state: T): boolean {
-		return pool === State.ANY || pool === state || (Array.isArray(pool) && pool.includes(state));
-	}
-	private createTransition(from: StatePool<T>, to: StatePool<T>): Signal<[T, T]> {
-		let signal = new Signal<[T, T]>();
-		this.signalEntries.push({ signal, from, to });
-		return signal;
-	}
-	
-	transition(from: T | Array<T>, to: T | Array<T>): Signal<[T, T]> {
-		return this.createTransition(from, to);
-	}
-	transitionFrom(from: T | Array<T>): Signal<[T, T]> {
-		return this.createTransition(from, State.ANY);
-	}
-	transitionTo(to: T | Array<T>): Signal<[T, T]> {
-		return this.createTransition(State.ANY, to);
-	}
-	
-	is(value: T): boolean {
-		return this.curr == value;
-	}
-	any(...values: Array<T>): boolean {
-		return values.includes(this.curr);
+		this.eq = eq;
 	}
 	
 	set(to: T) {
-		if (!this.cmp(to, this.curr))
-			this.handleChanged(this.curr, this.curr = to);
+		if (!this.eq(to, this.curr)) {
+			const from = this.curr;
+			this.curr = to;
+			this.changed.emit(this.curr, from);
+		}
 	}
 	get(): T {
 		return this.curr;
+	}
+	
+	is(value: T): boolean {
+		return this.curr === value;
+	}
+	any(...values: Array<T>): boolean {
+		return values.includes(this.curr);
 	}
 	
 	mutate(mutator: (curr: T) => T) {
@@ -94,5 +48,116 @@ export default class State<T> {
 			this.set(other);
 		}
 	}
+	
+	
+	mapping<O>(mapping: (value: T) => O, eq = defaultEq): Shard<O> {
+		return Shard.mapping(this, mapping, eq);
+	}
+	filter(filter: (curr: T, from: T) => boolean): Shard<T> {
+		return Shard.filter(this, filter);
+	}
+	transition(to: T, from: T): Shard<T> {
+		return this.filter((_curr, _from) => to === _curr && from === _from);
+	}
+	transitionTo(value: T): Shard<T> {
+		return this.filter((curr, from) => curr === value);
+	}
+	transitionFrom(value: T): Shard<T> {
+		return this.filter((curr, from) => from === value);
+	}
+	transitionToAny(values: T[]): Shard<T> {
+		return this.filter((curr, from) => values.includes(curr));
+	}
+	transitionFromAny(values: T[]): Shard<T> {
+		return this.filter((curr, from) => values.includes(from));
+	}
+	/*transitionAny(to: T[], from: T[]): Shard<T> {
+		
+	}*/
+	
+	/*private stateMatch(pool: StatePool<T>, state: T): boolean {
+		if (pool === State.ANY) return true;
+		if (Array.isArray(pool)) {
+			for (const s of pool) {
+				if (this.eq(s, state)) return true;
+			}
+		}
+		return this.eq(pool as T, state); // maybe evil?
+	}
+	private createTransition(from: StatePool<T>, to: StatePool<T>): Signal<[T, T]> {
+		let signal = new Signal<[T, T]>();
+		this.signals.push({ signal, from, to });
+		return signal;
+	}
+	transition(from: T | Array<T>, to: T | Array<T>): Signal<[T, T]> {
+		return this.createTransition(from, to);
+	}
+	transitionFrom(from: T | Array<T>): Signal<[T, T]> {
+		return this.createTransition(from, State.ANY);
+	}
+	transitionTo(to: T | Array<T>): Signal<[T, T]> {
+		return this.createTransition(State.ANY, to);
+	}*/
+	
+
+	
+}
+
+export class Shard<T> extends Signal<[T, T]> {
+	
+	readonly get: () => T;
+	
+	protected constructor(get: () => T) {
+		super();
+		this.get = get;
+	}
+	
+	static mapping<I, O>(state: State<I>, mapping: (value: I) => O, eq = defaultEq): Shard<O> {
+		const shard = new Shard(() => mapping(state.get()));
+		state.changed.listen((curr, from) => {
+			const mappedCurr = mapping(curr);
+			const mappedFrom = mapping(from);
+			if (!eq(mappedCurr, mappedFrom)) {
+				shard.emit(mappedCurr, mappedFrom);
+			}
+		});
+		return shard;
+	}
+	static filter<T>(state: State<T>, filter: (curr: T, from: T) => boolean): Shard<T> {
+		const shard = new Shard(() => state.get());
+		state.changed.listen((curr, from) => {
+			if (filter(curr, from)) {
+				shard.emit(curr, from);
+			}
+		});
+		return shard;
+	}
+	
+	/*get(): O {
+		return this.mapping(this.state.get());
+	}*/
+	
+	
+	/*static mapped<I, O>(state: State<I>, mapping: (value: I) => O, eq: typeof defaultEq = defaultEq): Shard<I, O> {
+		const shard = new Shard<I, O>(state);
+		state.changed.listen();
+		return shard;
+	}
+	static filtered<T>(state: State<T>, filter: (curr: T, from: T) => boolean) {
+		const shard = new Shard<T, T>(state);
+		state.changed.listen((curr, from) => {
+			if (filter(curr, from)) {
+				shard.emit(curr, from);
+			}
+		});
+		return shard;
+	}*/
+	
+	//get() { return this.state.get(); }
+	
+	/*get() { return this.state.get(); }
+	is(value: T): boolean { return this.state.is(value); }
+	any(...values: T[]): boolean { return this.state.any(...values); }*/
+	
 	
 }

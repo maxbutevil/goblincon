@@ -19,7 +19,7 @@ export class NameOverlay {
 		this.options = options;
 	}
 	
-	view(disabled = false) {
+	View(disabled = false) {
 		
 		const { onClose } = this.options;
 		function close() {

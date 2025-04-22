@@ -1,37 +1,37 @@
 
 import {
 	State,
-	h, s, defer, Micron,
+	h, s, ctx,
 	Shared, PlayerIcons,
 	VNode, VNodeChildren, VNodeChildElement,
-	cleanup
 } from "./modules/"
 
-export function logo() {
+export function Logo() {
+	const icons = [];
+	for (let i = 0; i < PlayerIcons.count(); i++) {
+		icons.push(PlayerIcons.View(i, Shared.playerColor(i)));
+	}
+	
 	return h("div#logo", [
 		h("h1", "GoblinCon"),
-		h(
-			"div#icon-row",
-			([0, 1, 2, 3, 4, 5, 6]).map(i =>
-				PlayerIcons.view(i, Shared.PLAYER_COLORS[i]))
-		)
+		h("div#icon-row", icons)
 	]);
 }
 
-export function idlePage(header: string, ...subheaders: string[]) {
+export function IdlePage(header: string, ...subheaders: string[]) {
 	return h("div#idle.tab", [
 		h("h1", header),
 		...subheaders.map((s) => h("h2", s)),
 	]);
 }
 
-export function voteButtons(choices: string[], submit: (choice: string) => void): VNode[] {
+export function VoteButtons(choices: string[], submit: (choice: string) => void): VNode[] {
 	return choices.map(choice => {
 		return h("button", { on: { click: () => submit(choice) } }, choice);
 	});
 }
 
-export function iconBtn(iconSrc: string, onClick: () => any, disabled = false): VNode {
+export function IconBtn(iconSrc: string, onClick: () => any, disabled = false): VNode {
 	return h("button.icon-btn",
 		{
 			on: { click: onClick },
@@ -41,7 +41,7 @@ export function iconBtn(iconSrc: string, onClick: () => any, disabled = false): 
 	);
 }
 
-export function tray(...children: VNodeChildElement[]) {
+export function Tray(...children: VNodeChildElement[]) {
 	return h("div#tray", children);
 }
 
@@ -87,17 +87,17 @@ export class Countdown {
 		this.interval = setInterval(tick, 200);
 		tick();
 		
-		Micron.maybeDefer(() => clearInterval(this.interval));
+		ctx()?.defer(() => clearInterval(this.interval));
 	}
-	static simple(endTime: number, onFinish?: () => void): VNode {
+	static Simple(endTime: number, onFinish?: () => void): VNode {
 		const cd = new Countdown(endTime);
 		if (onFinish) cd.onFinish(onFinish);
-		return cd.view();
+		return cd.View();
 	}
-	static secs(secsLeft: number, secsBuffer = 0, onFinish?: () => void): VNode {
+	static Secs(secsLeft: number, secsBuffer = 0, onFinish?: () => void): VNode {
 		const cd = this.fromSecs(secsLeft, secsBuffer);
 		if (onFinish) cd.onFinish(onFinish);
-		return cd.view();
+		return cd.View();
 	}
 	static fromSecs(secsLeft: number, secsBuffer = 0): Countdown {
 		return new Countdown(Countdown.endTime(secsLeft, secsBuffer));
@@ -110,7 +110,14 @@ export class Countdown {
 		this.secondsLeft.set(-1);
 		clearInterval(this.interval);
 	}
-	view(): VNode {
+	onThreshold(time: number, callback: () => any): Countdown {
+		this.callbacks.push({ time, callback });
+		return this;
+	}
+	onFinish(callback: () => any): Countdown {
+		return this.onThreshold(0, callback);
+	}
+	View(): VNode {
 		return s(this.secondsLeft, (curr) => {
 			if (curr < 0) {
 				return h("div.countdown", "0");
@@ -120,13 +127,7 @@ export class Countdown {
 			}
 		});
 	}
-	onThreshold(time: number, callback: () => any): Countdown {
-		this.callbacks.push({ time, callback });
-		return this;
-	}
-	onFinish(callback: () => any): Countdown {
-		return this.onThreshold(0, callback);
-	}
+	
 }
 
 
@@ -154,7 +155,7 @@ export class Autoscroll {
 		this.startMs = options.startMs ?? 600;
 		this.restartMs = options.restartMs;
 		
-		Micron.maybeDefer(() => clearInterval(this.interval));
+		ctx()?.defer(() => clearInterval(this.interval));
 	}
 	private tick() {
 		if (!this.elm || !document.contains(this.elm) || this.elm.clientHeight >= this.elm.scrollHeight) {

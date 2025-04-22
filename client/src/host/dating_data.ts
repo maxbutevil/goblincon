@@ -1,20 +1,20 @@
 
 
-import { Submission } from "../modules/submission";
-export type { Submission };
+import { SubmissionData } from "../modules/submission_data";
+export type { SubmissionData };
 
 export type Suitor = {
 	id: number,
-	submission: Submission,
+	submission: SubmissionData,
 	votes: number[],
 	points: number
 };
 export class Matchup {
 	bachelorId: number;
-	bachelorSubmission: Submission;
+	bachelorSubmission: SubmissionData;
 	suitors: Suitor[] = [];
 	
-	constructor(bachelorId: number, bachelorSubmission: Submission) {
+	constructor(bachelorId: number, bachelorSubmission: SubmissionData) {
 		this.bachelorId = bachelorId;
 		this.bachelorSubmission = bachelorSubmission;
 	}
@@ -53,10 +53,10 @@ export class Round {
 		return this.matchupOrder.map(m => this.matchups.get(m)!);
 	}
 	
-	handleBachelorSubmission(playerId: number, submission: Submission) {
+	handleBachelorSubmission(playerId: number, submission: SubmissionData) {
 		this.matchups.set(playerId, new Matchup(playerId, submission));
 	}
-	handleSuitorSubmission(bachelorId: number, playerId: number, submission: Submission) {
+	handleSuitorSubmission(bachelorId: number, playerId: number, submission: SubmissionData) {
 		let matchup = this.matchup(bachelorId);
 		if (!matchup) {
 			console.error("invalid bachelor id for suitor drawing submission");

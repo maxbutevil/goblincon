@@ -9,7 +9,7 @@ export default class Signal<T extends any[] = []> extends Set<Callback<T>> {
 	static readonly UNHANDLED = false;
 	static readonly HANDLED = true;
 	
-	public static bundle(...callbacks: Array<() => void>): () => void {
+	static bundle(...callbacks: Array<() => void>): () => void {
 		if (callbacks.length === 0) {
 			return () => {};
 		} else if (callbacks.length === 1) {
@@ -21,14 +21,13 @@ export default class Signal<T extends any[] = []> extends Set<Callback<T>> {
 			}
 		}
 	}
-	
-	/*public static forwardEvent<T extends Event>(emitter: EventTarget, event: string): Signal<T> {
+	/*static forwardEvent<T extends Event>(emitter: EventTarget, event: string): Signal<T> {
 		let newSignal = new Signal<T>();
 		//newSignal.bindEvent(emitter, event);
 		emitter.addEventListener(event, event => newSignal.emit(event as T));//newSignal.emit.bind(newSignal));
 		return newSignal;
 	}
-	public static forward<T>(signal: Signal<T>) {
+	static forward<T>(signal: Signal<T>) {
 		let newSignal = new Signal<T>();
 		newSignal.bindSignal(signal);
 		return newSignal;
@@ -41,40 +40,44 @@ export default class Signal<T extends any[] = []> extends Set<Callback<T>> {
 		signal.listen(this.emit.bind(this));
 	}*/
 	
-	public listen(callback: Callback<T>): Callback<T> {
+	listen(callback: Callback<T>): Callback<T> {
 		this.add(callback);
 		return callback;
 	}
-	public drop(callback: Callback<T>): void {
+	drop(callback: Callback<T>): void {
 		this.delete(callback);
 	}
-	public dropAll(): void {
+	dropAll(): void {
 		this.clear();
 	}
 	
-	public subscribe(callback: Callback<T>): () => void {
+	subscribe(callback: Callback<T>): () => void {
 		this.listen(callback);
 		return () => this.drop(callback);
 	}
 	
-	public emit(...args: T): void {
+	emit(...args: T): void {
 		for (const callback of this)
 			callback(...args);
 	}
-	public handle(...args: T): boolean {
+	handle(...args: T): boolean {
 		for (const callback of this)
 			if (callback(...args) === Signal.HANDLED)
 				return Signal.HANDLED;
 		return Signal.UNHANDLED;
 	}
 	
+	/*filtered(filter: (...args: T) => boolean): Signal<T> {
+		const signal = new Signal();
+		
+	}*/
 	
 	private static _keydown?: Signal<[KeyboardEvent]>;
 	private static _keyup?: Signal<[KeyboardEvent]>;
-	public static get keydown() {
+	static get keydown() {
 		return this._keydown ??= Signal.fromDocumentEvent("keydown");
 	}
-	public static get keyup() {
+	static get keyup() {
 		return this._keyup ??= Signal.fromDocumentEvent("keyup");
 	}
 	static fromDocumentEvent<E extends keyof DocumentEventMap>(event: E): Signal<[DocumentEventMap[E]]> {
@@ -82,7 +85,6 @@ export default class Signal<T extends any[] = []> extends Set<Callback<T>> {
 		document.addEventListener(event, ev => signal.emit(ev));
 		return signal;
 	}
-	
 }
 
 

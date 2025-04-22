@@ -9,9 +9,9 @@ import {
 	h, s, c, defer, projector, mount, VNode
 } from "../modules/"
 import {
-	logo,
-	tray,
-	iconBtn
+	Logo,
+	Tray,
+	IconBtn
 } from "../components"
 import * as icons from "../assets/icons/"
 
@@ -36,7 +36,7 @@ const OUT = new SendIndex({
 	>(),
 });
 
-const page = projector(loading);
+const page = projector(Loading);
 const mode = new Setting<typeof Dating | typeof Drawblins>(
 	"Game Mode",
 	[ Drawblins, Dating ],
@@ -48,9 +48,9 @@ let unloading = false; // not the most elegant solution, but this stops the erro
 client.closed.listen((ev) => {
 	if (!unloading) {
 		if (ev.reason) {
-			page.put(error, `${ev.reason}`);
+			page.put(Error, `${ev.reason}`);
 		} else {
-			page.put(error, "Fatal connection error");
+			page.put(Error, "Fatal connection error");
 		}
 	}
 });
@@ -71,14 +71,14 @@ window.addEventListener("beforeunload", (event) => {
 	}
 });
 
-function error(message: string) {
+function Error(message: string) {
 	return h("div.tab", [
 		h("h1", "Error :("),
 		h("h3", message),
 		h("button", { on: { click: connect } }, "Reconnect"),
 	]);
 }
-function loading() {
+function Loading() {
 	return h(
 		"div#loading.tab", {},
 		[
@@ -86,7 +86,7 @@ function loading() {
 		]
 	);
 }
-function lobby() {
+function Lobby() {
 	
 	const overlay = new State<null | ((close: () => void) => VNode)>(null);
 	defer(Signal.keydown.subscribe((ev) => {
@@ -108,7 +108,7 @@ function lobby() {
 	return h(
 		"div.tab",
 		[
-			logo(),
+			Logo(),
 			h("div#lobby", {}, [
 				h("div#overview.tab", {}, [
 					h("h2", "Lobby"),
@@ -128,28 +128,28 @@ function lobby() {
 							")"
 						]
 					),
-					playerList()
+					PlayerList()
 				]),
 				s(mode.changed, () => {
 					return h("div#settings.tab", [
 						h("h2", "Settings"),
-						mode.view(),
+						mode.View(),
 						...mode.get().settingViews()
 					]);
 				})
 			]),
 			s(overlay, curr => curr ? curr(() => overlay.set(null)) : h("!")),
-			tray(
-				iconBtn(icons.exit, () => location.href = "/"),
+			Tray(
+				IconBtn(icons.exit, () => location.href = "/"),
 				c(
 					Room.recap !== undefined &&
-					iconBtn(icons.recap, () => overlay.toggle(Room.recap!, null))
+					IconBtn(icons.recap, () => overlay.toggle(Room.recap!, null))
 				)
 			)
 		]
 	);
 }
-function playerList() {
+function PlayerList() {
 	
 	const signals = [
 		Room.playerJoined,
@@ -161,7 +161,7 @@ function playerList() {
 		
 		let status: string;
 		let list = Room.players()
-			.map((player) => Player.view(player));
+			.map(player => player.View());
 		
 		if (Room.playerCount() === 0) {
 			status = "No players yet!";
@@ -184,11 +184,11 @@ function playerList() {
 function connect() {
 	client.connect(`${Shared.wsRoot}/host`);
 }
-function app() {
+function App() {
 	client.use(INC, OUT);
 	INC.listen("inLobby", ({ leaderId }) => {
 		Room.setLeaderId(leaderId);
-		page.put(lobby);
+		page.put(Lobby);
 	});
 	INC.listen("gameStarting", () => {
 		// here we relay the game settings and set the page accordingly
@@ -200,6 +200,6 @@ function app() {
 	return s(page);
 }
 
-mount(app());
+mount(App());
 
 

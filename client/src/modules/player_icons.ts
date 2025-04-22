@@ -46,15 +46,15 @@ export function cacheColor(color: string) {
 		get(i, color);
 }
 
+export function count(): number {
+	return icons.length;
+}
+
 import { h } from "./micron"
-export function view(icon: number, color: string, disabled = false) {
+export function View(icon: number, color: string, disabled = false) {
 	return h("img.player-icon", {
 		attrs: { src: get(icon, color) },
 		class: { disabled }
 	});
-}
-
-export function count(): number {
-	return icons.length;
 }
 

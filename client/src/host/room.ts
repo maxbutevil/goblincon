@@ -75,14 +75,14 @@ export function setRecap(newRecap: undefined | ((close: () => void) => VNode)) {
 }
 
 
-export function playerView(id: number): VNode | undefined {
+/*export function playerView(id: number, disabled: boolean): VNode | undefined {
 	const _player = player(id);
-	return _player && Player.view(_player)
+	return _player && _player.View();
 }
-export function iconView(id: number): VNode | undefined {
+export function iconView(id: number, ): VNode | undefined {
 	const _player = player(id);
-	return _player && Player.iconView(_player)
-}
+	return _player && _player.IconView();
+}*/
 
 const INC = new ReceiveIndex({
 	"accepted": { joinCode: Val.STR },
@@ -143,20 +143,21 @@ export class Player {
 		this.name = name;
 		this.icon = icon;
 	}
-	static iconView(player: Player, disabled = false) {
-		return PlayerIcons.view(player.icon, player.color, disabled);
+	
+	IconView(disabled = false) {
+		return PlayerIcons.View(this.icon, this.color, disabled);
 	}
 	
-	static view(player: Player, disabled = false) {
+	View(disabled = false) {
 		return h("div.player-view", [
-			Player.iconView(player, disabled),
-			player.name
+			this.IconView(disabled),
+			this.name
 		]);
 	}
-	static scoredView(player: Player, score: number) {
+	ScoredView(score: number) {
 		return h("div.player-view", [
-			Player.iconView(player),
-			`${player.name} (${score}pts)`,
+			this.IconView(),
+			`${this.name} (${score}pts)`,
 		]);
 	}
 }
@@ -273,12 +274,12 @@ export class ScoreMap {
 			prevScore = score;
 		}
 	}
-	view() {
+	View() {
 		let entries = Array.from(this.sorted()).map(({ id, score }) => {
 			const player = playerMap.get(id)!;
 			return h(
 				"div.score-entry",
-				Player.scoredView(player, score)
+				player.ScoredView(score)
 			);
 		});
 		
