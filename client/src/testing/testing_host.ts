@@ -17,7 +17,7 @@ import * as PlayerIcon from "../modules/player_icons"
 
 import { Player } from "../host/room";
 
-import { Countdown, Tray, IconBtn, Autoscroll } from "../components"
+import { Countdown, Tray, IconBtn, Autoscroll, Logo } from "../components"
 import Drawpad from "../play/drawpad"
 import { Submission, SubmissionGrid, ReadyDisplay } from "../host/components";
 //import { NameOverlay } from "./play/components"
@@ -181,9 +181,14 @@ function datingVoteTest() {
 	]);
 }
 
+function PlayerIconTest() {
+	return h("div",
+		//{ style: { scale: "5" } },
+		Logo()
+	);
+}
 
-
-mount(h("div#dating.mode", s(testPage)));
+mount(h("div#dating.mode", PlayerIconTest()));
 
 
 

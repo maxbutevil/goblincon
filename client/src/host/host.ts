@@ -79,12 +79,13 @@ function Error(message: string) {
 	]);
 }
 function Loading() {
-	return h(
-		"div#loading.tab", {},
-		[
-			h("h1", {}, "Connecting...")
-		]
-	);
+	return h("div#loading.tab", [
+		Logo(),
+		h("h1",
+			{ style: { marginTop: "0.6em" } },
+			"Connecting..."
+		)
+	]);
 }
 function Lobby() {
 	
@@ -105,47 +106,59 @@ function Lobby() {
 		copy(`https://${window.location.host}/play?code=${Room.joinCode}`);
 	}
 	
+	const overview = (
+		h("div#overview.tab", [
+			h("h2", "Lobby"),
+			h("div", [
+				h("h3", "Join Code"),
+				h("div#join-code", {}, Room.joinCode),
+				h("div.multi-btn", /* { style: { fontSize: "0.8em" } },*/ [
+					h("button", { on: { click: copyCode } }, "Copy Code"),
+					h("button", { on: { click: copyLink } }, "Copy Link")
+				]),
+			]),
+			h("div",
+				{ style: { fontSize: "0.7em" } },
+				[
+					"(Join at ",
+					h("u", Shared.httpsRoot),
+					")"
+				]
+			),
+			PlayerList()
+		])
+	);
+	
+	const settings = (
+		s(mode.changed, () => (
+			h("div#settings.tab", [
+				h("h2", "Settings"),
+				mode.View(),
+				...mode.get().settingViews()
+			])
+		))
+	);
+	
+	const tray = (
+		Tray(
+			IconBtn(icons.exit, () => location.href = "/"),
+			c(
+				Room.recap !== undefined &&
+				IconBtn(icons.recap, () => overlay.toggle(Room.recap!, null))
+			)
+		)
+	);
+	
 	return h(
 		"div.tab",
 		[
 			Logo(),
-			h("div#lobby", {}, [
-				h("div#overview.tab", {}, [
-					h("h2", "Lobby"),
-					h("div", [
-						h("h3", "Join Code"),
-						h("div#join-code", {}, Room.joinCode),
-						h("div.multi-btn", /* { style: { fontSize: "0.8em" } },*/ [
-							h("button", { on: { click: copyCode } }, "Copy Code"),
-							h("button", { on: { click: copyLink } }, "Copy Link")
-						]),
-					]),
-					h("div",
-						{ style: { fontSize: "0.7em" } },
-						[
-							"(Join at ",
-							h("u", Shared.httpsRoot),
-							")"
-						]
-					),
-					PlayerList()
-				]),
-				s(mode.changed, () => {
-					return h("div#settings.tab", [
-						h("h2", "Settings"),
-						mode.View(),
-						...mode.get().settingViews()
-					]);
-				})
+			h("div#lobby", [
+				overview,
+				settings
 			]),
 			s(overlay, curr => curr ? curr(() => overlay.set(null)) : h("!")),
-			Tray(
-				IconBtn(icons.exit, () => location.href = "/"),
-				c(
-					Room.recap !== undefined &&
-					IconBtn(icons.recap, () => overlay.toggle(Room.recap!, null))
-				)
-			)
+			tray
 		]
 	);
 }

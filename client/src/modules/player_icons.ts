@@ -4,20 +4,24 @@ import Canvas from "./canvas"
 
 export const icons: string[] = Object.values(iconMap);
 
+
 const bases: HTMLImageElement[] = new Array(icons.length);
 const cache: { [key: string]: string }[] = new Array(icons.length);
 
-let promises: Promise<void>[] = [];
-for (let i = 0; i < icons.length; i++) {
-	cache[i] = {};
-	
-	let img = new Image();
-	bases[i] = img;
-	img.src = icons[i];
-	promises.push(img.decode());
-}
+async function init() {
+	let promises: Promise<void>[] = [];
+	for (let i = 0; i < icons.length; i++) {
+		cache[i] = {};
+		
+		let img = new Image();
+		bases[i] = img;
+		img.src = icons[i];
+		promises.push(img.decode());
+	}
 
-await Promise.all(promises);
+	await Promise.all(promises);
+}
+await init();
 
 
 function generate(icon: number, color: string): string {
@@ -26,12 +30,29 @@ function generate(icon: number, color: string): string {
 	const base = bases[icon];
 	if (typeof base !== "object") {
 		console.error("Attempted to generate icon with invalid icon index:", icon);
+		return "";
 	}
 	if (typeof color !== "string") {
 		console.error("Attempted to generate icon with invalid color:", color);
+		return "";
 	}
 	
-	let canvas = Canvas.fromImage(bases[icon]);
+	const canvas = Canvas.create(base.width, base.height);
+	//const canvas = Canvas.create(base.width, base.height);
+	//const canvas = Canvas.fromImage(bases[icon]);
+	
+	//canvas.setOperation("source-in");
+	
+	//canvas.setOperation("source-atop");
+	canvas.putImage(base);
+	//canvas.setOperation("destination-atop");
+	//canvas.putImage(base);
+	
+	//canvas.putImage(base);
+	//canvas.setOperation("multiply");
+	//canvas.putImage(bases[icon]);
+	
+	
 	canvas.setOperation("source-in");
 	canvas.wipeStyle(color);
 	canvas.setOperation("multiply");

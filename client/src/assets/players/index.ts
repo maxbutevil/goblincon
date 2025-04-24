@@ -1,12 +1,13 @@
-import angry from "./angry.png"
-import heart from "./heart.png"
-import smily from "./smily.png"
-import star from "./star.png"
-import triangle from "./triangle.png"
-import square from "./square.png"
-import octagon from "./octagon.png"
+import angry from "./angry_xl.png"
+import heart from "./heart_xl.png"
+import smily from "./smily_xl.png"
+import star from "./star_xl.png"
+import triangle from "./triangle_xl.png"
+import square from "./square_xl.png"
+import octagon from "./octagon_xl.png"
+import sad from "./sad_xl.png"
 
-const INDEX = { smily, heart, star, triangle, square, octagon, angry };
+const INDEX = { smily, heart, star, triangle, square, sad, angry, octagon };
 
 export default INDEX;
 

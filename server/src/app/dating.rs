@@ -4,15 +4,15 @@ use strgen::bachelor_themes;
 
 const SUITOR_COUNT: usize = 2;
 const START_TIME: Duration = Duration::from_secs(3);
-const DRAW_BACHELOR_TIME: Duration = Duration::from_secs(125);
-const DRAW_SUITOR_TIME: Duration = Duration::from_secs(125);
+const DRAW_BACHELOR_TIME: Duration = Duration::from_secs(140);
+const DRAW_SUITOR_TIME: Duration = Duration::from_secs(140);
 const VOTE_TIME: Duration = Duration::from_secs(20);
 const VOTE_TIME_ONE_SUBMISSION: Duration = Duration::from_secs(15);
 const VOTE_TIME_NO_SUBMISSIONS: Duration = Duration::from_secs(12);
 
 const SHOW_VOTES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
 const SHOW_SCORES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
-const RECAP_TIME: DynamicDuration = DynamicDuration::from_secs(180, 0);
+//const RECAP_TIME: DynamicDuration = DynamicDuration::from_secs(180, 0);
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

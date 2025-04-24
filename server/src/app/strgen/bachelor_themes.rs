@@ -4,40 +4,44 @@
 use super::*;
 
 pub fn generate(count: usize) -> Box<[&'static str]> {
-	//THEMES.generate_count(count)
 	THEMES
 		.choose_multiple(&mut rand::rng(), count)
 		.map(|t| *t)
 		.collect()
 }
 
-/*const THEMES: StrTable = StrTable::new(&[
-	(1, &[
-		//...
-	])
-]);*/
-
 const THEMES: &[&str] = &[
 	
 	/* Adjectives */
-	"Muscular",
-	"Hairy",
-	"Bald",
-	"Sinister",
 	"Cute",
 	"Squishy",
 	"Fluffy",
 	"Soft",
-	"Large",
-	"Small",
+	"Friendly",
+	"Beautiful",
+	
+	"Bald",
+	"Hairy",
+	"Muscular",
+	"Tough",
 	"Scary",
+	"Sinister",
+	
+	"Loud",
 	"Musical",
+	
+	"Microscopic",
+	"Small",
+	"Large",
+	"Gigantic",
 	
 	/* Jobs */
 	"Detectives",
 	"Doctors",
 	"CEOs",
 	"Pirates",
+	"Heroes",
+	"Villains",
 	
 	/* Supernatural */
 	"Goblins",
@@ -47,24 +51,35 @@ const THEMES: &[&str] = &[
 	"Demons",
 	"Vampires",
 	"Zombies",
-		
+	"Wizards",
+	"Witches",
+	
 	/* Nature */
-	"Sea Creatures",
-	"Birds",
+	"Trees",
 	"Plants",
+	"Bugs",
+	"Fish",
+	"Birds",
+	"Reptiles",
+	"Amphibians",
+	"Zoo Animals",
+	"Farm Animals",
+	"Sea Creatures",
 	
 	/* Genre */
 	"Western",
 	"Sci-Fi",
 	"Mystery",
-	//"Medical Drama",
 	"Comedy",
 	"Cartoon",
+	"Fantasy",
 	
 	/* Abstract */
 	"Abstract Concepts",
 	"Personified Emotions",
 	"Imaginary Friends",
+	"Inanimate Objects",
+	"Mythical Creatures",
 	
 	/* Other Traits */
 	"Mischief Makers",
