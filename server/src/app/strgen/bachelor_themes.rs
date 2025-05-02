@@ -13,6 +13,8 @@ pub fn generate(count: usize) -> Box<[&'static str]> {
 const THEMES: &[&str] = &[
 	
 	/* Adjectives */
+	"Sad",
+	"Happy",
 	"Cute",
 	"Squishy",
 	"Fluffy",

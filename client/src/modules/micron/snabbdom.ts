@@ -11,6 +11,7 @@ import {
   VNode,
   VNodeChildren,
   VNodeChildElement,
+	VNodeData
 } from "snabbdom"
 
 export {
@@ -21,6 +22,7 @@ export type {
   VNode,
   VNodeChildren,
   VNodeChildElement,
+	VNodeData
 };
 
 /* SnabbDOM config */

@@ -12,7 +12,7 @@ import {
 } from "../modules"
 
 import * as icons from "../assets/icons"
-import * as assets from "../assets/misc"
+import * as assets from "../assets/testing"
 import * as PlayerIcon from "../modules/player_icons"
 
 import { Player } from "../host/room";
@@ -33,6 +33,11 @@ const testSubmission = {
 	drawing: assets.testDrawing,
 	name: "Test Submission"
 };
+const testSubmissions = [
+	{ drawing: assets.sadSack, name: "Sad Blob" },
+	{ drawing: assets.licensedTherapist, name: "Licensed Therapist" },
+	{ drawing: assets.topHatEnthusiast, name: "Top Hat Enthusiast" },
+];
 
 //mount(drawingTest());
 
@@ -149,12 +154,33 @@ function evil() {
 	));
 }
 
+function DrawingTest() {
+	const drawpad = new Drawpad({
+		onSubmit: (drawing) => {}
+	});
+	
+	
+	return h("div#drawblins.mode", [
+		h("div#draw.tab", [
+			h("div#info", [
+				h("div", "Draw a creature named:"),
+				h("div#goblin-name", "Omnom Sr."),
+				//Countdown.Secs(secsLeft, 4, () => drawpad.submit()),
+			]),
+			drawpad.View(),
+		])
+	]);
+	
+	
+	return h("div.tab", drawpad.View());
+}
 function DrawingSuitorTest() {
 	
 	const reset = new Signal();
+	
 	const naming = true;
-	const secsLeft = 16;
-	const bachelorSubmission = testSubmission;
+	const secsLeft = 180;
+	const bachelorSubmission = testSubmissions[0];
 	
 	function Inner() {
 		const overlay = new State<null | typeof Bachelor>(Bachelor);
@@ -172,7 +198,7 @@ function DrawingSuitorTest() {
 				//const submission = { drawing, name: nameOverlay?.name };
 				//OUT.send("suitorSubmission", { bachelorId, submission });
 				overlay.set(null);
-				reset.emit();
+				//reset.emit();
 			},
 			onStartSubmit: () => {
 				if (nameOverlay && nameOverlay.name === undefined) {
@@ -245,9 +271,58 @@ function DrawingSuitorTest() {
 	return s(reset, Inner);
 }
 
-//mount(evil());
-mount(DrawingSuitorTest());
+function DrawingBachelorTest(secsLeft: number, naming: boolean, bachelorTheme: string) {
+	
+	const overlay = new State<null | typeof NameView>(null);
+	const nameOverlay = (!naming) ? null : new NameOverlay({
+		onClose: () => overlay.set(null)
+	});
+	
+	defer(Signal.keydown.subscribe((ev) => {
+		if (ev.key === "Escape") overlay.set(null);
+	}));
+	
+	const drawpad = new Drawpad({
+		onSubmit: (drawing) => {
+			const submission = { drawing, name: nameOverlay?.name };
+			//OUT.send("bachelorSubmission", { submission });
+		},
+		onStartSubmit: () => {
+			if (nameOverlay && nameOverlay.name === undefined) {
+				overlay.set(NameView);
+				return false;
+			}
+			return true;
+		}
+	});
+	const countdown = Countdown.fromSecs(secsLeft, 4);
+	countdown.onFinish(() => drawpad.submit());
+	countdown.onThreshold(15, () => {
+		if (nameOverlay && !nameOverlay.name) {
+			overlay.set(NameView);
+		}
+	});
+	
+	function NameView() {
+		return nameOverlay!.View(drawpad.isSubmitted());
+	}
+	
+	return h("div#draw-bachelor.tab", [
+		h("div#info", [
+			h("div#bachelor-theme", `Theme: ${bachelorTheme}`),
+			countdown.View()
+		]),
+		drawpad.View(),
+		s(overlay, curr => (!curr) ? h("!") : curr()),
+		c(nameOverlay && Tray(
+			IconBtn(icons.name, () => overlay.toggle(NameView, null))
+		))
+	]);
+}
 
+
+mount(DrawingTest());
+//mount(DrawingBachelorTest(30, true, "Sad"));
 /*mount(
 	stateful(state, (curr) => {
 		if (curr === 0) {

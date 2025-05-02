@@ -1,92 +1,144 @@
 
-import State from "./state"
+//import State from "./state"
 import Signal from "./signal"
 import { Builder } from "./ctx"
 import { h, VNode, } from "./snabbdom"
-import Ctx from "./ctx"
 
-const EMPTY_BUILDER = () => h("!");
+//type Blueprint<A extends any[]> = { builder: Builder<A>, args: A };
+class Blueprint<A extends any[]> {
+  builder: Builder<A>;
+  args: A;
+  constructor(builder: Builder<A>, args: A) {
+    this.builder = builder;
+    this.args = args;
+  }
+  build(): VNode {
+    return this.builder(...this.args);
+  }
+};
+
+
+//type Blueprint<A extends any[]> = [Builder<A>, A];
+export const EMPTY_BUILDER: Builder<[]> = () => h("!");
+export const EMPTY_BLUEPRINT = new Blueprint(EMPTY_BUILDER, []);
+
+function bundled<A extends any[]>(builder: Builder<A>, args: A): Builder {
+  if (args.length === 0) {
+    return builder;
+  } else {
+    return () => builder(...args);
+  }
+}
 
 /* Exposed constructors */
-export function projector<A extends any[]>(initialBuilder: (...args: A) => VNode, ...initialArgs: A) {
-  return Projector.create(initialBuilder, initialArgs);
+export function projector<A extends any[]>(initial: Builder<A> = EMPTY_BUILDER, ...initialArgs: A): Projector {
+  return new Projector(bundled(initial, initialArgs));
 }
-export function navigator<A extends any[]>(initialBuilder: (...args: A) => VNode, ...initialArgs: A) {
-  return Nav.create(initialBuilder, initialArgs);
+export function anchor<A extends any[]>(initial: Builder<A> = EMPTY_BUILDER, ...initialArgs: A): Anchor {
+  return new Anchor(new Blueprint(initial, initialArgs));
 }
-
-/*export class Shards {
-  
-  
-  
-  
+export function stack<A extends any[] = []>(initial?: (...args: A) => VNode, ...initialArgs: A): Stack {
+  //return Stack.create(initialBuilder, initialArgs);
+  return new Stack(!initial ? [] : [new Blueprint(initial, initialArgs)]);
 }
-export class Stack {
-  
-  readonly contexts: Ctx[];
-  
-  push<A extends any[]>(builder: (...args: A) => VNode, ...builderArgs: A) {
-    if (builderArgs.length === 0) {
-      this.signal.emit(builder);
-    } else {
-      this.signal.emit(() => builder(...builderArgs));
-    }
-  }
-}*/
 
 export class Projector {
   
-  readonly signal = new Signal<[Builder]>();
+  readonly update = new Signal<[Builder]>();
   readonly initial: Builder;
   
-  private constructor(initialBuilder: Builder) {
+  constructor(initialBuilder: Builder) {
     this.initial = initialBuilder;
   }
-  static create<A extends any[]>(initialBuilder: (...args: A) => VNode, initialArgs: A): Projector {
-    if (initialArgs.length === 0) {
-      return new Projector(initialBuilder);
-    } else {
-      return new Projector(() => initialBuilder(...initialArgs));
-    }
-  }
-  
-  put<A extends any[]>(builder: (...args: A) => VNode, ...builderArgs: A) {
-    if (builderArgs.length === 0) {
-      this.signal.emit(builder);
-    } else {
-      this.signal.emit(() => builder(...builderArgs));
-    }
+  put<A extends any[]>(builder: Builder<A>, ...builderArgs: A) {
+    this.update.emit(bundled(builder, builderArgs));
   }
   clear() {
-    this.signal.emit(EMPTY_BUILDER);
+    this.update.emit(EMPTY_BUILDER);
   }
   reset() {
-    this.signal.emit(this.initial);
+    this.update.emit(this.initial);
   }
 }
-export class Nav {
+
+export class Anchor {
   
-  readonly state: State<Builder>;
+  readonly update = new Signal<[Blueprint<any>]>();
+  curr: Blueprint<any>;
   
-  constructor(initialBuilder: Builder) {
-    this.state = new State(initialBuilder);
+  constructor(initial: Blueprint<any>) {
+    this.curr = initial;
   }
-  static create<A extends any[]>(initialBuilder: (...args: A) => VNode, initialArgs: A): Nav {
-    if (initialArgs.length === 0) {
-      return new Nav(initialBuilder);
-    } else {
-      return new Nav(() => initialBuilder(...initialArgs));
-    }
-  }
-  
   put<A extends any[]>(builder: (...args: A) => VNode, ...builderArgs: A) {
-    if (builderArgs.length === 0) {
-      this.state.set(builder);
-    } else {
-      this.state.set(() => builder(...builderArgs));
-    }
+    this.curr = new Blueprint(builder, builderArgs);
+    this.update.emit(this.curr);
   }
   clear() {
-    this.state.set(EMPTY_BUILDER);
+    this.put(EMPTY_BUILDER);
+  }
+  get() {
+    return this.curr.builder;
+  }
+  is(builder: Builder): boolean {
+    return this.curr.builder === builder;
+  }
+  any(...builders: Builder<any>[]): boolean {
+    return builders.includes(this.curr.builder);
   }
 }
+
+export class Stack {
+  
+  readonly update = new Signal<[Blueprint<any>]>();
+  blueprints: Blueprint<any>[];
+  get curr() { return this.blueprints.at(-1) };
+  
+  //blueprints: Builder[] = [];
+  constructor(blueprints: Blueprint<any>[]) {
+    this.blueprints = blueprints;
+  }
+  private notify() {
+    const blueprint = (this.blueprints.at(-1) ?? EMPTY_BLUEPRINT);
+    this.update.emit(blueprint);
+  }
+  private add<A extends any[]>(builder: Builder<A>, builderArgs: A) {
+    this.blueprints.push(new Blueprint(builder, builderArgs));
+  }
+  
+  get count() {
+    return this.blueprints.length;
+  }
+  top(): Builder | undefined {
+    return this.blueprints.at(-1)?.builder;
+  }
+  root(): Builder | undefined {
+    return this.blueprints.at(0)?.builder;
+  }
+  push<A extends any[]>(builder: Builder<A>, ...builderArgs: A) {
+    this.add(builder, builderArgs);
+    this.notify();
+  }
+  splice<A extends any[]>(builder: Builder<A>, ...builderArgs: A) {
+    this.blueprints.pop();
+    this.add(builder, builderArgs);
+    this.notify();
+  }
+  pop() {
+    if (this.blueprints.length > 0) {
+      this.blueprints.pop();
+      this.notify();
+    }
+  }
+  clear<A extends any[] = []>(initial?: Builder<A>, ...initialArgs: A) {
+    if (this.blueprints.length > 0) {
+      this.blueprints = [];
+    }
+    if (initial) {
+      this.add(initial, initialArgs);
+    }
+    this.notify();
+  }
+  
+}
+
+

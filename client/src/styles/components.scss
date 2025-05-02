@@ -96,6 +96,7 @@
 	position: relative;
 	@include column(space-between, center);
 	@include theme.panel(0.2em);
+	padding: 0.4em;
 	background-color: #eee;
 	//height: auto;
 	

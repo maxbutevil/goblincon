@@ -1,14 +1,19 @@
 
 
 import Signal from "./signal"
-import State from "./state"
-import { Shard } from "./state"
+import State, { Shard } from "./state"
 import Ctx, { Cleanup, Builder } from "./ctx"
 export { Signal, State, Ctx };
 export type { Cleanup, Builder }; // Probably unnecessary
 
-import { Projector, Nav, projector, navigator } from "./projector"
-export { Projector, Nav, projector, navigator };
+import {
+  Projector, Anchor, Stack,
+  projector, anchor, stack
+} from "./projector"
+export {
+  Projector, Anchor, Stack,
+  projector, anchor, stack
+} from "./projector";
 
 import {
   //patch,
@@ -18,6 +23,7 @@ import {
   VNode,
   VNodeChildren,
   VNodeChildElement,
+  VNodeData
 } from "./snabbdom";
 export {
   h,
@@ -27,6 +33,7 @@ export type {
   VNode,
   VNodeChildren,
   VNodeChildElement,
+  VNodeData
 };
 
 
@@ -44,9 +51,11 @@ export function s<T extends any[]>(s: Signal<T>, builder: Builder<T | []>): VNod
 export function s<T extends any[]>(s: Signal<T>[], builder: Builder<T | []>): VNode;
 export function s(builder: Builder<[() => void]>): VNode;
 export function s(p: Projector): VNode;
-export function s(p: Nav): VNode;
+export function s(p: Anchor): VNode;
+export function s(p: Stack): VNode;
+export function s<T>(p: Promise<T>, builder: Builder<[T | undefined]>): VNode;
 export function s(
-  d: State<any> | Shard<any> | Signal<any> | Signal<any>[] | Builder<[() => void]> | Projector | Nav,
+  d: State<any> | Shard<any> | Signal<any> | Signal<any>[] | Builder<[() => void]> | Projector | Anchor | Stack | Promise<any>,
   builder?: any
 ) {
   if (Array.isArray(d)) {
@@ -63,8 +72,12 @@ export function s(
       return signalView(d, builder as Builder<any>);
     } else if (d instanceof Projector) {
       return projectorView(d);
-    } else if (d instanceof Nav) {
-      return navView(d);
+    } else if (d instanceof Anchor) {
+      return anchorView(d);
+    } else if (d instanceof Stack) {
+      return stackView(d);
+    } else if (d instanceof Promise) {
+      return promiseView(d, builder);
     } else if (typeof d === "function") {
       return containedView(d);
     } else {
@@ -74,19 +87,46 @@ export function s(
   }
 }
 
+// experimental
+export function promiseView<T>(promise: Promise<T>, builder: Builder<["ok", T] | ["err", any] | ["pending", undefined]>): VNode {
+  let [ctx, vnode] = Ctx.create(() => builder("pending", undefined), null);
+  promise.then(
+    val => ctx.rebuild(() => builder("ok", val)),
+    err => ctx.rebuild(() => builder("err", err)) // I kind of hate promises, wow
+  );
+  return vnode;
+}
+
+/*promiseView(fetch("/abc"), (curr, status) => {
+  if (status === "ok") {
+    console.log(curr);
+  }
+  return h("!");
+});*/
+
 /* Specific kinds of stateful nodes */
 /* Not recommended to use these, but they're slightly more efficient */
 export function projectorView(projector: Projector): VNode {
   return baseView(
-    projector.signal,
+    projector.update,
     (builder) => builder(),
     projector.initial
   );
 }
-export function navView(navigator: Nav): VNode {
-  return stateView(
-    navigator.state,
-    (builder) => builder()
+export function anchorView(anchor: Anchor): VNode {
+  return baseView(
+    //anchor.state,
+    anchor.update,
+    (bp) => bp?.build(),
+    //(builder) => builder(),
+    anchor.curr
+  );
+}
+export function stackView(stack: Stack): VNode {
+  return baseView(
+    stack.update,
+    (bp) => bp ? bp.build() : h("!"),
+    stack.curr
   );
 }
 
@@ -151,6 +191,9 @@ export function defer(...callbacks: Cleanup[]) {
     console.error("called defer() without a valid containing context (consider using ctx()?.defer() instead)");
   }
 }
+/*export function merge(vnode: VNode, data: VNodeData) {
+  Object.assign(vnode.data ??= {}, data);
+}*/
 /* Defer, but if we don't have a valid containing context, do nothing instead of erroring */
 /*export function maybeDefer(...callbacks: Cleanup[]) {
   Ctx.get()?.defer(...callbacks);

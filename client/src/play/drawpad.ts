@@ -226,6 +226,7 @@ export default class Drawpad {
 			let op = redoStack.pop()!;
 			undoStack.push(op);
 			applyOperation(op); // don't really need to mess with the backup here
+			applyMode();
 			
 		}
 		
@@ -254,7 +255,11 @@ export default class Drawpad {
 		function endDraw() {
 			state.set(CanvasState.IDLE);
 			let op = undoStack.at(-1)!;
-			op.path.smooth(2);
+			if (op.mode.weight === "thick") {
+				op.path.smooth(2, 1);
+			} else {
+				op.path.smooth(7, 2);
+			}
 			rebuildCanvas();
 		}
 		function handleDraw(ev: PointerEvent) {
@@ -546,10 +551,41 @@ class Path {
 		this.y = y;
 	}*/
 	
-	smooth(iterations: number) {
+	smooth(omitDistance: number, iterations: number) {
 		/* this could use some improvements, but it's a good start */
 		if (this.length() <= 2) return;
 		
+		/* Omit points that are too close to the point immediately before and after them */
+		let smoothed = new Path();
+		smoothed.push(this.x[0], this.y[0]);
+		
+		
+		const end = this.length() - 1;
+		const max = omitDistance * omitDistance;
+		for (let i = 1; i < end; i++) {
+			const x = this.x[i], y = this.y[i];
+			const [px, py] = smoothed.end()!; // previous point
+			const x0 = px - x, y0 = py - y;
+			const x1 = this.x[i+1] - x, y1 = this.y[i+1] - y; // to next point
+			//const x2 = this.x[i+1] - px, y2 = this.y[i+1] - y2;
+			const dot = x0 * x1 + y0 * y1
+			if (dot >= 0) {
+				if (x0 * x0 + y0 * y0 <= max) {
+					if (x1 * x1 + y1 * y1 <= max) {
+						continue;
+					}
+				}
+			}
+			
+			
+			/**/
+			smoothed.push(x, y);
+		}
+		smoothed.push(...this.end()!);
+		this.x = smoothed.x;
+		this.y = smoothed.y;
+		
+		/* Move points around */
 		for (let i = 0; i < iterations; i++) {
 			let smoothed = new Path();
 			smoothed.push(this.x[0], this.y[0]);
@@ -573,7 +609,7 @@ class Path {
 				}
 				//let length = (x1 - x2) * (x1 - x2) - (y1 - y2) 
 			}
-			let [ex, ey] = this.end()!;
+			const [ex, ey] = this.end()!;
 			smoothed.push(ex, ey);
 			this.x = smoothed.x;
 			this.y = smoothed.y;

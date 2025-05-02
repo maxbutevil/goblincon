@@ -4,8 +4,8 @@ import Signal from "./signal"
 function defaultEq<T>(curr: T, from: T): boolean {
 	return curr === from;
 }
-function defaultMapping<T>(value: T): T {
-	return value;
+function neverEq<T>(_curr: T, _from: T): boolean {
+	return false;
 }
 
 export default class State<T> {
@@ -18,6 +18,9 @@ export default class State<T> {
 	constructor(initial: T, eq: typeof defaultEq = defaultEq) {
 		this.curr = initial;
 		this.eq = eq;
+	}
+	static ref<T>(initial: T): State<T> {
+		return new State(initial, neverEq);
 	}
 	
 	set(to: T) {

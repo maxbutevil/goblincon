@@ -5,7 +5,7 @@ import Canvas from "./canvas"
 export const icons: string[] = Object.values(iconMap);
 
 
-const bases: HTMLImageElement[] = new Array(icons.length);
+export const bases: HTMLImageElement[] = new Array(icons.length);
 const cache: { [key: string]: string }[] = new Array(icons.length);
 
 async function init() {
@@ -38,27 +38,14 @@ function generate(icon: number, color: string): string {
 	}
 	
 	const canvas = Canvas.create(base.width, base.height);
-	//const canvas = Canvas.create(base.width, base.height);
-	//const canvas = Canvas.fromImage(bases[icon]);
-	
-	//canvas.setOperation("source-in");
-	
-	//canvas.setOperation("source-atop");
 	canvas.putImage(base);
-	//canvas.setOperation("destination-atop");
-	//canvas.putImage(base);
-	
-	//canvas.putImage(base);
-	//canvas.setOperation("multiply");
-	//canvas.putImage(bases[icon]);
-	
-	
 	canvas.setOperation("source-in");
 	canvas.wipeStyle(color);
 	canvas.setOperation("multiply");
 	canvas.putImage(bases[icon]);
 	return canvas.element.toDataURL();
 }
+
 export function get(icon: number, color: string): string {
 	return cache[icon][color] ??= generate(icon, color);
 }

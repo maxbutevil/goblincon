@@ -10,16 +10,21 @@
 	user-select: none;
 }
 
+:root {
+	background-color: theme.$background-color;
+	//background-image: url("/src/assets/misc/background.png");
+}
 html {
 	@include column(flex-start, stretch);
 	height: 100%;
+	//background-color: theme.$background-color;
 }
 body {
 	@include column(flex-start, stretch);
 	height: calc(100% - 1em);
 	margin: 0.5em;
 	font-family: Arial;
-	background-color: theme.$background-color;
+	
 	//overflow-x: auto;
 }
 

@@ -8,11 +8,12 @@ import {
 	Micron,
 	Signal, State,
 	h, s, c,
-	projector, defer, VNode, mount
+	projector, defer, VNode, mount,
+	PlayerIcons
 } from "../modules"
 
 import * as icons from "../assets/icons"
-import * as assets from "../assets/misc"
+import * as assets from "../assets/testing"
 import * as PlayerIcon from "../modules/player_icons"
 
 import { Player } from "../host/room";
@@ -32,8 +33,8 @@ const testPlayer2 = new Player(1, "freak #2", 1);
 //const testPlayers = [testPlayer, testPlayer2];
 
 const testPlayers: Player[] = [];
-for (let i = 0; i < 16; i++) {
-	testPlayers.push(new Player(i, `freak #${i}`, i % 7));
+for (let i = 0; i < 4; i++) {
+	testPlayers.push(new Player(i, `player #${i+1}`, i % 7));
 }
 
 const testSubmission = {
@@ -43,10 +44,7 @@ const testSubmission = {
 //const testName = "Mr. Griddles";
 const testClose = () => console.log("close");
 
-//const testPage = projector(matchupReviewTest);
-const testPage = projector(submissionGridTest);
-
-function matchupSummary() {
+function MatchupSummary() {
 	return h("div.matchup", [
 		Submission(testPlayer, testSubmission),
 		h("img", { attrs: { src: icons.heart }}),
@@ -55,7 +53,7 @@ function matchupSummary() {
 		Submission(testPlayer, testSubmission),
 	]);
 }
-function matchupSummaryTwo() {
+function MatchupSummaryTwo() {
 	return h("div.matchup", [
 		h("div.spacer"),
 		Submission(testPlayer, testSubmission),
@@ -64,7 +62,7 @@ function matchupSummaryTwo() {
 		h("div.spacer"),
 	]);
 }
-function matchupSummaryThree() {
+function MatchupSummaryThree() {
 	return h("div.matchup", [
 		h("div.spacer"),
 		h("div.spacer"),
@@ -75,7 +73,7 @@ function matchupSummaryThree() {
 }
 
 
-function matchupReview() {
+function MatchupReview() {
 	
 	const autoscroll = new Autoscroll({
 		strength: 25,
@@ -100,45 +98,61 @@ function matchupReview() {
 			h("h1", "Recap"),
 			h("div.round", [
 				h("h2", "Round One: Abcde"),
-				matchupSummary(),
-				matchupSummaryTwo(),
+				MatchupSummary(),
+				MatchupSummaryTwo(),
 			]),
 			h("div.round", [
 				h("h2", "Round Two: Abcde"),
-				matchupSummaryThree(),
-				matchupSummary(),
+				MatchupSummaryThree(),
+				MatchupSummary(),
 			])
 			//readyDisplay.view()
 		]
 	);
 }
-function matchupReviewTest() {
+function MatchupReviewTest() {
 	
 	return h("div#overlay", [
 		h("div#dating-recap-popup.popup", [
-			matchupReview(),
+			MatchupReview(),
 			h("button", "Close")
 		])
 	]);
 	
-	return matchupReview();
+	return MatchupReview();
 }
 
-function submissionGridTest() {
+function SubmissionGridTest() {
+	
+	
 	
 	const count = new State(1);
-	const readyDisplay = new ReadyDisplay(testPlayers, 205, 2);
-	for (let i = 0; i < 16; i++) {
-		//readyDisplay.ready(i);
+	const readyDisplay = new ReadyDisplay(testPlayers.slice(0, 3), 2);
+	readyDisplay.stopCountdown();
+	for (let i = 0; i < 3; i++) {
+		readyDisplay.ready(i);
 	}
+	
+	const submissions = [
+		
+	];
 	//readyDisplay.ready(0);
 	
 	return s(count, curr => {
-		const submissions = [];
+		const submissions = [
+			Submission(testPlayers[0], { drawing: assets.legsLord }),
+			Submission(testPlayers[1], { drawing: assets.bd }, {
+				
+				votes: [testPlayers[0], testPlayers[2]]
+			}),
+			Submission(testPlayers[2], { drawing: assets.bd2 }, {
+				votes: [testPlayers[1]]
+			}),
+		];
 		for (let i = 0; i < curr; i++) {
-			submissions.push(Submission(testPlayer, testSubmission, {
+			/*submissions.push(Submission(testPlayer, testSubmission, {
 				votes: testPlayers
-			}));
+			}));*/
 		}
 		return h(
 			"div.tab",
@@ -157,12 +171,24 @@ function submissionGridTest() {
 	});
 }
 
-function datingVoteTest() {
+function DatingVoteTest() {
 	
-	let bachelorDrawing = Submission(testPlayer, testSubmission);
+	const readyDisplay = new ReadyDisplay(testPlayers.slice(0, 3));
+	readyDisplay.ready(0);
+	readyDisplay.ready(2);
+	
+	const testSubmissions = [
+		{ drawing: assets.sadSack, name: "Sad Blob" },
+		{ drawing: assets.licensedTherapist, name: "Licensed Therapist" },
+		{ drawing: assets.topHatEnthusiast, name: "Top Hat Enthusiast" },
+	];
+	
+	let bachelorDrawing = Submission(testPlayers[0], testSubmissions[0]);
 	let suitorDrawings = [
-		Submission(testPlayer, testSubmission),
-		Submission(testPlayer, testSubmission)
+		Submission(testPlayers[1], testSubmissions[1]),
+		Submission(testPlayers[2], testSubmissions[2], {
+			//votes: [testPlayers[0]]
+		})
 	];
 	
 	if (suitorDrawings.length === 2) {
@@ -173,23 +199,30 @@ function datingVoteTest() {
 		]
 	}
 	
-	return h("div#voting.tab", [
+	return h("div#voting.mode", [
 		h("div.submission-ctr", [
 			h("div.submission-row", bachelorDrawing),
 			h("div.submission-row", suitorDrawings)
-		])
+		]),
+		//readyDisplay.View()
 	]);
 }
 
+
 function PlayerIconTest() {
-	return h("div",
+	
+	
+	//const src = PlayerIcons.generateBackground();
+	
+	
+	return h("div", [
 		//{ style: { scale: "5" } },
-		Logo()
-	);
+		Logo(),
+		//h("img", { attrs: { src } })
+	]);
 }
-
-mount(h("div#dating.mode", PlayerIconTest()));
-
+//mount(h("div#dating.mode", DatingVoteTest()));
+mount(SubmissionGridTest());
 
 
 

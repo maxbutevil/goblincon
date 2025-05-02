@@ -1,12 +1,4 @@
 
-
-
-
-import Signal from "./signal"
-import State from "./state"
-export { Signal, State };
-
-
 import {
   patch,
   
@@ -26,7 +18,6 @@ export type {
 
 export type Cleanup = () => void;
 export type Builder<A extends any[] = []> = (...args: A) => VNode;
-
 
 /* Internal debug functions for dumping state of VNode tree to the console */
 function dump(vnode: VNode, err = false) {
