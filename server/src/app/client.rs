@@ -269,11 +269,11 @@ impl ClientIndex {
 	pub fn has_player(&self, player_id: PlayerId) -> bool {
 		self.players.contains(player_id as usize)
 	}
-	pub fn has_connected_player(&self, player_id: PlayerId) -> bool {
+	/*pub fn has_connected_player(&self, player_id: PlayerId) -> bool {
 		let player = self.players.get(player_id as usize);
 		let Some(player) = player else { return false };
 		player.is_connected()
-	}
+	}*/
 	pub fn player<'a>(&'a self, id: PlayerId) -> Option<&'a Player> {
 		self.players.get(id as usize).map(|player| player.as_ref())
 	}

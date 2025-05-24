@@ -34,9 +34,9 @@ pub struct Settings {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Submission {
-	drawing: Box<str>,
 	#[serde(default, deserialize_with = "room::cap_submission_name", skip_serializing_if = "Option::is_none")]
-	name: Option<Box<str>>
+	name: Option<Box<str>>,
+	drawing: Box<str>,
 }
 
 
