@@ -461,8 +461,8 @@ export default class Drawpad {
 			colorSelect,
 			h("canvas#canvas", {
 				attrs: {
-					width: 360,
-					height: 360
+					width: Shared.SUBMISSION_SIZE,
+					height: Shared.SUBMISSION_SIZE
 				},
 				on: {
 					pointerdown: handleStartDraw,

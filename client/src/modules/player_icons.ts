@@ -24,30 +24,32 @@ async function init() {
 await init();
 
 
-function generate(icon: number, color: string): string {
+export function generate(icon: number, color: string): Canvas {
 	//if (!bases[src].complete) await bases[src]?.decode();
 	
 	const base = bases[icon];
+	const canvas = Canvas.create(base.width, base.height);
+	
 	if (typeof base !== "object") {
 		console.error("Attempted to generate icon with invalid icon index:", icon);
-		return "";
+		return canvas;
 	}
 	if (typeof color !== "string") {
 		console.error("Attempted to generate icon with invalid color:", color);
-		return "";
+		return canvas;
 	}
 	
-	const canvas = Canvas.create(base.width, base.height);
 	canvas.putImage(base);
 	canvas.setOperation("source-in");
 	canvas.wipeStyle(color);
 	canvas.setOperation("multiply");
 	canvas.putImage(bases[icon]);
-	return canvas.element.toDataURL();
+	//return canvas.element.toDataURL();
+	return canvas;
 }
 
 export function get(icon: number, color: string): string {
-	return cache[icon][color] ??= generate(icon, color);
+	return cache[icon][color] ??= generate(icon, color).element.toDataURL();
 }
 export function cacheColor(color: string) {
 	for (let i = 0; i < count(); i++)

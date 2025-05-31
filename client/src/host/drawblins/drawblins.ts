@@ -14,6 +14,7 @@ import { Player } from "../data"
 import { Game } from "./data"
 import { Mode, Setting } from "../mode"
 import { Submission, SubmissionGrid, ReadyDisplay, VoteQueue } from "../components"
+import * as assets from "../../assets/testing"
 
 
 const INC = new ReceiveIndex({
@@ -54,9 +55,19 @@ export default function View() {
 export const test = Micron.test("drawblins")
 	.add(Starting)
 	.add(Drawing, 120)
+	.add(Voting, 30)
 	.create(() => {
+		//Room.mock(4);
 		Game.init(Room.players);
 		Game.pushRound("Test Goblin Name");
+		Game.handleDrawing(0, assets.legsLord);
+		Game.handleDrawing(1, assets.sadSack);
+		Game.handleDrawing(2, assets.licensedTherapist);
+		Game.handleDrawing(3, assets.topHatEnthusiast);
+		Game.handleVote(0, 1);
+		Game.handleVote(1, 0);
+		Game.handleVote(2, 0);
+		Game.handleVote(3, 2);
 	});
 /*function setRecap() {
 	if (rounds.length === 0) {
@@ -94,6 +105,9 @@ function Drawing(secsLeft: number) {
 }
 function Voting(secsLeft: number) {
 	
+	const DELAY_INITIAL = 0.2;
+	const DELAY_STAGGER = 0.6;
+	
 	const voteQueue = new VoteQueue();
 	const readyDisplay = new ReadyDisplay(Room.players.array(), secsLeft, Shared.VOTING_BUFFER_SECS);
 	const round = Game.currentRound();
@@ -115,7 +129,10 @@ function Voting(secsLeft: number) {
 		})
 	);
 	return h("div#voting.page", [
-		h("div", `Vote for your favorite ${round.goblinName}!`),
+		h("div",
+			{ style: { fontSize: "1.2em"} },
+			`Vote for your favorite ${round.goblinName}!`
+		),
 		s(voteQueue.update, () => {
 			let submissions: Micron.Node[] = [];
 			for (const player of Game.players.iter()) {
@@ -124,7 +141,8 @@ function Voting(secsLeft: number) {
 				if (drawing !== undefined) {
 					const voteIds = voteQueue.get(id);
 					const votes = Room.players.query(voteIds);
-					submissions.push(Submission(player, { drawing }, { votes }));
+					const delay = DELAY_INITIAL + submissions.length * DELAY_STAGGER;
+					submissions.push(Submission(player, { drawing }, { votes, delay }));
 				}
 			}
 			return SubmissionGrid(submissions)

@@ -10,8 +10,8 @@ import {
 } from "../modules/"
 import {
 	Logo,
-	Tray,
-	IconBtn
+	Nav,
+	Tray
 } from "../components"
 import * as icons from "../assets/icons/"
 
@@ -107,11 +107,11 @@ function qrBuilder(text: string): Micron.Builder {
 function Lobby() {
 	
 	const QRCode = qrBuilder(Room.joinLink);
-	const overlay = Micron.anchor();
+	const nav = new Nav();
 	Micron.defer(
 		Signal.keydown.subscribe((ev) => {
 			if (ev.key === "Escape") {
-				overlay.clear();
+				nav.clear();
 			}
 		})
 	);
@@ -128,8 +128,11 @@ function Lobby() {
 		copy(Room.joinLink);
 	}
 	
+	function hasRecap(): boolean {
+		return Room.recap !== undefined;
+	}
 	function Recap() {
-		return Room.recap!(() => overlay.clear());
+		return Room.recap!(() => nav.clear());
 	}
 	function Players() {
 		
@@ -182,22 +185,16 @@ function Lobby() {
 						h("button", { on: { click: copyCode } }, "Copy Code"),
 						h("button", { on: { click: copyLink } }, "Copy Link")
 					]),
-					h("div#site-link",
-						{ style: { fontSize: "0.9em" } },
-						["Join at ", h("u", Shared.httpsRoot)]
-					),
+					h("div#site-link", [
+						"Join at ",
+						h("u", Shared.httpsRoot)
+					]),
 				]),
 				h("div#qr-code-ctr", [
 					h("div#qr-code-caption", "Or just scan this!"),
 					QRCode()
 				]),
 				h("div.flow.spacer"),
-				h("div#button-ctr",
-					h("button#close-btn",
-						{ on: { click: () => location.href = "/" } },
-						"Close Lobby"
-					)
-				)
 			]),
 		]);
 	}
@@ -208,6 +205,28 @@ function Lobby() {
 				h("h2", "Settings"),
 				//h("div#settings-ctr", [
 					h("div#settings-list.flow.scrolling", [
+						/*h("div#utils", [
+							h("button#close-btn",
+								{ on: { click: () => location.href = "/" } },
+								"Close Lobby"
+							),
+							h("button#recap-btn",
+								{
+									attrs: {
+										title: Room.recap === undefined ? "Finish a game first!" : "",
+										disabled: Room.recap === undefined
+									},
+									on: {
+										click: () => {
+											if (Room.recap) {
+												nav.put(Room.recap, () => nav.clear());
+											}
+										}
+									}
+								},
+								"View Recap"
+							)
+						]),*/
 						mode.View(),
 						...modeSettings
 					])
@@ -224,12 +243,39 @@ function Lobby() {
 			Settings(),
 			Players(),
 		]),
-		s(overlay),
+		s(nav),
+		Tray({
+			left: [
+				h("div#close-btn.nav-btn",
+					{
+						attrs: {
+							title: "Close Lobby"
+						},
+						on: {
+							click: () => location.href = "/"
+						}
+					},
+					h("img", { attrs: { src: icons.exit } })
+				),
+				h("div#recap-btn.nav-btn",
+					{
+						attrs: {
+							disabled: !hasRecap(),
+							title: hasRecap() ? "" : "Finish a game first!"
+						},
+						on: {
+							click: () => nav.toggle(Recap)
+						}
+					},
+					h("img", { attrs: { src: icons.recap } })
+				)
+			]
+		}),
 		/*Tray([
 			IconBtn(icons.exit, () => location.href = "/"),
 			c(
 				Room.recap !== undefined &&
-				IconBtn(icons.recap, () => overlay.toggle(Recap))
+				IconBtn(icons.recap, () => nav.toggle(Recap))
 			)
 		])*/
 	]);
@@ -237,9 +283,9 @@ function Lobby() {
 
 /*function Lobby() {
 	
-	const overlay = Micron.anchor();
+	const nav = Micron.anchor();
 	Micron.defer(Signal.keydown.subscribe((ev) => {
-		if (ev.key === "Escape") overlay.clear();
+		if (ev.key === "Escape") nav.clear();
 	}));
 	
 	function copy(text: string) {
@@ -317,7 +363,7 @@ function Lobby() {
 		));
 	}
 	function Recap() {
-		return Room.recap!(() => overlay.clear());
+		return Room.recap!(() => nav.clear());
 	}
 	
 	return h("div.page", [
@@ -326,12 +372,12 @@ function Lobby() {
 			Overview(),
 			Settings()
 		]),
-		s(overlay),
+		s(nav),
 		Tray([
 			IconBtn(icons.exit, () => location.href = "/"),
 			c(
 				Room.recap !== undefined &&
-				IconBtn(icons.recap, () => overlay.toggle(Recap))
+				IconBtn(icons.recap, () => nav.toggle(Recap))
 			)
 		])
 	]);
@@ -392,10 +438,8 @@ export const test = Micron.test("host")
 	.nest(drawblinsTest)
 	.nest(datingTest)
 	.create(() => {
+		Room.mock(15);
 		Room.setJoinCode("XXXXX");
-		for (let i = 0; i < 15; i++) {
-			Room.handleJoin(i, `player${i}`, i % 8);
-		}
 		Room.handleJoin(15, "WWWWWWWWWWWWWWWW", 7);
 	});
 

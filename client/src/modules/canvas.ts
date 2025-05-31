@@ -139,6 +139,9 @@ export default class Canvas {
 	scale(x: number, y = x): void {
 		this.ctx.scale(x, y);
 	}
+	translate(x: number, y: number): void {
+		this.ctx.translate(x, y);
+	}
 	
 	resetTransform(): void {
 		//this.ctx.setTransform(1, 0, 0, 1, 0, 0);

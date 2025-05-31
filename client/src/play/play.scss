@@ -1,189 +1,58 @@
 
 @use "../styles/index.scss" as *;
 
-%bar {
-	
-	@include row(6px);
-	padding: 6px;
-	height: 8vh;
-	max-height: 8vh;
-	
-	.left {
-		flex: 1 0 0;
-		@include row(flex-start, stretch, 6px);
-	}
-	.middle {
-		@include row(center, center, 6px);
-	}
-	.right {
-		flex: 1 0 0;
-		@include row(flex-end, stretch, 6px);
-	}
-	.player-icon {
-		max-height: 100%;
-	}
-}
-#top-bar {
-	@extend %bar;
-	
-	padding: 6px;
-	
-	background-color: primary(3);
-	border-bottom: $border-thick;
-	font-size: 1.6rem;
-}
-#bottom-bar {
-	@extend %bar;
-	
-	border-top: $border-thick;
-  background-color: primary(3);
-	
-	.btn {
-		aspect-ratio: 1;
-		height: 100%;
-		
-		@include row(center, stretch);
-		padding: 1px;
-		
-		@include border-thin(6px);
-		background-color: primary(2);
-		transition: background-color 0.1s, transform 0.1s;
-		
-		&.primary { aspect-ratio: 2; }
-		&:hover {
-			background-color: primary(1);
-		}
-		&.selected {
-			background-color: primary(1);
-			//aspect-ratio: 7 / 6;
-			transform: scale(1.1);
-		}
-		
-	}
-	
-	.countdown {
-		position: relative;
-		min-width: 3.6ch;
-		padding: 2px;
-		font-size: 1.7rem;
-		text-align: center;
-		
-		@include border-thin(6px);
-		background-color: primary(2);
-		
-		.countdown-popup {
-			position: absolute;
-			left: 50%;
-			min-width: 2ch;
-			height: 80%;
-			bottom: 16px;
-			
-			text-align: center;
-			
-			padding: 4px;
-			border-radius: 4px;
-			
-			
-			font-size: 75%;
-			
-			pointer-events: none;
-			
-
-			&:not(.final) {
-				color: white;
-				background-color: black;
-				animation: tip-short 1s;
-				animation-fill-mode: forwards;
-			}
-			&.final {
-				color: black;
-				background-color: red;
-				animation: tip-long 3s;
-				animation-fill-mode: forwards;
-			}
-			
-			@mixin out {
-				opacity: 0%;
-				transform: translate(-50%, -75%);
-			}
-			@mixin in {
-				opacity: 100%;
-				transform: translate(-50%, -125%);
-			}
-			@keyframes tip-short {
-				0% { @include out; }
-				6% { @include in; }
-				94% { @include in; }
-				100% { @include out; }
-			}
-			@keyframes tip-long {
-				0% { @include out; }
-				2% { @include in; }
-				98% { @include in; }
-				100% { @include out; }
-			}
-		}
-	}
+body {
+	touch-action: manipulation;
 }
 
-#overlay {
-	position: absolute;
-	top: 0;
-	left: 0;
-	bottom: 0;
-	right: 0;
-	
-	@include column(center, center);
-	padding: 6px;
-	
-	background-color: rgba(0, 0, 0, 0.6);
-}
-%popup {
-	//margin: 8px;
-	padding: 12px;
-	max-width: 100%;
-	@include column(center, center, 12px);
-	@include border-thick(8px);
-	background-color: primary(2);
-	
-	animation: swoop-in 0.1s;
-}
 #about-popup {
-	@extend %popup;
+	@include popup;
 }
 #help-popup {
-	@extend %popup;
+	@include popup;
 	.small {
 		font-size: 0.8em;
 	}
 }
 #name-popup {
-	@extend %popup;
+	@include popup;
 }
 #bachelor-popup {
-	@extend %popup;
+	@include popup;
+	
+	padding: 8px;
+	
+	//flex-basis: max-content;
+	
+	//max-height: 100%;
+	//max-width: 100%;
+	
+	//flex: 1;
+	//width: 80vh;
+	//max-height: 100%;
+	
+	//flex: 1;
+	max-height: 90vh;
 	
 	#bachelor-ctr {
+		//flex: 1;
+		//aspect-ratio: 9 / 10;
+		//max-width: 100%;
+		max-width: 66vh;
+		//max-width: min(100%, 66vh);
 		@include column(center, stretch);
 		@include border-thin(6px);
 		padding-top: 2px;
-		max-width: 100%;
 		
 		background-color: primary(1);
 		#bachelor-name {
 			font-size: 1.6rem;
 		}
 		#bachelor-img {
-			//flex: 1;
-			aspect-ratio: 1;
 			min-width: 0;
 			min-height: 0;
-			//max-height: 50px;
-			//min-height: 0;
-			//
-			//max-width: 100%;
-			max-height: 60vh;
-			
+			width: 100%;
+			height: auto;
 		}
 	}
 	
@@ -246,9 +115,12 @@
 #lobby {
 	@extend %menu-tab;
 	#icon-select {
-		@include flex(row wrap, center);
-		font-size: 1.6em;
-		margin-bottom: 1em;
+		margin: 6px;
+		@include column(center);
+		font-size: 2rem;
+		.icon-row {
+			@include row(center);
+		}
 	}
 	#start-btn:disabled {
 		filter: brightness(0.6);
@@ -294,6 +166,7 @@
 	}
 	
 	#info {
+		text-wrap: balance;
 		font-size: 1.1rem;
 		flex: 1 0.5 0;
 		max-width: max-content;
@@ -314,7 +187,7 @@
   max-width: 100%;
   //width: 81vh;
   //width: 75vh;
-	width: 69vh;
+	width: 75vh;
 	//min-width: 0;
   
 	@include column(center, stretch);

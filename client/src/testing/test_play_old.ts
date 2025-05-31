@@ -23,7 +23,7 @@ import * as PlayerIcon from "../modules/player_icons"
 
 import { Player } from "../host/data";
 
-import { Countdown, Tray, IconBtn } from "../components"
+import { Countdown, IconBtn } from "../components"
 import Drawpad from "../play/drawpad"
 import { Submission, SubmissionGrid } from "../host/components";
 import { NameOverlay } from "../play/components"

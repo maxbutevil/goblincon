@@ -10,6 +10,14 @@
 
 #lobby {
 	height: 100%;
+	#tray {
+		#close-btn {
+			background-color: #f88;
+			&:hover {
+				background-color: #d55;
+			}
+		}
+	}
 }
 #lobby-content {
 	flex: 1;
@@ -62,7 +70,7 @@
 				}
 				#site-link {
 					margin-top: 6px;
-					font-size: 0.9em;
+					font-size: 0.8em;
 				}
 			}
 			
@@ -75,7 +83,7 @@
 				min-height: 160px;
 				
 				#qr-code-caption {
-					font-size: 0.9em;
+					font-size: 0.8em;
 				}
 				#qr-code {
 					//min-width: 10px;
@@ -85,13 +93,6 @@
 					
 					aspect-ratio: 1;
 					@include border-thin(8px);
-				}
-			}
-			
-			#close-btn {
-				background-color: #f88;
-				&:hover {
-					background-color: #d55;
 				}
 			}
 		}
@@ -122,6 +123,9 @@
 		}
 	}
 	#settings {
+		#utils {
+			@include row-wrap(center, center, 6px);
+		}
 		#settings-list {
 			//flex: auto;
 			//min-height: 0;
@@ -129,26 +133,29 @@
 			@include column(12px);
 			padding: 8px;
 			@include border-thin(8px);
-		}
-	}
-	#settings-ctr {
-		min-height: 0;
-		@include column(12px);
-		padding: 8px;
-		@include border-thin(8px);
-		
-		
-		
-		/*.setting-select + .setting-select {
-			border-top: 2px solid black;
-		}*/
-		.setting-select {
-			.name {
-				font-size: 0.9em;
-				margin-bottom: 2px;
+			
+			.setting-select {
+				.name {
+					font-size: 0.9em;
+					margin-bottom: 2px;
+				}
 			}
 		}
+		#settings-ctr {
+			min-height: 0;
+			@include column(12px);
+			padding: 8px;
+			@include border-thin(8px);
+			
+			
+			
+			/*.setting-select + .setting-select {
+				border-top: 2px solid black;
+			}*/
+			
+		}
 	}
+	
 }
 
 #showing-scores {
@@ -175,19 +182,23 @@
 
 .submission-ctr {
 	flex: 1 1 0;
-	width: 96vw;
+	min-width: 97vw;
 	//margin-bottom: $ready-display-space;
-	@include column(center, stretch, 0.6em);
+	@include column(center, stretch, 8px);
 	
 	.submission-row {
 		flex: 1 1 0;
 		min-height: 0;
-		@include row(center, stretch, 0.6em);
+		@include row(center, stretch, 8px);
 		
 		// special one-row case
 		&:only-child {
+			max-height: 70%;
 			//height: auto;
-			flex: 0 1 66%;
+			//@include row(center, center, 8px);
+			/*.submission {
+				//flex: 1 1 0;
+			}*/
 		}
 		
 		#vs-icon {
@@ -195,6 +206,9 @@
 			flex: 0 1 0px;
 			max-height: 36vh;
 			align-self: center;
+			
+			animation: submission-fade-in 0.4s;
+			animation-fill-mode: backwards;
 		}
 	}
 }
@@ -210,7 +224,7 @@
 	padding: 2px;
 	
 	.player-icon {
-		font-size: 2rem;
+		font-size: 1.6rem;
 		transition: filter 0.15s;
 		&:not(.disabled) {
 			animation: bounce 0.3s;
@@ -225,15 +239,25 @@
 }
 
 
-
-
-
-#dating-recap.popup {
+#dating-recap {
+	
+	@include popup;
+	@include column(flex-start, center);
+	
+	@media only print {
+		width: auto;
+    height: auto;
+    overflow: visible;
+	}
+	
+	margin: 8px;
+	width: calc(100% - 16px);
 	
 	overflow-y: scroll;
-	width: 96vw;
+	//min-height: min-content;
 	
 	#recap {
+		min-height: min-content;
 		flex: 1 0 0;
 		//align-self: stretch;
 		padding-bottom: 1em;

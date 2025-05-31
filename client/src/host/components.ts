@@ -1,15 +1,15 @@
 
 import {
 	State,
-	h, s, c, defer, Micron,
+	h, s, c, Micron,
 	Signal,
-	//Shared, playerIcons,
+	Shared,
 } from "../modules/"
 import { Player } from "./data"
 import { Countdown } from "../components"
 import type { SubmissionData } from "../modules/data"
 
-export function Submission(player: Player, data: SubmissionData, { votes }: { votes?: Player[] } = {}) {
+export function Submission(player: Player, data: SubmissionData, { votes, delay }: { votes?: Player[], delay?: number } = {}) {
 	
 	const { drawing, name } = data;
 	const filename = `goblincon-${name ?? "unnamed"}`;
@@ -22,32 +22,42 @@ export function Submission(player: Player, data: SubmissionData, { votes }: { vo
 	//const votesCtr = c(votes && votes.length > 0 && h("div.vote-ctr", Player.iconView(vote)));
 	
 	//const playerView = typeof player === "number" ? Room.playerView(player) : Player.view(player);
-	return h(
-		"div.submission",
-		[
-			c(name && h("div.name", name)),
-			h("a.img-ctr",
-				{ attrs: { href: drawing, download: filename } },
-				[
-					h("img.drawing", { attrs: { src: drawing } }),
-					votesCtr
-				]
-			),
-			player.View()
-		]
-	);
+	
+	let nodeData: Micron.NodeData = {};
+	if (delay !== undefined) {
+		nodeData.style = { animationDelay: `${delay}s` };
+		console.log(nodeData);
+	}
+	
+	return h("div.submission", nodeData, [
+		c(name && h("div.name", name)),
+		h("a.img-ctr",
+			{ attrs: { href: drawing, download: filename } },
+			[
+				h("img.drawing", {
+					attrs: {
+						src: drawing,
+						width: Shared.SUBMISSION_SIZE,
+						height: Shared.SUBMISSION_SIZE
+					}
+				}),
+				votesCtr
+			]
+		),
+		player.View()
+	]);
 }
 export function SubmissionGrid(submissions: Micron.Node[]): Micron.Node {
 	/* This is a nightmare, but so are 2D flexbox layouts */
 	/* And it works! */
-	let aspectRatio = window.innerWidth / (window.innerHeight - 60);
+	let aspectRatio = window.innerWidth / (window.innerHeight - 140);
 	let rowWidth = submissions.length;
 	let rowCount = 1;
-	if (submissions.length >= aspectRatio * 1.84) {
+	if (submissions.length >= aspectRatio * 1.5) {
 		for (let i = 2; i < submissions.length; i++) {
 			rowCount = i;
 			rowWidth = Math.ceil(submissions.length/i);
-			if ((rowWidth / i) <= aspectRatio * 1.11)
+			if ((rowWidth / i) <= aspectRatio * 1)
 				break;
 		}
 	}

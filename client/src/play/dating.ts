@@ -16,16 +16,13 @@ import * as icons from "../assets/icons"
 import Drawpad from "./drawpad"
 import {
 	Countdown,
-	
-	Tray,
-	IconBtn,
 	VoteButtons,
-} from "../components"
-import {
 	Nav,
 	TopBar,
 	BottomBar,
 	IdlePage,
+} from "../components"
+import {
 	NameOverlay,
 } from "./components"
 import { legsLord } from "../assets/testing"
@@ -76,7 +73,7 @@ export function view() {
 		INC.subscribe("notVoting", () => page.put(NotVoting))
 	);
 	
-	return h("div#dating.mode", s(page));
+	return h("div#dating.scaffold", s(page));
 }
 export const test = Micron.test("dating")
 	.add(Starting)
@@ -89,7 +86,7 @@ export const test = Micron.test("dating")
 
 
 function Starting() {
-	return IdlePage("Starting!", "Get ready to draw!");
+	return IdlePage("Game Starting", "Get ready to draw!");
 }
 function DrawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: string) {
 	
@@ -140,21 +137,17 @@ function DrawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: strin
 	}
 	
 	return h("div#draw-bachelor.scaffold", [
-		TopBar({
+		/*TopBar({
 			middle: h("div.title", "Draw a Bachelor!"),
-		}),
+		}),*/
 		h("div.primary-flow", [
 			h("div#drawpad-ctr.flow", [
 				h("div#info", [
 					h("div#bachelor-theme", [
-						h("b", "Theme: "),
+						h("b", "Draw a bachelor! Theme: "),
 						bachelorTheme
 					]),
 				]),
-				/*h("div#info", [
-					
-					//h("div#bachelor-theme", `Theme: ${bachelorTheme}`),
-				]),*/
 				drawpad.View(),
 				
 			]),
@@ -255,7 +248,13 @@ function DrawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 						{ style: { fontSize: "1.1em" } },
 						bachelorSubmission.name
 					)),
-					h("img#bachelor-img", { attrs: { src: bachelorSubmission.drawing }}),
+					h("img#bachelor-img", {
+						attrs: {
+							src: bachelorSubmission.drawing,
+							width: Shared.SUBMISSION_SIZE,
+							height: Shared.SUBMISSION_SIZE
+						}
+					}),
 				]),
 				h("button",
 					{ on: { click: () => nav.clear() } },
@@ -292,15 +291,35 @@ function DrawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 	//const countdown = new Countdown();
 	
 	return h("div#draw-suitor.scaffold", [
-		TopBar({
+		/*TopBar({
 			middle: h("div.title", "Draw a Suitor!")
-		}),
-		h("div.primary-flow", [
+		}),*/
+		/*h("div.primary-flow", [
 			h("div#drawpad-ctr.flow", [
 				drawpad.View()
 			]),
 			s(nav)
+		]),*/
+		
+		h("div.primary-flow", [
+			h("div#drawpad-ctr.flow", [
+				h("div#info", [
+					h("b", [
+						"Draw a suitor for your ",
+						h("a#bachelor-shortcut",
+							{ on: { click: (ev) => nav.put(Bachelor) } },
+							"bachelor"
+						),
+						"."
+					]),
+					//h("div#goblin-name", goblinName),
+				]),
+				drawpad.View(),
+			]),
+			s(nav)
 		]),
+		
+		
 		BottomBar({
 			middle: (
 				Countdown.fromSecs(secsLeft, Shared.DRAWING_BUFFER_SECS)
@@ -347,12 +366,12 @@ function Voting(secsLeft: number, choices: string[]) {
 	}
 	
 	return h("div#voting.scaffold", [
-		TopBar({
+		/*TopBar({
 			middle: h("div.title", "Voting")
-		}),
+		}),*/
 		h("div.primary-page", [
 			h("div.flow.gapped", [
-				//h("h1", "Voting!"),
+				h("h2", "Voting"),
 				h("div", "Vote for your favorite suitor!"),
 				...VoteButtons(choices, submitVote)
 			]),
@@ -372,13 +391,13 @@ function ShowingResults() {
 	return IdlePage("Results", "Results are being revealed now");
 }
 function DoneDrawing() {
-	return IdlePage("You've Submitted!", "Waiting for other players to finish drawing...");
+	return IdlePage("You've Submitted", "Waiting for other players to finish drawing...");
 }
 function DoneVoting() {
-	return IdlePage("You've Voted!", "Waiting for other players to do the same...");
+	return IdlePage("You've Voted", "Waiting for other players to do the same...");
 }
 function NotVoting() {
-	return IdlePage("Waiting...", "Waiting for other players to vote...");
+	return IdlePage("Waiting", "Other players are voting on your suitor!");
 }
 
 

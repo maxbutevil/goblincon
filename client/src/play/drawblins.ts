@@ -12,14 +12,11 @@ import Session from "./session"
 import Drawpad from "./drawpad"
 import {
 	Countdown,
-	VoteButtons
-} from "../components"
-import {
+	VoteButtons,
 	Nav,
-	TopBar,
 	BottomBar,
 	IdlePage,
-} from "./components"
+} from "../components"
 
 import * as icons from "../assets/icons/"
 
@@ -59,7 +56,7 @@ export function view() {
 		INC.subscribe("showingScores", () => page.put(ShowingResults)),
 	);
 	
-	return h("div#drawblins.mode", s(page));
+	return h("div#drawblins.scaffold", s(page));
 }
 export const test = Micron.test("drawblins")
 	.add(Starting)
@@ -70,10 +67,7 @@ export const test = Micron.test("drawblins")
 	.add(ShowingResults);
 
 function Starting() {
-	return h("div#start.page", [
-		h("h1", "Game Starting!"),
-		h("h2", "Get ready to draw!")
-	]);
+	return IdlePage("Game Starting", "Get ready to draw!");
 }
 function Drawing(secsLeft: number, goblinName: string) {
 	
@@ -100,9 +94,9 @@ function Drawing(secsLeft: number, goblinName: string) {
 	}
 	
 	return h("div#draw.scaffold", [
-		TopBar({
+		/*TopBar({
 			middle: h("div.title", "Draw!"),
-		}),
+		}),*/
 		h("div.primary-flow", [
 			h("div#drawpad-ctr.flow", [
 				h("div#info", [
@@ -133,11 +127,8 @@ function Voting(secsLeft: number, choices: string[]) {
 	};
 	
 	return h("div#vote.scaffold", [
-		TopBar({
-			middle: h("div.title", "Vote!"),
-		}),
 		h("div.primary-page.gapped", [
-			
+			h("h2", "Voting!"),
 			h("div", "Vote for your favorite submission!"),
 			...VoteButtons(filtered, submitVote),
 		]),
@@ -151,10 +142,10 @@ function Voting(secsLeft: number, choices: string[]) {
 	]);
 }
 function DoneDrawing() {
-	return IdlePage("You've Submitted!", "Waiting for other players to finish drawing...");
+	return IdlePage("You've Submitted", "Waiting for other players to finish drawing...");
 }
 function DoneVoting() {
-	return IdlePage("You've Voted!", "Waiting for other players to vote...");
+	return IdlePage("You've Voted", "Waiting for other players to vote...");
 }
 function ShowingResults() {
 	return IdlePage("Results", "Results are being revealed now");

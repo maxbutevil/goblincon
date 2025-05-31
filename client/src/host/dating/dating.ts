@@ -27,6 +27,7 @@ import {
 	VoteQueue
 } from "../components"
 import * as icons from "../../assets/icons"
+import * as assets from "../../assets/testing"
 import { DRAWING_BUFFER_SECS } from '../../modules/shared';
 
 const INC = new ReceiveIndex({
@@ -67,16 +68,44 @@ export default function View() {
 		}),
 	);
 	
-	return h("div#dating.mode", s(page));
+	return h("div#dating.scaffold", s(page));
 }
 export const test = Micron.test("dating")
 	.add(Starting)
 	.add(DrawingBachelors, "testTheme", 120)
 	.add(DrawingSuitors, 120)
+	.add(Voting, 0, 30)
 	.add(ShowingScores)
 	.create(() => {
+		//Room.mock(6);
 		Game.init(Room.players);
 		Game.pushRound("testTheme");
+		const submissions: SubmissionData[] = [
+			{ name: "Sad Sack", drawing: assets.sadSack },
+			{ name: "Licensed Therapist", drawing: assets.licensedTherapist },
+			{ name: "Top Hat Enthusiast", drawing: assets.topHatEnthusiast }
+		];
+		Game.handleBachelor(0, submissions[0]);
+		Game.handleBachelor(1, submissions[1]);
+		Game.handleBachelor(2, submissions[2]);
+		Game.handleSuitor(0, 1, submissions[1]);
+		Game.handleSuitor(0, 2, submissions[2]);
+		Game.handleSuitor(1, 0, submissions[0]);
+		Game.handleSuitor(1, 2, submissions[2]);
+		Game.handleSuitor(2, 0, submissions[0]);
+		Game.handleSuitor(2, 1, submissions[1]);
+		
+		Game.handleVote(0, 0, 2);
+		Game.handleMatchup(0);
+		Game.handleMatchup(1);
+		Game.handleMatchup(2);
+		Game.handleMatchup(0);
+		Game.handleMatchup(1);
+		Game.handleMatchup(2);
+		Game.handleMatchup(0);
+		Game.handleMatchup(1);
+		Game.handleMatchup(2);
+		setRecap();
 	});
 
 function setRecap() {
@@ -175,7 +204,7 @@ function Recap(close: () => void) {
 }
 
 function Starting() {
-	return IdlePage("Game Starting!", "(Dating Mode)", "Get ready to draw!");
+	return IdlePage("Game Starting!", "Get ready to draw!");
 }
 function DrawingBachelors(theme: string, secsLeft: number) {
 	
@@ -229,6 +258,9 @@ function ShowingScores() {
 }
 function Voting(bachelorId: number, secsLeft: number) {
 	
+	const DELAY_INITIAL = 0.3;
+	const DELAY_STAGGER = 1.0;
+	
 	const round = Game.currentRound();
 	const matchup = round.matchup(bachelorId)!;
 	const bachelor = Game.players.get(bachelorId)!;
@@ -263,18 +295,24 @@ function Voting(bachelorId: number, secsLeft: number) {
 	return h("div#voting.page", [
 		s(voteQueue.update, () => {
 			
-			let bachelorDrawing = Submission(bachelor, matchup.bachelorSubmission);
+			const delay = DELAY_INITIAL;
+			let bachelorDrawing = Submission(bachelor, matchup.bachelorSubmission, { delay });
 			
-			let suitorDrawings = matchup.suitors.map(({ id, submission: _submission }, index) => {
+			
+			let suitorDrawings = matchup.suitors.map(({ id, submission }, index) => {
 				const voteIds = voteQueue.get(index);
 				const votes = Game.players.query(voteIds);
-				return Submission(Game.players.get(id)!, _submission, { votes });
+				const delay = DELAY_INITIAL + (index * 2 + 1) * DELAY_STAGGER;
+				return Submission(Game.players.get(id)!, submission, { votes, delay });
 			});
 			
 			if (suitorDrawings.length === 2) {
 				suitorDrawings = [
 					suitorDrawings[0],
-					h("img#vs-icon", { attrs: { src: icons.vs } }),
+					h("img#vs-icon", {
+						attrs: { src: icons.vs },
+						style: { animationDelay: `${DELAY_INITIAL + DELAY_STAGGER * 2}s` }
+					}),
 					suitorDrawings[1]
 				]
 			}

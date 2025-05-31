@@ -16,14 +16,11 @@ import * as Dating from "./dating"
 
 import {
 	Logo,
-	Tray,
-	IconBtn,
-} from "../components"
-import {
 	Nav,
+	Tray,
 	TopBar,
 	BottomBar,
-} from "./components"
+} from "../components"
 import * as icons from "../assets/icons/"
 
 const INC = new ReceiveIndex({
@@ -122,6 +119,17 @@ client.closed.listen((ev) => {
 window.addEventListener("beforeunload", () => {
 	client.close();
 });
+document.addEventListener("dblclick", (ev) => {
+	// Disable double-tap zoom on mobile browsers
+	ev.preventDefault();
+});
+/*document.addEventListener(
+	"dblclick",
+	function (event) {
+		event.preventDefault();
+	},
+	{ passive: false }
+);*/
 
 function Info(message: string) {
 	return h(`div#status.info`, message);
@@ -202,9 +210,6 @@ function Landing() {
 	}
 	
 	const nav = new Nav();
-	function closeNav() {
-		nav.clear();
-	}
 	
 	Micron.defer(Signal.keydown.subscribe(keydown));
 	function keydown(ev: KeyboardEvent) {
@@ -308,7 +313,7 @@ function Landing() {
 				]),
 				h("button",
 					{ on: { click: () => nav.clear() } },
-					"Back"
+					"Close"
 				)
 			])
 		);
@@ -337,7 +342,11 @@ function Landing() {
 							"official discord server"),
 						" here!"
 					]),
-				])
+				]),
+				h("button",
+					{ on: { click: () => nav.clear() } },
+					"Close"
+				)
 			])
 		]);
 	}
@@ -345,23 +354,25 @@ function Landing() {
 	
 	return h("div#landing.scaffold", [
 		//TopBar({}),
-		h("div.page.mount", [
+		h("div.page", [
 			h("div.flow", [
 				Logo(),
 				JoinFlow(),
 			]),
-			HostLink(),
+			//HostLink(),
 			s(nav),
 		]),
-		BottomBar({
-			left: [
-				
+		Tray({
+			left: [],
+			middle: [
+				HostLink()
 			],
 			right: [
 				nav.IconBtn(icons.info, AboutOverlay),
 				nav.IconBtn(icons.help, HelpOverlay),
 			]
 		}),
+		
 		
 		//Tray(IconBtn(helpIcon, () => overlay.toggle(HelpOverlay)))
 	]);
@@ -396,8 +407,11 @@ function Lobby(playerCount: number | null | undefined) {
 			}
 			
 			return h("div#icon-select-ctr", [
-				h("div", "Choose your Icon"),
-				h("div#icon-select", icons)
+				h("div", "Choose your icon:"),
+				h("div#icon-select", [
+					h("div.icon-row", icons.slice(0, 4)),
+					h("div.icon-row", icons.slice(4))
+				])
 			]);
 		});
 	}
@@ -444,10 +458,11 @@ function Lobby(playerCount: number | null | undefined) {
 	
 	
 	return h("div#lobby.scaffold", [
-		TopBar({
+		/*TopBar({
 			middle: h("div.title", "Lobby")
-		}),
-		h("div.page", [
+		}),*/
+		h("div.primary-page", [
+			h("h2", "Lobby"),
 			IconSelect(),
 			StartFlow(),
 			s(overlay)

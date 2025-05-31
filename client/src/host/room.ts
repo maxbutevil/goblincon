@@ -48,6 +48,13 @@ export default class Room {
 	static clearRecap() {
 		this.recap = undefined;
 	}
+	static mock(playerCount: number) {
+		for (let i = 0; i < playerCount; i++) {
+			const player = Player.mock(i);
+			this.players.add(player);
+			this.playerJoined.emit(player);
+		}
+	}
 	static handleJoin(playerId: number, name: string, icon: number) {
 		if (this.players.has(playerId)) {
 			console.error("received playerJoined for player that is already present");

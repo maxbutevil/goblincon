@@ -10,26 +10,50 @@ import {
 	Signal, State,
 	h, s, c,
 	projector, defer, Node, mount,
-	playerIcons
+	playerIcons,
+	Shared
 } from "../modules"
 
 import * as icons from "../assets/icons"
 import * as assets from "../assets/testing"
-import * as PlayerIcon from "../modules/player_icons"
-
-//import { Player } from "../host/room";
-
-import { Countdown, Tray, IconBtn, Autoscroll, Logo } from "../components"
-import Drawpad from "../play/drawpad"
-import { Submission, SubmissionGrid, ReadyDisplay } from "../host/components";
 
 import Canvas from "../modules/canvas"
+
+function generate() {
+	
+	const canvas = Canvas.create(512, 512);
+	const bx = 0;
+	const by = -180;
+	
+	function put(x: number, y: number, icon: number, color: string, scale = 1) {
+		canvas.putImage(playerIcons.generate(icon, color).element, x - 64, y - 64);
+	}
+	function put2(i: number) {
+		//const icon = playerIcons.generate(i, Shared.playerColor(i)).element;
+		const color = Shared.playerColor(i);
+		const theta = (i + 3) * Math.PI * 2 / 7;
+		const x = by * -Math.sin(theta)
+		const y = by *  Math.cos(theta);
+		put(x, y, i, color);
+	}
+	
+	canvas.wipeStyle("#f9ddcc");
+	canvas.translate(256, 256)
+	canvas.scale(1.5);
+	put(0, 0, 0, "red");
+	canvas.scale(1 / 1.5);
+	for (let i = 1; i < 8; i++) {
+		put2(i);
+	}
+	//canvas.putImage(playerIcons.generate());
+	return canvas.element.toDataURL();
+}
 
 
 function generateTransparent(icon: number): Canvas {
 	//if (!bases[src].complete) await bases[src]?.decode();
 	
-	const base = PlayerIcon.bases[icon];
+	const base = playerIcons.bases[icon];
 	
 	const canvas = Canvas.create(base.width, base.height);
 	canvas.putImage(base);
@@ -79,8 +103,8 @@ function generateBackground() {
 	return canvas.element.toDataURL();
 }
 function Background() {
-	const src = generateBackground();
-	return h("img", { attrs: { src } });
+	const src = generate();
+	return h("img", { attrs: { src }, style: { border: "2px solid black" } });
 }
 
 

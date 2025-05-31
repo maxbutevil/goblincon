@@ -18,8 +18,6 @@ import * as PlayerIcon from "../modules/player_icons"
 
 import { Player } from "../host/data";
 
-import { Countdown, Tray, IconBtn, Autoscroll, Logo } from "../components"
-import Drawpad from "../play/drawpad"
 import { Submission, SubmissionGrid, ReadyDisplay } from "../host/components";
 //import { NameOverlay } from "./play/components"
 //import { Matchup }
@@ -28,25 +26,58 @@ import { Submission, SubmissionGrid, ReadyDisplay } from "../host/components";
 
 import { test } from "../host/host"
 
-Micron.mount(s(test));
 
-const testPlayer = new Player(0, "freak #1", 0);
-const testPlayer2 = new Player(1, "freak #2", 1);
-//const testPlayers = [testPlayer, testPlayer2];
 
-const testPlayers: Player[] = [];
-for (let i = 0; i < 4; i++) {
-	testPlayers.push(new Player(i, `player #${i+1}`, i % 7));
+function SubmissionGridTest() {
+	
+	const testPlayers: Player[] = [
+		Player.mock(0),
+		Player.mock(1),
+		Player.mock(2)
+	];
+	const testPlayer = testPlayers[0];
+	const testSubmission = {
+		drawing: assets.legsLord,
+		//name: "Legs Lord"
+	};
+
+	const count = new State(1);
+	const readyDisplay = new ReadyDisplay(testPlayers.slice(0, 3), 2);
+	
+	return s(count, curr => {
+		const submissions = [];
+		for (let i = 0; i < curr; i++) {
+			submissions.push(Submission(testPlayer, testSubmission, {
+				votes: testPlayers
+			}));
+		}
+		return h("div.page",
+			{
+				on: {
+					click: () => {
+						//readyDisplay.ready(count.get() - 1);
+						count.mutate(curr => curr + 1);
+
+						readyDisplay.stopCountdown();
+					}
+				}
+			},
+			[
+				h("div", `Vote for your favorite ${"goblinName"}!`),
+				SubmissionGrid(submissions),
+				readyDisplay.View()
+			]
+		);
+	});
 }
 
-const testSubmission = {
-	drawing: assets.testDrawing,
-	name: "Test Submission"
-};
-//const testName = "Mr. Griddles";
-const testClose = () => console.log("close");
+test.nest(
+	Micron.test("misc")
+		.add(SubmissionGridTest)
+);
+Micron.mount(s(test));
 
-function MatchupSummary() {
+/*function MatchupSummary() {
 	return h("div.matchup", [
 		Submission(testPlayer, testSubmission),
 		h("img", { attrs: { src: icons.heart }}),
@@ -122,61 +153,11 @@ function MatchupReviewTest() {
 	]);
 	
 	return MatchupReview();
-}
+}*/
 
-function SubmissionGridTest() {
-	
-	
-	
-	const count = new State(1);
-	const readyDisplay = new ReadyDisplay(testPlayers.slice(0, 3), 2);
-	readyDisplay.stopCountdown();
-	for (let i = 0; i < 3; i++) {
-		readyDisplay.ready(i);
-	}
-	
-	const submissions = [
-		
-	];
-	//readyDisplay.ready(0);
-	
-	return s(count, curr => {
-		const submissions = [
-			Submission(testPlayers[0], { drawing: assets.legsLord }),
-			Submission(testPlayers[1], { drawing: assets.bd }, {
-				
-				votes: [testPlayers[0], testPlayers[2]]
-			}),
-			Submission(testPlayers[2], { drawing: assets.bd2 }, {
-				votes: [testPlayers[1]]
-			}),
-		];
-		for (let i = 0; i < curr; i++) {
-			/*submissions.push(Submission(testPlayer, testSubmission, {
-				votes: testPlayers
-			}));*/
-		}
-		return h("div.page",
-			{ 
-				on: {
-					click: () => {
-						readyDisplay.ready(count.get() - 1);
-						count.mutate(curr => curr + 1);
-						
-						readyDisplay.stopCountdown();
-					} 
-				} 
-			},
-			[
-				h("div", `Vote for your favorite ${"goblinName"}!`),
-				SubmissionGrid(submissions),
-				readyDisplay.View()
-			]
-		);
-	});
-}
 
-function DatingVoteTest() {
+
+/*function DatingVoteTest() {
 	
 	const readyDisplay = new ReadyDisplay(testPlayers.slice(0, 3));
 	readyDisplay.ready(0);
@@ -225,7 +206,7 @@ function PlayerIconTest() {
 		Logo(),
 		//h("img", { attrs: { src } })
 	]);
-}
+}*/
 //mount(h("div#dating.mode", DatingVoteTest()));
 //mount(SubmissionGridTest());
 
@@ -250,147 +231,3 @@ function PlayerIconTest() {
 		})
 	})
 );*/
-
-
-/*mount(
-	stateful(state, (curr) => {
-		if (state.get() === 1) {
-			return cleaned(
-				() => console.log("cleaning up!"),
-				() => stateful(state, () => h("div.a", String(state.get())))
-			);
-		} else {
-			return stateful(
-				state,
-				() => h("p.b", String(state.get()))
-			)
-			//return h("p.b", String(state.get()));
-		}
-	})
-);*/
-
-
-/*mount(
-	stateful(state, (curr) => {
-		if (curr === 0) {
-			return cleaned(
-				() => console.log("cleaning up!"),
-				() => stateful(state, () => h("div#root.a", String(state.get())))
-			);
-		} else {
-			return stateful(
-				state,
-				() => h("div#root.b", String(state.get()))
-			)
-		}
-	})
-);*/
-
-/*mount(
-	stateful(
-		state,
-		
-	)
-);*/
-
-/*mount(
-	stateful(
-		state,
-		() => stateful(
-			state,
-			() => h("div#root.b", String(state.get()))
-		)
-	)
-);*/
-
-
-
-//state.set(1);
-//state.set(2);
-
-/*const count = new State([1, 1]);
-
-function Submission(): Node {
-	
-	const playerName = "joe";
-	const drawing = icons.erase;
-	
-	return h(
-		"div.submission",
-		[
-			h("img", { attrs: { src: drawing }}),
-			h("div.player-name", playerName),
-			//signaled(),
-			h("div.vote-ctr")
-		]
-	);
-}
-
-
-
-mount(
-	h(
-		"div",
-		[
-			PlayerIcon.view(2, "red"),
-			"Ok"
-		]
-	)
-);*/
-
-/*window.addEventListener("DOMContentLoaded", () => {
-	
-	mount(
-		h(
-			"div.tab",
-			[
-				h("div", `Vote for your favorite Burger!`),
-				stateful(count, (curr) => {
-					
-					let [submissionCount, _rowCount] = curr;
-					
-					let aspectRatio = window.innerWidth / window.innerHeight;
-					let rowWidth = submissionCount;
-					let rowCount = 1;
-					if (submissionCount >= aspectRatio * 2.4) {
-						for (let i = 2; i < submissionCount; i++) {
-							rowCount = i;
-							rowWidth = Math.ceil(submissionCount/i);
-							if ((rowWidth / i) <= aspectRatio * 1.2) {
-								break;
-							}
-						}
-					}
-					
-					let rows: Node[][] = [];
-					for (let i = 0; i < rowCount; i++) {
-						rows.push([]);
-					}
-					
-					//let submissions: (Node | null)[] = [];
-					for (let i = 0; i < submissionCount; i++) {
-						let row = Math.floor(i/rowWidth);
-						rows[row].push(Submission());
-					}
-					
-					let selector = rowCount <= 1 ? "div.submission-ctr.single-row" : "div.submission-ctr";
-					
-					return h(
-						selector,
-						rows.map(row => h("div.submission-row", row))
-					);
-				})
-			]
-		)
-	);
-	
-});
-window.addEventListener("mousedown", ev => {
-	let curr = count.get();
-	if (ev.button === 0)
-		count.set([curr[0] + 1, curr[1]]);
-	else
-		count.set([curr[0], curr[1] + 1]);
-});*/
-
-

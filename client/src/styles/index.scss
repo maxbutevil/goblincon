@@ -88,7 +88,146 @@ button, input {
 	overflow: auto;
 }
 
+#overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+	
+	@include column(center, center);
+	padding: 6px;
+	
+	background-color: rgba(0, 0, 0, 0.6);
+}
+@mixin popup {
+	//margin: 8px;
+	padding: 12px;
+	max-width: 100%;
+	@include column(center, center, 12px);
+	@include border-thick(8px);
+	background-color: primary(2);
+	
+	animation: swoop-in 0.1s;
+}
 
+%fixture {
+	@include row(6px);
+	
+	.left {
+		flex: 1 0 0;
+		@include row(flex-start, stretch, 6px);
+	}
+	.middle {
+		@include row(center, center, 6px);
+	}
+	.right {
+		flex: 1 0 0;
+		@include row(flex-end, stretch, 6px);
+	}
+	
+}
+%bar {
+	
+	@extend %fixture;
+	height: 3.2em;
+	max-height: 3.2em;
+	padding: 6px;
+	background-color: primary(3);
+	
+	.player-icon {
+		max-height: 100%;
+	}
+}
+#tray {
+	@extend %fixture;
+	position: fixed;
+	padding-left: 6px;
+	padding-right: 6px;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 0;
+	
+	.left, .middle, .right {
+		position: fixed;
+		bottom: 6px;
+		height: 2.4em;
+	}
+}
+#top-bar {
+	@extend %bar;
+	border-bottom: $border-thin;
+	font-size: 1.6rem;
+}
+#bottom-bar {
+	@extend %bar;
+	border-top: $border-thin;
+	
+	.countdown {
+		position: relative;
+		min-width: 3.6ch;
+		padding: 2px;
+		font-size: 1.7rem;
+		text-align: center;
+		
+		@include border-thin(6px);
+		background-color: primary(2);
+		
+		.countdown-popup {
+			position: absolute;
+			left: 50%;
+			min-width: 2ch;
+			height: 80%;
+			bottom: 16px;
+			
+			text-align: center;
+			
+			padding: 4px;
+			border-radius: 4px;
+			
+			
+			font-size: 75%;
+			
+			pointer-events: none;
+			
+
+			&:not(.final) {
+				color: white;
+				background-color: black;
+				animation: tip-short 1s;
+				animation-fill-mode: forwards;
+			}
+			&.final {
+				color: black;
+				background-color: red;
+				animation: tip-long 3s;
+				animation-fill-mode: forwards;
+			}
+			
+			@mixin out {
+				opacity: 0%;
+				transform: translate(-50%, -75%);
+			}
+			@mixin in {
+				opacity: 100%;
+				transform: translate(-50%, -125%);
+			}
+			@keyframes tip-short {
+				0% { @include out; }
+				6% { @include in; }
+				94% { @include in; }
+				100% { @include out; }
+			}
+			@keyframes tip-long {
+				0% { @include out; }
+				2% { @include in; }
+				98% { @include in; }
+				100% { @include out; }
+			}
+		}
+	}
+}
 
 /*.sectioned {
 	@include column(12px);

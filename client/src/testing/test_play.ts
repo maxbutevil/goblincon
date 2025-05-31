@@ -1,12 +1,12 @@
 import { h, s, Micron } from "../modules"
 import { test } from "../play/play"
 
-import { Countdown } from "../components";
-import { BottomBar } from "../play/components";
+import { Countdown, BottomBar } from "../components";
 test.nest(
   Micron.test("abstract")
     .add(Timers)
 );
+test.next();
 
 function Timers() {
   return h("div.scaffold", [
@@ -21,4 +21,5 @@ function Timers() {
   ]);
 }
 
-Micron.mount(h("div#app", s(test)));
+Micron.mount(s(test));
+//Micron.mount(h("div#app", s(test)));
