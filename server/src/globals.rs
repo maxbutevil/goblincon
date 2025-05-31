@@ -25,11 +25,13 @@ pub type WebSocketReceiver = SplitStream<WebSocket>;
 pub const MIN_PLAYER_COUNT: usize = 3;
 pub const MAX_PLAYER_COUNT: usize = 16;
 
-pub const MIN_NAME_LEN: usize = 2;
-pub const MAX_NAME_LEN: usize = 16;
+pub const MIN_PLAYER_NAME_CHARS: usize = 2;
+pub const MAX_PLAYER_NAME_CHARS: usize = 16;
+pub const MIN_PLAYER_NAME_LEN: usize = MIN_PLAYER_NAME_CHARS;
+pub const MAX_PLAYER_NAME_LEN: usize = 2 * MAX_PLAYER_NAME_CHARS;
 
-pub const MAX_SUBMISSION_NAME_CHARS: usize = 30;
-pub const MAX_SUBMISSION_NAME_LEN: usize = 4 * MAX_SUBMISSION_NAME_CHARS;
+pub const MAX_SUBMISSION_NAME_CHARS: usize = 64;
+pub const MAX_SUBMISSION_NAME_LEN: usize = 2 * MAX_SUBMISSION_NAME_CHARS;
 
 #[derive(Serialize, Clone)]
 #[serde(tag = "type", content = "data")]

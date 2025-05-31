@@ -26,15 +26,16 @@ pub const NAME_TAKEN: Frame = ok("Name is taken");
 
 /* special errors */
 pub const INVALID_JOIN: Frame = custom(4001, "Join failed");
-//pub const INVALID_REJOIN: Frame = custom(4002, "Rejoin failed");
-//pub const INVALID_MANUAL_REJOIN: Frame = custom(4002, "Rejoin Failed");
-pub const INVALID_AUTO_REJOIN: Frame = custom(4002, "Auto Rejoin Failed");
-pub const INVALID_MANUAL_REJOIN: Frame = custom(4003, "Rejoin Failed");
+pub const INVALID_AUTO_REJOIN: Frame = custom(4002, "Rejoin failed");
+pub const INVALID_MANUAL_REJOIN: Frame = custom(4003, "Rejoin failed");
 pub const ROOM_CLOSED: Frame = custom(4004, "Room closed");
 pub const PLAYER_LEFT: Frame = custom(4005, "Left the game");
 pub const PLAYER_KICKED: Frame = custom(4006, "Kicked by host");
 pub const ALREADY_CONNECTED: Frame = custom(4007, "Already connected on this device");
 pub const CONNECTED_ELSEWHERE: Frame = custom(4008, "Connected elsewhere on this device");
+
+pub const NAME_TOO_SHORT: Frame = err("Name Too Short");
+pub const NAME_TOO_LONG: Frame = err("Name Too Long");
 
 //pub const ALREADY_CONNECTED: Frame = custom(4003, "Already connected on this device");
 

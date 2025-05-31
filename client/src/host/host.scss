@@ -2,14 +2,173 @@
 @use "../styles/index.scss" as *;
 @use "../styles/theme.scss" as theme;
 
-$ready-display-space: calc(3rem + 2px + 2 * theme.$border-weight);
+:root {
+	width: min-content;
+	min-width: 100%;
+	background-image: url("../assets/misc/background.png"); //url("/static/background.png")
+}
+
+#lobby {
+	height: 100%;
+}
+#lobby-content {
+	flex: 1;
+	min-height: 0;
+	@include row(center, stretch, 18px);
+	font-size: 1.2em;
+	
+	>.page {
+		//height: 60vh;
+		//min-height: 0;
+		//height: 80vh;
+		//min-height: min-content;
+		background-color: primary(3);
+		//min-width: 360px;
+		//width: 400px;
+		min-width: max(300px, 24ch);
+		
+		@include border-thick(8px);
+		gap: 18px;
+	}
+	
+	/*#overview, #settings {
+		background-color: primary(3);
+		//min-width: 360px;
+		width: 400px;
+		
+		@include border-thick(8px);
+		gap: 18px;
+	}*/
+	/*.page + .page {
+		border-left: 2px solid secondary(3);
+	}*/
+	#overview {
+		
+		#overview-ctr {
+			
+			flex: 1 1 0;
+			//flex: 0 0 auto;
+			@include column(flex-start, stretch, 8px);
+			padding: 8px;
+			
+			@include border-thin(8px);
+			
+			#join-code-ctr {
+				flex: 0 1 auto;
+				@include column;
+				
+				#join-code {
+					font-size: 3em;
+				}
+				#site-link {
+					margin-top: 6px;
+					font-size: 0.9em;
+				}
+			}
+			
+			
+			#qr-code-ctr {
+				flex: 0 1 min-content;
+				@include column(center, center, 4px);
+				//min-height: 0;
+				//min-height: min-content;
+				min-height: 160px;
+				
+				#qr-code-caption {
+					font-size: 0.9em;
+				}
+				#qr-code {
+					//min-width: 10px;
+					max-width: 80%;
+					min-height: 0;
+					//min-height: 0;
+					
+					aspect-ratio: 1;
+					@include border-thin(8px);
+				}
+			}
+			
+			#close-btn {
+				background-color: #f88;
+				&:hover {
+					background-color: #d55;
+				}
+			}
+		}
+	}
+	#players {
+		#players-status {
+			//font-size: 0.9em;
+			font-size: 1.1em;
+			margin-bottom: 4px;
+		}
+		#players-list {
+			font-size: 0.86em;
+			flex: auto;
+			@include column(flex-start, center);
+			padding: 8px;
+			@include border-thin(8px);
+			
+			
+			/*.player-view {
+				@include row(flex-start);
+				text-align: start;
+				max-width: 100%;
+				overflow: hidden;
+				white-space: nowrap;
+				text-overflow: ellipsis;
+				//display: inline-block;
+			}*/
+		}
+	}
+	#settings {
+		#settings-list {
+			//flex: auto;
+			//min-height: 0;
+			min-height: 0;
+			@include column(12px);
+			padding: 8px;
+			@include border-thin(8px);
+		}
+	}
+	#settings-ctr {
+		min-height: 0;
+		@include column(12px);
+		padding: 8px;
+		@include border-thin(8px);
+		
+		
+		
+		/*.setting-select + .setting-select {
+			border-top: 2px solid black;
+		}*/
+		.setting-select {
+			.name {
+				font-size: 0.9em;
+				margin-bottom: 2px;
+			}
+		}
+	}
+}
+
+#showing-scores {
+	
+}
+
+//$ready-display-space: calc(3rem + 2px + 2 * theme.$border-weight);
 
 .score-entry-ctr {
-	min-width: 16em;
-	@include flex(column nowrap);
+	//@include column(center, center);
+	//flex: auto;
+	//min-width: 16em;
+	//@include column-wrap(center, center);
 	
-	.score-entry {
-		@include row(space-between);
+	.player-view {
+		//min-width: 32ch;
+		//@include row(center, center);
+		.score {
+			margin-left: 20px;
+		}
 		font-size: 1.3em;
 	}
 }
@@ -17,7 +176,7 @@ $ready-display-space: calc(3rem + 2px + 2 * theme.$border-weight);
 .submission-ctr {
 	flex: 1 1 0;
 	width: 96vw;
-	margin-bottom: $ready-display-space;
+	//margin-bottom: $ready-display-space;
 	@include column(center, stretch, 0.6em);
 	
 	.submission-row {
@@ -42,10 +201,13 @@ $ready-display-space: calc(3rem + 2px + 2 * theme.$border-weight);
 
 
 #ready-display {
-	position: fixed;
 	bottom: 0.5rem;
-	@include row(2px);
-	@include theme.panel(2px);
+	@include row(center, center, 2px);
+	
+	//@include theme.panel(2px);
+	@include border-thin();
+	background-color: primary(3);
+	padding: 2px;
 	
 	.player-icon {
 		font-size: 2rem;
@@ -62,25 +224,7 @@ $ready-display-space: calc(3rem + 2px + 2 * theme.$border-weight);
 	
 }
 
-#lobby {
-	@include row(space-around, flex-start);
-	#join-code {
-		font-size: 3em;
-	}
-	#player-list {
-		#status {
-			font-size: 0.75em;
-			margin-bottom: 4px;
-		}
-	}
-	.setting-select {
-		margin: 6px;
-		.name {
-			font-size: 0.9em;
-			margin-bottom: 4px;
-		}
-	}
-}
+
 
 
 

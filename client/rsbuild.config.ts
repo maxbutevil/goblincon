@@ -6,11 +6,12 @@ import { pluginSass } from '@rsbuild/plugin-sass';
 export default defineConfig(({ env }) => ({
 	source: {
 		entry: {
-			"testing/gen": { html: env === "development", import: "./src/testing/gen.ts" },
-			"testing/host": { html: env === "development", import: "./src/testing/testing_host.ts" },
-			"testing/play": { html: env === "development", import: "./src/testing/testing_play.ts" },
-			host: "./src/host/host.ts",
-			play: "./src/play/play.ts",
+			"test/gen": { html: env === "development", import: "./src/testing/gen.ts" },
+			"test/playground": { html: env === "development", import: "./src/testing/playground.ts" },
+			"test/host": { html: env === "development", import: "./src/testing/test_host.ts" },
+			"test/play": { html: env === "development", import: "./src/testing/test_play.ts" },
+			host: "./src/host/index.ts",
+			play: "./src/play/index.ts",
 		}
 	},
 	html: {
@@ -19,7 +20,8 @@ export default defineConfig(({ env }) => ({
 		meta: {
 			charset: { charset: 'UTF-8' },
 			viewport: "width=device-width, initial-scale=1",
-			//"theme-color": "#ccccc0",
+			"theme-color": "#e0cab6",
+			//"theme-color": "#d2b48c",
 			//viewport: "width=device-width, initial-scale=1, maximum-scale=1"
 		},
 		
@@ -32,6 +34,9 @@ export default defineConfig(({ env }) => ({
 	},
 	plugins: [pluginSass()],
 	output: {
+		copy: [
+			{ from: "./src/assets/misc/background.png", to: "static/background.png" }
+		]
 		//minify: false,
 	},
 }));

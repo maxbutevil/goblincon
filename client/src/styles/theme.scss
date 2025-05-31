@@ -3,26 +3,55 @@
 //$border: 3px solid black;
 //$border-radius: 8px;
 
-$background-color: #eee0d0;
-//$background-color-2: #eee;
+@use 'sass:list';
 
 $border-weight: 3.5px;
 $border-radius: 8px;
+$background-color: #f9ddcc;
+$light: #fff0e7 #f9ddcc #e0cab6 #d2b48c #a86;
+$dark: #543 #432 #321 #210;
+
+@function primary($n) {
+	@return list.nth($light, $n);
+}
+@function secondary($n) {
+	@return list.nth($dark, $n)
+}
 
 
-@mixin border {
+
+$border-color: #210;
+$border-thin: 3px solid $border-color;
+$border-thick: 4px solid $border-color;
+/*@function border($w) {
+	@return $w solid $border-color;
+}*/
+@mixin border($r: 0px) {
+	
+}
+@mixin border-thin($r: 8px) {
+	border: $border-thin;
+	border-radius: $r;
+}
+@mixin border-thick($r: 8px) {
+	border: $border-thick;
+	border-radius: $r;
+}
+@mixin panel-thick($r: 8px) {
+	@include border-thick($r);
+	
+}
+@mixin panel-thin($r: 8px) {
+	@include border-thin($r);
+}
+
+
+
+/*@mixin border {
 	border: $border-weight solid black;
 	border-radius: $border-radius;
-}
-@mixin background {
-	background-color: $background-color;
-}
+}*/
 
-@mixin panel($padding: 1em) {
-	@include border;
-	@include background;
-	padding: $padding;
-}
 /*@mixin btn-panel() {
 	@include border;
 }

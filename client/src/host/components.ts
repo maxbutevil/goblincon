@@ -1,14 +1,13 @@
 
 import {
 	State,
-	h, s, c, defer,
-	VNode, VNodeChildElement,
+	h, s, c, defer, Micron,
 	Signal,
-	//Shared, PlayerIcons,
+	//Shared, playerIcons,
 } from "../modules/"
-import { Player } from "./room"
+import { Player } from "./data"
 import { Countdown } from "../components"
-import type { SubmissionData } from "../modules/submission_data"
+import type { SubmissionData } from "../modules/data"
 
 export function Submission(player: Player, data: SubmissionData, { votes }: { votes?: Player[] } = {}) {
 	
@@ -38,7 +37,7 @@ export function Submission(player: Player, data: SubmissionData, { votes }: { vo
 		]
 	);
 }
-export function SubmissionGrid(submissions: VNode[]): VNode {
+export function SubmissionGrid(submissions: Micron.Node[]): Micron.Node {
 	/* This is a nightmare, but so are 2D flexbox layouts */
 	/* And it works! */
 	let aspectRatio = window.innerWidth / (window.innerHeight - 60);
@@ -53,7 +52,7 @@ export function SubmissionGrid(submissions: VNode[]): VNode {
 		}
 	}
 	
-	let rows: VNode[][] = [];
+	let rows: Micron.Node[][] = [];
 	for (let i = 0; i < rowCount; i++)
 		rows.push([]);
 	
@@ -98,7 +97,7 @@ export class ReadyDisplay {
 	stopCountdown() {
 		this.countdown?.stop();
 	}
-	View(): VNode {
+	View(): Micron.Node {
 		return s(this.update, () => h("div#ready-display", [
 			this.countdown?.View(),
 			...this.players.map((player) => {
@@ -108,5 +107,71 @@ export class ReadyDisplay {
 		]));
 	}
 }
+
+
+export class VoteQueue {
+	update = new Signal();
+	votes: number[][] = [];
+	private queue: Array<[number, number]> = [];
+
+	private build(votes: number[][]) {
+
+		function shuffle<T>(array: T[]) {
+			let swapIdx, temp;
+			for (let i = 0; i < array.length - 1; i++) {
+				swapIdx = i + Math.floor(Math.random() * (array.length - i));
+				temp = array[i];
+				array[i] = array[swapIdx];
+				array[swapIdx] = temp;
+			}
+		}
+
+		// shuffle the vote arrays
+		// we *do* need the undefined checks; votes may be sparse!
+		for (const voteArray of votes)
+			if (voteArray)
+				shuffle(voteArray);
+
+		this.queue = [];
+
+		// just picking a really big number that prevents looping forever
+		for (let i = 0; i < 1000; i++) {
+			let anyLeft = false;
+			for (const [forId, voters] of votes.entries()) {
+				if (voters !== undefined && voters.length > i) {
+					this.queue.push([forId, voters[i]]);
+					anyLeft = true;
+				}
+			}
+			if (!anyLeft) break;
+		}
+		this.queue.reverse();
+	}
+	start(votes: number[][]) {
+
+		if (this.queue.length > 0 || this.votes.length > 0) {
+			console.warn("started VoteQueue multiple times");
+		}
+
+		this.build(votes);
+
+		const DELAY_MS = 0.8 * 1000;
+		const interval = setInterval(() => {
+			const nextVote = this.queue.pop();
+			if (nextVote === undefined) {
+				clearInterval(interval);
+			} else {
+				let [forId, playerId] = nextVote;
+				(this.votes[forId] ??= []).push(playerId);
+				this.update.emit();
+				console.warn(forId, playerId);
+			}
+		}, DELAY_MS);
+	}
+	get(id: number): number[] {
+		return this.votes[id] ??= [];
+	}
+}
+
 
 

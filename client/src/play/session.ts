@@ -3,34 +3,60 @@
 
 import { Shared } from "../modules/"
 
+function stripUrlParams() {
+	if (window.location.search.length > 0) {
+		window.history.replaceState({}, document.title, window.location.pathname);
+	}
+}
+
 export default class Session {
 	
 	static readonly MIN_NAME_LEN = 2;
 	static readonly MAX_NAME_LEN = 16;
 	static readonly CODE_LEN = 5;
-	static readonly MAX_SUBMISSION_NAME_LEN = 30;
+	static readonly MAX_SUBMISSION_NAME_LEN = 64;
+	static readonly DEFAULT_ID = -1;
+	static readonly DEFAULT_ICON = 0;
 	
-	static joinCode = new URLSearchParams(window.location.search).get("code") ?? "";
+	/*static joinCode = new URLSearchParams(window.location.search).get("code") ?? "";
 	static playerName = localStorage.getItem("playerName") ?? "";
 	static playerIcon = parseInt(localStorage.getItem("playerIcon") ?? "2");
-	static playerId = parseInt(localStorage.getItem("rejoinId") ?? "-1");
-	
-	//static canManualRejoin = false;
-	//static rejoinState: "unchecked" | "force" | "no" = "unchecked";
-	
+	static playerId = parseInt(localStorage.getItem("rejoinId") ?? "-1");*/
+	static joinCode = "";
+	static playerId = this.DEFAULT_ID;
+	static playerIcon = this.DEFAULT_ICON;
+	static playerName = "";
 	static get playerColor() {
 		return Shared.playerColor(this.playerId);
 	}
 	
-	static storePlayerName() {
-		try { localStorage.setItem("playerName", this.playerName); }
-		catch(e) { console.warn("localStorage error:", e); }
-	}
-	static setPlayerIcon(newIcon: number) {
-		try { localStorage.setItem("playerIcon", (this.playerIcon = newIcon).toString()); }
-		catch(e) { console.warn("localStorage error:", e); }
+	static load() {
+		try {
+			this.playerId = parseInt(localStorage.getItem("rejoinId") ?? this.DEFAULT_ID.toString());
+			this.playerIcon = parseInt(localStorage.getItem("playerIcon") ?? this.DEFAULT_ICON.toString());
+			this.playerName = localStorage.getItem("playerName") ?? "";
+			this.joinCode = new URLSearchParams(window.location.search).get("code") ?? "";
+		} catch(err) {
+			console.error("error retrieving rejoin info:", err)
+		} finally {
+			stripUrlParams();
+		}
 	}
 	
+	static storePlayerName() {
+		try {
+			localStorage.setItem("playerName", this.playerName);
+		} catch(err) {
+			console.warn("localStorage error:", err);
+		}
+	}
+	static setPlayerIcon(newIcon: number) {
+		try {
+			localStorage.setItem("playerIcon", (this.playerIcon = newIcon).toString());
+		} catch(err) {
+			console.warn("localStorage error:", err);
+		}
+	}
 	static storeRejoinInfo(id: number, token: number) {
 		this.playerId = id;
 		try {
@@ -39,7 +65,7 @@ export default class Session {
 			localStorage.setItem("rejoinId", this.playerId.toString());
 			localStorage.setItem("rejoinToken", token.toString());
 		} catch(e) {
-			console.error("Error saving rejoinInfo to localStorage:", e);
+			console.error("error saving rejoinInfo to localStorage:", e);
 		}
 	}
 	static pullRejoinInfo() {
@@ -63,6 +89,7 @@ export default class Session {
 		const rejoinCode = localStorage.getItem("rejoinCode");
 		return this.playerName === rejoinName && this.joinCode === rejoinCode;
 	}
+	
 	static joinUrl(): string | null {
 		if (this.playerName && this.joinCode) {
 			const code = this.joinCode.toUpperCase();
@@ -73,7 +100,7 @@ export default class Session {
 			return null;
 		}
 	}
-	static rejoinUrl(): string | null {
+	private static baseRejoinUrl(): string | null {
 		let name = this.playerName;
 		let icon = this.playerIcon;
 		let code = localStorage.getItem("rejoinCode")?.toUpperCase();
@@ -87,22 +114,23 @@ export default class Session {
 			return null;
 		}
 	}
+	static autoRejoinUrl(): string | null {
+		return this.baseRejoinUrl();
+	}
 	static manualRejoinUrl(): string | null {
-		const baseUrl = this.rejoinUrl();
-		if (!baseUrl) return null;
-		return baseUrl + "&manual=true";
+		const baseUrl = this.baseRejoinUrl();
+		return !baseUrl ? null : `${baseUrl}&manual=true`;
 	}
 }
+
+
+//window.addEventListener("load", stripUrlParams);
+
+Session.load();
 
 /*function store(key: string, value: string) {
 	try { localStorage.setItem("playerName", playerName); }
 	catch(e) { console.log("localStorage error:", e); }
-}
+}*/
 
-/* strip out URL parameters */
-window.addEventListener("load", () => {
-	if(window.location.search.length > 0) {
-		window.history.replaceState({}, document.title, window.location.pathname);
-	}
-});
 

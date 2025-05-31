@@ -1,4 +1,5 @@
 
+import { Builder } from "./builder"
 import {
   patch,
   
@@ -17,7 +18,6 @@ export type {
 };
 
 export type Cleanup = () => void;
-export type Builder<A extends any[] = []> = (...args: A) => VNode;
 
 /* Internal debug functions for dumping state of VNode tree to the console */
 function dump(vnode: VNode, err = false) {
@@ -82,6 +82,7 @@ export default class Ctx {
     Ctx.stack.pop();
     return vnode;
   }
+  
   rebuild(builder: Builder) {
     
     if (this.node === null) {
@@ -92,6 +93,10 @@ export default class Ctx {
     this.clear();
     const oldVnode = this.node;
     const newVnode = this.build(builder);
+    
+    // Special case for nested stateful nodes
+    this.fuse(oldVnode, newVnode);
+    
     try {
       patch(oldVnode, newVnode);
       
@@ -114,12 +119,23 @@ export default class Ctx {
       oldVnode.sel = newVnode.sel;
       oldVnode.text = newVnode.text;
     } catch(e) {
-      console.error("error patching:", newVnode.sel);
+      console.error("error patching:", oldVnode.sel, "->", newVnode.sel);
       console.error(e);
       dumpErr(oldVnode);
       dumpErr(newVnode);
     }
   }
+  private fuse(oldVnode: VNode, newVnode: VNode) {
+    /* This is necessary for nested stateful nodes with no non-stateful nodes separating them */
+    if (this.children && this.children.length === 1) {
+      const child = this.children[0];
+      if (child.node === newVnode) {
+        child.node = oldVnode;
+        child.fuse(oldVnode, newVnode);
+      }
+    }
+  }
+
   clear() {
     if (this.children) {
       for (const child of this.children)

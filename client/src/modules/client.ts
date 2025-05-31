@@ -1,8 +1,7 @@
 
 //import Client from "../modules/client"
 //import Extract, { SendIndex, ReceiveIndex } from "./modules/extract"
-import State from "./micron/state"
-import Signal from "./micron/signal"
+import { State, Signal } from "./micron"
 import { SendIndex, ReceiveIndex } from "./validate"
 
 export enum Connection {
@@ -34,7 +33,7 @@ class Client {
 	
 	// internal state
 	private ws: WebSocket | undefined;
-	private heartbeatTimeout: NodeJS.Timeout | undefined;
+	private heartbeatTimeout: number | undefined;
 	private readonly heartbeatCallback = () => this.send(""); // cached callback
 	
 	//constructor() {}

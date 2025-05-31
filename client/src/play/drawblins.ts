@@ -4,7 +4,7 @@ import {
 	Shared,
 	Val, ReceiveIndex, SendIndex,
 	client,
-	h, s, defer, projector,
+	h, s, Micron
 } from "../modules/"
 
 import Session from "./session"
@@ -12,11 +12,16 @@ import Session from "./session"
 import Drawpad from "./drawpad"
 import {
 	Countdown,
-	IdlePage,
 	VoteButtons
 } from "../components"
+import {
+	Nav,
+	TopBar,
+	BottomBar,
+	IdlePage,
+} from "./components"
 
-//import * as icons from "../assets/icons/"
+import * as icons from "../assets/icons/"
 
 const INC = new ReceiveIndex({
 	//waiting: Val.choice<"start" | "draw" | "vote" | "results" | "score">("start", "draw", "vote", "results", "score"),
@@ -35,11 +40,11 @@ const OUT = new SendIndex({
 	"voteSubmission": { forName: Val.STR },
 });
 
-const page = projector(Starting);
+const page = Micron.projector(Starting);
 
 export function view() {
 	
-	defer(
+	Micron.defer(
 		client.use(INC, OUT),
 		INC.subscribe("drawing", ({ goblinName, secsLeft }) => {
 			page.put(Drawing, secsLeft, goblinName);
@@ -56,44 +61,93 @@ export function view() {
 	
 	return h("div#drawblins.mode", s(page));
 }
+export const test = Micron.test("drawblins")
+	.add(Starting)
+	.add(Drawing, 120, "Test Goblin Name")
+	.add(DoneDrawing)
+	.add(Voting, 15, ["player0", "player1", "player2"])
+	.add(DoneVoting)
+	.add(ShowingResults);
 
 function Starting() {
-	return h("div#start.tab", [
+	return h("div#start.page", [
 		h("h1", "Game Starting!"),
 		h("h2", "Get ready to draw!")
 	]);
 }
 function Drawing(secsLeft: number, goblinName: string) {
 	
+	const nav = new Nav();
 	const drawpad = new Drawpad({
 		onSubmit: (drawing: string) => {
 			OUT.send("drawingSubmission", { drawing });
 		}
 	});
 	
-	return h("div#draw.tab", [
-		h("div#info", [
-			h("div", "Draw a creature named:"),
-			h("div#goblin-name", goblinName),
-			Countdown.Secs(secsLeft, 4, () => drawpad.submit()),
+	function Help() {
+		return h("div#overlay",
+			h("div#help-popup", [
+				h("h2", "Help: Drawing"),
+				h("div", "Use this time to draw a creature!"),
+				h("div", "Draw a creature inspired by the generated name"),
+				h("div", "Keep an eye on the timer at the bottom!"),
+				h("button",
+					{ on: { click: () => nav.clear() } },
+					"Done"
+				)
+			])
+		)
+	}
+	
+	return h("div#draw.scaffold", [
+		TopBar({
+			middle: h("div.title", "Draw!"),
+		}),
+		h("div.primary-flow", [
+			h("div#drawpad-ctr.flow", [
+				h("div#info", [
+					h("b", "Draw a creature named:"),
+					h("div#goblin-name", goblinName),
+				]),
+				drawpad.View(),
+			]),
+			s(nav)
 		]),
-		drawpad.View(),
+		BottomBar({
+			middle: (
+				Countdown.fromSecs(secsLeft, Shared.DRAWING_BUFFER_SECS)
+					.onFinish(() => drawpad.submit())
+					.withPopups()
+					.View()
+			),
+			right: nav.IconBtn(icons.help, Help)
+		}),
 	]);
 }
 function Voting(secsLeft: number, choices: string[]) {
 	
+	const filtered = choices.filter((choice) => choice !== Session.playerName);
 	const submitVote = (forName: string) => {
 		OUT.send("voteSubmission", { forName });
 		page.put(DoneVoting);
 	};
 	
-	return h("div#vote.tab", [
-		h("h1", "Vote!"),
-		Countdown.Secs(secsLeft, 2),
-		...VoteButtons(
-			choices.filter((choice) => choice !== Session.playerName),
-			submitVote
-		),
+	return h("div#vote.scaffold", [
+		TopBar({
+			middle: h("div.title", "Vote!"),
+		}),
+		h("div.primary-page.gapped", [
+			
+			h("div", "Vote for your favorite submission!"),
+			...VoteButtons(filtered, submitVote),
+		]),
+		BottomBar({
+			middle: (
+				Countdown.fromSecs(secsLeft, Shared.VOTING_BUFFER_SECS)
+					.withPopups()
+					.View()
+			)
+		}),
 	]);
 }
 function DoneDrawing() {

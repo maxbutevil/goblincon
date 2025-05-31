@@ -1,11 +1,13 @@
 
 
-import Signal from "./micron/signal"
+import { Signal } from "./micron"
 
 type ValidatorMethod<T> = (value: any) => value is T; //((value: any) => T);
 type ValidatorMap<T> = { [key in keyof T]: Validator<T[key]> };
 export type Validator<T> = ValidatorMethod<T> | ValidatorMap<T>;
 export type Validated<T> = T extends Validator<infer X> ? X : never;
+
+
 
 export default class Val {
 	

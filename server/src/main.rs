@@ -68,12 +68,15 @@ async fn main() {
 	let page_router = Router::new()
 		.route_service("/host", ServeFile::new(format!("{dist_path}/host.html")))
 		.route_service("/play", ServeFile::new(format!("{dist_path}/play.html")));
+	let social_router = Router::new()
+		.route("/discord", get(|| async { Redirect::to("https://discord.gg/GY7Xy6UKea") }));
 		//.route_service("/testing", ServeFile::new(format!("{dist_path}/testing.html")));
 	let static_service = ServeDir::new(format!("{dist_path}/static"))
 		.append_index_html_on_directories(false);
 	
 	let router = Router::new()
 		.nest("/ws", ws_router)
+		.nest("/social", social_router)
 		.merge(page_router)
 		.nest_service("/static", static_service)
 		.route_service("/favicon.ico", ServeFile::new(format!("{dist_path}/favicon.ico")))
@@ -151,8 +154,8 @@ async fn ws_upgrade_player_join(
 	ws: WebSocketUpgrade
 ) -> Result<Response, StatusCode>
 {
-	let Some(room_id) = RoomId::parse(&query.code) else { //app.find_room(&query.code) {
-		tracing::debug!("Room Not Found [{}]", query.code);
+	let Some(room_id) = RoomId::parse(&query.code) else {
+		tracing::debug!("Invalid Room Code [{}]", query.code);
 		return Err(StatusCode::BAD_REQUEST);
 	};
 	
@@ -167,7 +170,7 @@ async fn ws_upgrade_player_reconnect(
 ) -> Result<Response, StatusCode>
 {
 	let Some(room_id) = RoomId::parse(&query.code) else {
-		tracing::debug!("Room Not Found [{}]", query.code);
+		tracing::debug!("Invalid Room Code [{}]", query.code);
 		return Err(StatusCode::BAD_REQUEST);
 	};
 	

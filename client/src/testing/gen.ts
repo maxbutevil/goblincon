@@ -1,6 +1,6 @@
 
-
-import "../host/host.scss"
+import "../styles/index.scss"
+//import "../host/host.scss"
 //import "./host/host.scss"
 //import { exit as exitIcon } from "./assets/icons/"
 import "../assets/icons"
@@ -9,15 +9,15 @@ import {
 	Micron,
 	Signal, State,
 	h, s, c,
-	projector, defer, VNode, mount,
-	PlayerIcons
+	projector, defer, Node, mount,
+	playerIcons
 } from "../modules"
 
 import * as icons from "../assets/icons"
 import * as assets from "../assets/testing"
 import * as PlayerIcon from "../modules/player_icons"
 
-import { Player } from "../host/room";
+//import { Player } from "../host/room";
 
 import { Countdown, Tray, IconBtn, Autoscroll, Logo } from "../components"
 import Drawpad from "../play/drawpad"
@@ -47,11 +47,14 @@ function generateTransparent(icon: number): Canvas {
 function generateBackground() {
 	
 	const icons = [];
-	for (let i = 0; i < PlayerIcons.count(); i++) {
+	for (let i = 0; i < playerIcons.count(); i++) {
 		icons.push(generateTransparent(i).element);
 	}
 	
-	const canvas = Canvas.create(1024, 1024);
+	const scale = 0.75;
+	const canvas = Canvas.create(1024 * scale, 1024 * scale);
+	canvas.scale(scale);
+	
 	for (let i = 0; i < 4; i++) {
 		canvas.putImage(icons[i], i * 256, 32 + ((i % 2 == 0) ? 0 : 64));
 	}
@@ -68,8 +71,9 @@ function generateBackground() {
 	const imageData = canvas.getImageData();
 	const data = imageData.data;
 	for (let i = 0; i < data.length; i += 4) {
-		data[i+3] *= 0.05;
+		data[i+3] *= 0.036;
 	}
+	
 	canvas.putImageData(imageData);
 	
 	return canvas.element.toDataURL();

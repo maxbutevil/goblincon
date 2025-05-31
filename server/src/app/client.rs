@@ -298,7 +298,18 @@ impl ClientIndex {
 			return Err(());
 		}
 		
-		let name_taken = self.players.iter().any(|(_, player)| name == player.name);
+		if name.len() < MIN_PLAYER_NAME_LEN {
+			Self::reject_socket(socket, cf::NAME_TOO_LONG).await;
+			return Err(());
+		}
+		if name.len() > MAX_PLAYER_NAME_LEN {
+			Self::reject_socket(socket, cf::NAME_TOO_SHORT).await;
+			return Err(());
+		}
+		
+		let name_taken = self.players
+			.iter()
+			.any(|(_, player)| name == player.name);
 		if name_taken {
 			Self::reject_socket(socket, cf::NAME_TAKEN).await;
 			return Err(());

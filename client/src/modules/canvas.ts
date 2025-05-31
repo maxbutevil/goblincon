@@ -205,13 +205,10 @@ export default class Canvas {
 		this.wipeStyle(Canvas.rgbaToStyle(r, g, b, a));
 	}
 	wipeStyle(style: string): void {
-		
-		let fillStyle = this.getFillStyle();
-		
+		//let fillStyle = this.getFillStyle();
 		this.setFillStyle(style);
 		this.fillRect(0, 0, this.sourceWidth, this.sourceHeight);
 		// Maybe reset fillStyle to what it was before
-		
 	}
 	
 	// Shapes
@@ -332,7 +329,5 @@ export class Path {
 		this.pointData.push(x);
 		this.pointData.push(y);
 	}
-	
-	
 }
 

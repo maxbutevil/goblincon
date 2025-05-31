@@ -6,45 +6,64 @@
 
 
 @function is-length($val) {
-	@return $val == "0" or (meta.type-of($val) == "number" and list.index("cm" "mm" "Q" "in" "pc" "pt" "px" "em" "ex" "ch" "rem" "vw" "vh" "vmin" "vmax", math.unit($val)) != null);
+	@return meta.type-of($val) == "number";
 }
 @mixin flex($flow: column nowrap, $args...) {
+	
+	$default-justify-content: flex-start;
+	$default-align-items: stretch;
+	
 	display: flex;
 	flex-flow: $flow;
 	
 	@if list.length($args) == 0 {
-		justify-content: flex-start;
-		align-items: center;
-	}
-	@else if list.length($args) == 1 {
-		align-items: center;
+		justify-content: $default-justify-content;
+		align-items: $default-align-items;
+	} @else if list.length($args) == 1 {
+		align-items: $default-align-items;
 		@if is-length(list.nth($args, 1)) {
-			justify-content: flex-start;
+			justify-content: $default-justify-content;
 			gap: list.nth($args, 1);
 		} @else {
 			justify-content: list.nth($args, 1);
 		}
-	}
-	@else if list.length($args) == 2 {
+	} @else if list.length($args) == 2 {
 		justify-content: list.nth($args, 1);
 		@if is-length(list.nth($args, 2)) {
-			align-items: center;
+			align-items: $default-align-items;
 			gap: list.nth($args, 2);
 		} @else {
 			align-items: list.nth($args, 2);
 		}
-	}
-	@else {
+	} @else {
 		justify-content: list.nth($args, 1);
 		align-items: list.nth($args, 2);
 		gap: list.nth($args, 3);
 	}
 }
 @mixin row($args...) {
-	@include flex(row nowrap, $args...);
+	@include flex(row, $args...);
+}
+@mixin row-wrap($args...) {
+	@include flex(row wrap, $args...);
+}
+@mixin row-reverse($args...) {
+	@include flex(row-reverse, $args...);
+}
+@mixin row-reverse-wrap($args...) {
+	@include flex(row-reverse wrap, $args...);
 }
 @mixin column($args...) {
 	@include flex(column nowrap, $args...);
+}
+@mixin column-wrap($args...) {
+	@include flex(column wrap, $args...);
+}
+@mixin column-reverse($args...) {
+	@include flex(column-reverse, $args...);
+}
+@mixin column-reverse-wrap($args...) {
+	@include flex(column-reverse wrap, $args...);
 }
 
 @mixin vflow($gap: 0.3em) {
@@ -59,12 +78,6 @@
 	padding: 0.6em;
 	
 	font-size: 1em;
-	
-	@include theme.panel;
-	
-	/*background-color: #eeeee0;
-	border: 3px solid black;
-	border-radius: 8px;*/
 }
 
 .vflow {
@@ -74,13 +87,13 @@
 	flex: auto;
 	@include vflow;
 }
-.tab {
+/*.tab {
 	flex: auto;
 	@include vflow;
 	margin: 0.5em;
 	font-size: 1.2em;
-}
-.popup {
+}*/
+/*.popup {
 	@include popup;
-}
+}*/
 

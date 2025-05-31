@@ -8,7 +8,7 @@
 }
 
 .player-icon {
-	$size: 1.5em;
+	$size: 1.6em;
 	width: $size;
 	height: $size;
 	flex: 0 0 $size;
@@ -18,9 +18,23 @@
 	}
 }
 .player-view {
-	@include row(0.3em);
-	font-size: 1.3em;
+	@include row(center, center, 8px);
+	max-width: 100%;
+	width: min-content;
+	min-width: 3ch;
+	font-size: 1.1em;
 	text-wrap: nowrap;
+	.name {
+		//min-width: 0; // maybe necessary? not sure
+		flex: 1 1 auto;
+		text-align: start;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+	.score {
+		font-size: 1.16em;
+	}
 }
 
 .multi-btn {
@@ -95,12 +109,10 @@
 	flex: 0 0 auto;
 	position: relative;
 	@include column(space-between, center);
-	@include theme.panel(0.2em);
+	//@include theme.panel(0.2em);
 	padding: 0.4em;
 	background-color: #eee;
 	//height: auto;
-	
-	
 	
 	.name {
 		font-size: 1.3em;
@@ -145,6 +157,7 @@
 			}
 		}
 	}
-	
 }
+
+
 

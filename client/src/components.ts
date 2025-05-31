@@ -1,15 +1,14 @@
 
 import {
 	State,
-	h, s, ctx,
-	Shared, PlayerIcons,
-	VNode, VNodeChildren, VNodeChildElement,
+	h, s, Micron,
+	Shared, playerIcons,
 } from "./modules/"
 
 export function Logo() {
 	const icons = [];
-	for (let i = 0; i < PlayerIcons.count(); i++) {
-		icons.push(PlayerIcons.View(i, Shared.playerColor(i)));
+	for (let i = 0; i < playerIcons.count(); i++) {
+		icons.push(playerIcons.View(i, Shared.playerColor(i)));
 	}
 	
 	return h("div#logo", [
@@ -19,19 +18,19 @@ export function Logo() {
 }
 
 export function IdlePage(header: string, ...subheaders: string[]) {
-	return h("div#idle.tab", [
+	return h("div#idle.page", [
 		h("h1", header),
 		...subheaders.map((s) => h("h2", s)),
 	]);
 }
 
-export function VoteButtons(choices: string[], submit: (choice: string) => void): VNode[] {
+export function VoteButtons(choices: string[], submit: (choice: string) => void): Micron.Node[] {
 	return choices.map(choice => {
 		return h("button", { on: { click: () => submit(choice) } }, choice);
 	});
 }
 
-export function IconBtn(iconSrc: string, onClick: () => any, disabled = false): VNode {
+export function IconBtn(iconSrc: string, onClick: () => any, disabled = false): Micron.Node {
 	return h("button.icon-btn",
 		{
 			on: { click: onClick },
@@ -41,14 +40,14 @@ export function IconBtn(iconSrc: string, onClick: () => any, disabled = false): 
 	);
 }
 
-export function Tray(...children: VNodeChildElement[]) {
+export function Tray(children: Micron.Children) {
 	return h("div#tray", children);
 }
 
-/*export function mountedBtn(iconSrc: string, onClick: () => any): VNode {
+/*export function mountedBtn(iconSrc: string, onClick: () => any): Node {
 	return h("div#mounted-btns", iconBtn(iconSrc, onClick));
 }
-export function mountedBtns(btnArgs: Array<[string, () => any]>): VNode {
+export function mountedBtns(btnArgs: Array<[string, () => any]>): Node {
 	const btns = btnArgs.map(data => iconBtn(...data));
 	return h("div#mounted-btns", btns);
 }*/
@@ -58,9 +57,139 @@ export function mountedBtns(btnArgs: Array<[string, () => any]>): VNode {
 
 export class Countdown {
 	
+	private remainingSecs = new Micron.State(NaN);
+	//private popupSecs = new Micron.State(NaN);
+	private callbacks: Array<{ time: number, callback: () => any }> = [];
+	private interval: number;
+	private popupThresholds?: number[];
+
+	constructor(endTime: number) {
+		const tick = () => {
+			let delta = endTime - Date.now() - 50;
+			let newSeconds = Math.ceil(delta / 1000);
+
+			if (newSeconds <= 0) {
+				newSeconds = 0;
+				clearInterval(this.interval);
+			}
+
+			for (let i = this.callbacks.length - 1; i >= 0; i--) {
+				const { time, callback } = this.callbacks[i];
+				if (newSeconds <= time) {
+					callback();
+					this.callbacks.splice(i, 1);
+				}
+			}
+
+			this.remainingSecs.set(newSeconds);
+		};
+
+		//this.popupThresholds = Countdown.calculatePopupThresholds(endTime);
+		this.interval = setInterval(tick, 50);
+		Micron.tryDefer(() => clearInterval(this.interval));
+		tick();
+	}
+	private static calculatePopupThresholds(secsLeft: number) {
+		secsLeft += 0.5;
+		if (secsLeft >= 180) return [10, 30, 60, 120];
+		if (secsLeft >= 90) return [10, 30, 60];
+		if (secsLeft >= 45) return [10, 30];
+		if (secsLeft >= 12) return [10];
+		return [];
+	}
+	private static calculateEnd(secsLeft: number, secsBuffer = 0): number {
+		return Date.now() + 1000 * (secsLeft - secsBuffer);
+	}
+	static fromSecs(secsLeft: number, secsBuffer = 0): Countdown {
+		return new Countdown(Countdown.calculateEnd(secsLeft, secsBuffer));
+	}
+	static Simple(endTime: number, onFinish?: () => void): Micron.Node {
+		const cd = new Countdown(endTime);
+		if (onFinish) cd.onFinish(onFinish);
+		return cd.View();
+	}
+	
+	static Secs(secsLeft: number, secsBuffer = 0, onFinish?: () => void): Micron.Node {
+		const cd = this.fromSecs(secsLeft, secsBuffer);
+		if (onFinish) cd.onFinish(onFinish);
+		return cd.View();
+	}
+	
+	stop() {
+		this.remainingSecs.set(-1);
+		clearInterval(this.interval);
+	}
+	withPopups(): Countdown {
+		this.popupThresholds = Countdown.calculatePopupThresholds(this.remainingSecs.get());
+		return this;
+	}
+	onThreshold(time: number, callback: () => any): Countdown {
+		this.callbacks.push({ time, callback });
+		return this;
+	}
+	onFinish(callback: () => any): Countdown {
+		return this.onThreshold(0, callback);
+	}
+
+	private getPopupValue(curr: number): number {
+
+		if (this.popupThresholds === undefined || curr <= 0) {
+			return NaN;
+		}
+		if (curr >= 1 && curr <= 3)
+			return curr;
+
+		for (const threshold of this.popupThresholds)
+			if (curr <= threshold)
+				return threshold;
+
+		return NaN;
+	}
+	private Popup(curr: number) {
+		const value = this.getPopupValue(curr);
+		const final = value <= 3;
+		const key = final ? "final" : value;
+
+		if (isNaN(value)) {
+			return h("!");
+		} else {
+			return h("div.countdown-popup",
+				{ key, class: { final } },
+				value //`${value}${final ? "!" : ""}`
+			);
+		}
+	}
+	View(): Micron.Node {
+
+		/*const popup = s(this.popupSecs, (curr) => {
+			if (isNaN(curr)) {
+				return h("!");
+			} else {
+				return h("div.countdown-popup", { key: curr }, curr);
+			}
+		});*/
+
+		return s(this.remainingSecs, (curr) => {
+
+			if (curr < 0) {
+				return h("div.countdown", "");
+			} else {
+				const color = "black";
+				//const color = (curr >= 1 && curr <= 3) ? "red" : "black";
+				return h("div.countdown", { style: { color } }, [
+					curr.toString(),
+					this.Popup(curr)
+				]);
+			}
+		});
+	}
+}
+
+/*export class Countdown {
+	
 	private secondsLeft = new State(NaN);
 	private callbacks: Array<{ time: number, callback: () => any }> = [];
-	private interval: NodeJS.Timeout;
+	private interval: number;
 	
 	constructor(endTime: number) {
 		
@@ -87,14 +216,15 @@ export class Countdown {
 		this.interval = setInterval(tick, 200);
 		tick();
 		
-		ctx()?.defer(() => clearInterval(this.interval));
+		
+		Micron.tryDefer(() => clearInterval(this.interval));
 	}
-	static Simple(endTime: number, onFinish?: () => void): VNode {
+	static Simple(endTime: number, onFinish?: () => void): Micron.Node {
 		const cd = new Countdown(endTime);
 		if (onFinish) cd.onFinish(onFinish);
 		return cd.View();
 	}
-	static Secs(secsLeft: number, secsBuffer = 0, onFinish?: () => void): VNode {
+	static Secs(secsLeft: number, secsBuffer = 0, onFinish?: () => void): Micron.Node {
 		const cd = this.fromSecs(secsLeft, secsBuffer);
 		if (onFinish) cd.onFinish(onFinish);
 		return cd.View();
@@ -117,7 +247,7 @@ export class Countdown {
 	onFinish(callback: () => any): Countdown {
 		return this.onThreshold(0, callback);
 	}
-	View(): VNode {
+	View(): Micron.Node {
 		return s(this.secondsLeft, (curr) => {
 			if (curr < 0) {
 				return h("div.countdown", "0");
@@ -127,7 +257,7 @@ export class Countdown {
 			}
 		});
 	}
-}
+}*/
 
 
 
@@ -139,7 +269,7 @@ type AutoscrollOptions = {
 };
 export class Autoscroll {
 	
-	interval?: NodeJS.Timeout;
+	interval?: number;
 	direction = 1;
 	elm?: HTMLElement;
 	
@@ -154,7 +284,7 @@ export class Autoscroll {
 		this.startMs = options.startMs ?? 600;
 		this.restartMs = options.restartMs;
 		
-		ctx()?.defer(() => clearInterval(this.interval));
+		Micron.tryDefer(() => clearInterval(this.interval));
 	}
 	private tick() {
 		if (!this.elm || !document.contains(this.elm) || this.elm.clientHeight >= this.elm.scrollHeight) {

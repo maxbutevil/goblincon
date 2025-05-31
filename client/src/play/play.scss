@@ -1,10 +1,207 @@
 
 @use "../styles/index.scss" as *;
 
+%bar {
+	
+	@include row(6px);
+	padding: 6px;
+	height: 8vh;
+	max-height: 8vh;
+	
+	.left {
+		flex: 1 0 0;
+		@include row(flex-start, stretch, 6px);
+	}
+	.middle {
+		@include row(center, center, 6px);
+	}
+	.right {
+		flex: 1 0 0;
+		@include row(flex-end, stretch, 6px);
+	}
+	.player-icon {
+		max-height: 100%;
+	}
+}
+#top-bar {
+	@extend %bar;
+	
+	padding: 6px;
+	
+	background-color: primary(3);
+	border-bottom: $border-thick;
+	font-size: 1.6rem;
+}
+#bottom-bar {
+	@extend %bar;
+	
+	border-top: $border-thick;
+  background-color: primary(3);
+	
+	.btn {
+		aspect-ratio: 1;
+		height: 100%;
+		
+		@include row(center, stretch);
+		padding: 1px;
+		
+		@include border-thin(6px);
+		background-color: primary(2);
+		transition: background-color 0.1s, transform 0.1s;
+		
+		&.primary { aspect-ratio: 2; }
+		&:hover {
+			background-color: primary(1);
+		}
+		&.selected {
+			background-color: primary(1);
+			//aspect-ratio: 7 / 6;
+			transform: scale(1.1);
+		}
+		
+	}
+	
+	.countdown {
+		position: relative;
+		min-width: 3.6ch;
+		padding: 2px;
+		font-size: 1.7rem;
+		text-align: center;
+		
+		@include border-thin(6px);
+		background-color: primary(2);
+		
+		.countdown-popup {
+			position: absolute;
+			left: 50%;
+			min-width: 2ch;
+			height: 80%;
+			bottom: 16px;
+			
+			text-align: center;
+			
+			padding: 4px;
+			border-radius: 4px;
+			
+			
+			font-size: 75%;
+			
+			pointer-events: none;
+			
+
+			&:not(.final) {
+				color: white;
+				background-color: black;
+				animation: tip-short 1s;
+				animation-fill-mode: forwards;
+			}
+			&.final {
+				color: black;
+				background-color: red;
+				animation: tip-long 3s;
+				animation-fill-mode: forwards;
+			}
+			
+			@mixin out {
+				opacity: 0%;
+				transform: translate(-50%, -75%);
+			}
+			@mixin in {
+				opacity: 100%;
+				transform: translate(-50%, -125%);
+			}
+			@keyframes tip-short {
+				0% { @include out; }
+				6% { @include in; }
+				94% { @include in; }
+				100% { @include out; }
+			}
+			@keyframes tip-long {
+				0% { @include out; }
+				2% { @include in; }
+				98% { @include in; }
+				100% { @include out; }
+			}
+		}
+	}
+}
+
+#overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+	
+	@include column(center, center);
+	padding: 6px;
+	
+	background-color: rgba(0, 0, 0, 0.6);
+}
+%popup {
+	//margin: 8px;
+	padding: 12px;
+	max-width: 100%;
+	@include column(center, center, 12px);
+	@include border-thick(8px);
+	background-color: primary(2);
+	
+	animation: swoop-in 0.1s;
+}
+#about-popup {
+	@extend %popup;
+}
 #help-popup {
+	@extend %popup;
+	.small {
+		font-size: 0.8em;
+	}
+}
+#name-popup {
+	@extend %popup;
+}
+#bachelor-popup {
+	@extend %popup;
+	
+	#bachelor-ctr {
+		@include column(center, stretch);
+		@include border-thin(6px);
+		padding-top: 2px;
+		max-width: 100%;
+		
+		background-color: primary(1);
+		#bachelor-name {
+			font-size: 1.6rem;
+		}
+		#bachelor-img {
+			//flex: 1;
+			aspect-ratio: 1;
+			min-width: 0;
+			min-height: 0;
+			//max-height: 50px;
+			//min-height: 0;
+			//
+			//max-width: 100%;
+			max-height: 60vh;
+			
+		}
+	}
+	
+}
+
+
+@keyframes swoop-in {
+	from {
+		transform: translateY(10px);
+		opacity: 0%;
+	}
+	to {}
+}
+
+
+/*#help-popup {
 	//@include popup;
 	justify-content: space-between;
-	/*height: 100%;*/
 	
 	.section { margin-top: 0.6em; }
 	.small { font-size: 0.86em; }
@@ -13,31 +210,42 @@
 	//@include popup;
 	max-width: 86vw;
 	background-color: #eee;
-}
+}*/
 /*#name-popup {
 	//@include popup;
 }*/
 
 /* Landing */
 %menu-tab {
-	justify-content: space-between;
+	//justify-content: space-between;
+	
 	button {
-		margin-top: 0.4em;
+		//margin-top: 0.4em;
 	}
 }
 #landing {
-	@extend %menu-tab;
 	input {
 		margin-top: 2px;
-		width: 9em;
+		width: 18ch;
+	}
+	#join-flow {
+		margin: 16px;
+		font-size: 1.2rem;
+		gap: 10px;
+	}
+	#join-btn {
+		margin-top: 12px;
 	}
 	#code-input {
 		text-transform: uppercase;
 	}
+	#status {
+		max-width: 36ch;
+	}
 }
 #lobby {
 	@extend %menu-tab;
-	.icon-select {
+	#icon-select {
 		@include flex(row wrap, center);
 		font-size: 1.6em;
 		margin-bottom: 1em;
@@ -50,55 +258,97 @@
 /* Drawing */
 #draw, #draw-bachelor, #draw-suitor {
 	
-	@include flex(row wrap, center, center, 0.6em);
-	align-content: center;
-	margin: auto;
+	@include column;
+	//@include flex(row wrap, center, center, 0.6em);
+	//align-content: center;
+	//margin: auto;
+	
+	
+}
+#drawpad-ctr {
+	//width: 100%;
+	
+	//max-width: 100;
+	min-width: content;
+	width: 100%;
+	max-width: 100%;
+	max-height: 100%;
+	
+	flex: 1 1 0;
+	//min-width: min-content;
+	
+  @include row-wrap(center, center);
+	align-content: space-evenly;
+	padding: 8px;
+	gap: 8px;
+	
+	overflow: scroll;
+	
+	#bachelor-theme {
+		flex: 0.5 1 0;
+		min-width: min-content;
+		font-size: 1.1em;
+		/*text-align: center;
+		font-size: 1.6em;
+		//*/
+	}
 	
 	#info {
+		font-size: 1.1rem;
+		flex: 1 0.5 0;
+		max-width: max-content;
+		
 		#goblin-name {
 			text-align: center;
-			font-size: 1.6em;
+			font-size: 1.1em;
 		}
 	}
+	
+	
 }
-
-/* Drawpad */
 #drawpad {
 	
-	$border-weight: 4px solid;
-	$border-style: $border-weight black;
-	
-	width: min(94vw, 77vh);
-	
+	//flex: 1 1 auto;
+  //max-height: 96%;
+  
+  max-width: 100%;
+  //width: 81vh;
+  //width: 75vh;
+	width: 69vh;
+	//min-width: 0;
+  
 	@include column(center, stretch);
 	
-	border: $border-style;
+	@include border-thick(0px);
 	touch-action: pinch-zoom;
 	
 	#canvas {
 		aspect-ratio: 1;
-		width: 100%;
-		height: auto;
 		background-color: white;
-		border-top: $border-style;
-		border-bottom: $border-style;
+		border-top: $border-thick;
+		border-bottom: $border-thick;
 	}
 	
 	%btn-row {
 		
-		//aspect-ratio: 12 / 1;
-		
 		@include flex(row nowrap);
 		
 		button {
+			
 			flex: 1;
 			border: 0;
 			border-radius: 0;
 			margin: 0;
 			padding: 0;
 			height: 100%;
+			
+			// this is necessary to make the parent aspect-ratio work properly when the button has a child
+			@include row(center, center);
+			
 			img {
 				width: 100%;
+				min-height: 0;
+				//height: 0;
 				aspect-ratio: 1;
 			}
 		}
@@ -109,17 +359,23 @@
 		aspect-ratio: 12 / 1;
 		
 		button {
-			border: $border-weight;
+			height: 100%;
+			min-height: 0;
+			border: 4px solid;
 		}
 	}
 	
 	#action-btn-row {
 		@extend %btn-row;
 		aspect-ratio: 10 / 1;
+    background-color: primary(1);
 		
 		.spacer {
 			flex: 2;
 		}
+    /*button {
+      background-color: primary(2);
+    }*/
 		#submit-btn {
 			flex: 5;
 			
@@ -134,3 +390,5 @@
 		}
 	}
 }
+
+

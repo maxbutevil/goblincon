@@ -1,0 +1,362 @@
+
+//@use "../styles/index.scss" as *;
+
+@use "../styles/theme.scss" as *;
+@use "../styles/flow.scss" as *;
+
+* {
+  margin: 0;
+  box-sizing: border-box;
+	font-family: Arial;
+	touch-action: manipulation;
+}
+
+button, input {
+	border: 3px solid #321;
+	border-radius: 6px;
+	font-size: 1.0em;
+	color: black;
+}
+
+:root, body {
+  height: 100%;
+}
+#app {
+  width: 100%;
+  height: 100%;
+  @include column;
+  background-color: primary(2);
+}
+.page {
+  flex: 1 1 0;
+  @include column;
+  text-align: center;
+}
+.flow {
+  flex: 1 1 0;
+  @include column(flex-start, center);
+  text-align: center;
+}
+.mount {
+	position: relative;
+}
+.padded {
+  @include column;
+  padding: 18px;
+}
+.scrolling {
+  flex: 1 1 0;
+	overflow: auto;
+}
+.sectioned {
+	@include column(12px);
+}
+.section {
+	@include column(4px);
+}
+
+%bar {
+	
+	@include row(6px);
+	padding: 6px;
+	
+	.left {
+		flex: 1 0 0;
+		@include row(flex-start, stretch, 6px);
+	}
+	.middle {
+		@include column(center, center);
+	}
+	.right {
+		flex: 1 0 0;
+		@include row(flex-end, stretch, 6px);
+	}
+	.player-icon {
+		max-height: 100%;
+	}
+}
+#top-bar {
+	@extend %bar;
+	
+	height: 8%;
+	padding: 6px;
+	
+	background-color: primary(3);
+	border-bottom: $border-thick;
+	font-size: 1.6rem;
+}
+#bottom-bar {
+	@extend %bar;
+  
+  height: 8%;
+  
+	border-top: $border-thick;
+  background-color: primary(3);
+	
+	.btn {
+		height: 100%;
+		aspect-ratio: 1;
+		
+		@include row(center, stretch);
+		padding: 1px;
+		
+		@include border-thin(6px);
+		background-color: primary(2);
+		transition: background-color 0.1s, transform 0.1s;
+		
+		&.primary { aspect-ratio: 2; }
+		&:hover {
+			background-color: primary(1);
+		}
+		&.selected {
+			background-color: primary(1);
+			//aspect-ratio: 7 / 6;
+			transform: scale(1.1);
+		}
+		img {
+			width: 100%;
+			height: 100%;
+		}
+	}
+	
+	
+	.countdown {
+		position: relative;
+		width: 3ch;
+		padding: 2px;
+		font-size: 2rem;
+		text-align: center;
+		
+		@include border-thin(6px);
+		background-color: primary(3);
+		
+		.countdown-popup {
+			position: absolute;
+			left: 50%;
+			width: 80%;
+			height: 80%;
+			bottom: 16px;
+			
+			text-align: center;
+			
+			padding: 4px;
+			border-radius: 4px;
+			
+			
+			font-size: 75%;
+			
+			pointer-events: none;
+			
+
+			&:not(.final) {
+				color: white;
+				background-color: black;
+				animation: tip-short 1s;
+				animation-fill-mode: forwards;
+			}
+			&.final {
+				color: black;
+				background-color: red;
+				animation: tip-long 3s;
+				animation-fill-mode: forwards;
+			}
+			
+			@mixin out {
+				opacity: 0%;
+				transform: translate(-50%, -75%);
+			}
+			@mixin in {
+				opacity: 100%;
+				transform: translate(-50%, -125%);
+			}
+			@keyframes tip-short {
+				0% { @include out; }
+				6% { @include in; }
+				94% { @include in; }
+				100% { @include out; }
+			}
+			@keyframes tip-long {
+				0% { @include out; }
+				2% { @include in; }
+				98% { @include in; }
+				100% { @include out; }
+			}
+		}
+	}
+}
+
+/*.tip-anchor {
+	position: relative;
+}
+.tip-arrow {
+	
+	//font-size: 1.2rem;
+	//background-color: black;
+}
+.tip {
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	
+	width: 200%;
+	
+	text-align: center;
+	
+	padding: 4px;
+	font-size: 1rem;
+	background-color: primary(1);
+}*/
+
+
+.timer {
+	position: relative;
+}
+
+
+#drawpad-ctr {
+  @include column(space-evenly, center);
+}
+#drawpad {
+	
+  //max-height: 96%;
+  
+  max-width: 96%;
+  //width: 81vh;
+  //width: 75vh;
+	width: 69vh;
+  
+	@include column(center, stretch);
+	
+	@include border-thick(0px);
+	touch-action: pinch-zoom;
+	
+	#canvas {
+		aspect-ratio: 1;
+		background-color: white;
+		border-top: $border-thick;
+		border-bottom: $border-thick;
+	}
+	
+	%btn-row {
+		
+		@include flex(row nowrap);
+		
+		button {
+			flex: 1;
+			border: 0;
+			border-radius: 0;
+			margin: 0;
+			padding: 0;
+			height: 100%;
+			img {
+				width: 100%;
+				aspect-ratio: 1;
+			}
+		}
+	}
+		
+	#color-btn-row {
+		@extend %btn-row;
+		aspect-ratio: 12 / 1;
+		
+		button {
+			border: 4px solid;
+		}
+	}
+	
+	#action-btn-row {
+		@extend %btn-row;
+		aspect-ratio: 10 / 1;
+    background-color: primary(1);
+		
+		.spacer {
+			flex: 2;
+		}
+    /*button {
+      background-color: primary(2);
+    }*/
+		#submit-btn {
+			flex: 5;
+			
+			font-size: 1.0em;
+			white-space: nowrap;
+			background-color: #4A5;
+			transition: background-color 0.8s;
+			
+			&:hover:enabled { filter: brightness(1.06); }
+			&:active:enabled { background-color: #090; }
+			&:disabled { background-color: #070; }
+		}
+	}
+}
+
+#overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+	
+	@include column(center, center);
+	
+	background-color: rgba(0, 0, 0, 0.6);
+}
+%popup {
+	
+	margin: 4px;
+	padding: 12px;
+	@include column(center, center, 8px);
+	@include border-thick(8px);
+	background-color: primary(2);
+	
+	animation: swoop-in 0.06s;
+}
+#name-popup {
+	@extend %popup;
+}
+#bachelor-popup {
+	@extend %popup;
+	
+	//width: auto;
+	//height: auto;
+	
+	@include column(center, center, 8px);
+	
+	animation: swoop-in 0.1s;
+	
+	/*#bachelor-ctr {
+		@include column;
+		flex: 1 1 0;
+		width: 100%;
+		
+		//aspect-ratio: 1;
+		//max-width: 100%;
+	}*/
+	#bachelor-ctr {
+		@include border-thin(6px);
+		padding-top: 2px;
+		
+		background-color: primary(1);
+		#bachelor-name {
+			font-size: 1.6rem;
+		}
+		#bachelor-img {
+			max-width: 100%;
+			//max-height: 71vh;
+			max-height: 61vh;
+		}
+	}
+	
+}
+#help-popup {
+	@extend %popup;
+}
+
+@keyframes swoop-in {
+	from {
+		transform: translateY(10px);
+		opacity: 0%;
+	}
+	to {}
+}

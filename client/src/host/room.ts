@@ -1,36 +1,88 @@
 
 import {
 	Signal, //State,
-	Val, ReceiveIndex, SendIndex,
+	/*Val, ReceiveIndex, SendIndex,
 	client,
 	Shared,
-	PlayerIcons,
-	h, defer,
-	VNode
+	playerIcons,
+	h,*/
+	Micron
 } from "../modules/"
+import { 
+	Player,
+	PlayerMap
+} from "./data"
 
-
-export const playerJoined = new Signal<[Player]>();
-export const playerLeft = new Signal<[Player]>()
-export const playerIconChanged = new Signal<[Player]>();
-
-export let joinCode = "";
-//export let players: Player[] = [];
-export let leaderId = 255;
-export let playerMap: Map<number, Player> = new Map();
-export let recap: undefined | ((close: () => void) => VNode);
-
-export function setJoinCode(code: string) {
-	joinCode = code;
+type Recap = Micron.Builder<[() => void]>;
+export default class Room {
+	static joinCode = "";
+	static leaderId = 255;
+	static recap: Recap | undefined;
+	static readonly players = new PlayerMap();
+	
+	static readonly playerJoined = new Signal<[Player]>();
+	static readonly playerLeft = new Signal<[Player]>()
+	static readonly playerIconChanged = new Signal<[Player]>();
+	
+	static get joinLink(): string {
+		return `https://${window.location.host}/play?code=${Room.joinCode}`;
+	}
+	
+	static reset() {
+		this.joinCode = "";
+		this.leaderId = 255;
+		this.players.clear();
+	}
+	static player(id: number): Player | undefined {
+		return this.players.get(id);
+	}
+	static setJoinCode(newJoinCode: string) {
+		this.joinCode = newJoinCode;
+	}
+	static setLeaderId(newLeaderId: number) {
+		this.leaderId = newLeaderId;
+	}
+	static setRecap(newRecap: Recap) {
+		this.recap = newRecap;
+	}
+	static clearRecap() {
+		this.recap = undefined;
+	}
+	static handleJoin(playerId: number, name: string, icon: number) {
+		if (this.players.has(playerId)) {
+			console.error("received playerJoined for player that is already present");
+		}
+		const player = new Player(playerId, name, icon);
+		this.players.add(player);
+		this.playerJoined.emit(player);
+	}
+	static handleLeave(playerId: number) {
+		const player = this.players.get(playerId);
+		if (player === undefined) {
+			console.warn("received playerLeft for player that is not present");
+		} else {
+			this.players.remove(playerId);
+			this.playerLeft.emit(player);
+		}
+	}
+	static handleIconChanged(playerId: number, icon: number) {
+		const player = this.players.get(playerId);
+		if (player === undefined) {
+			console.warn("received playerIconChanged for player that is not present");
+		} else {
+			player.icon = icon;
+			this.playerIconChanged.emit(player);
+		}
+	}
 }
-/*export function getJoinCode(): string {
-	return joinCode;
-}*/
-export function setLeaderId(newLeaderId: number) {
+
+//export let recap: undefined | ((close: () => void) => Micron.Node);
+
+/*export function setLeaderId(newLeaderId: number) {
 	leaderId = newLeaderId;
-}
+}*/
 
-export function playerCount() {
+/*export function playerCount() {
 	return playerMap.size;
 }
 export function hasPlayer(id: number): boolean {
@@ -45,18 +97,9 @@ export function players(ids?: number[]): Player[] {
 	if (ids === undefined) {
 		return Array.from(playerMap.values());
 	} else {
-		const players = [];
-		for (const id of ids) {
-			const player = playerMap.get(id);
-			if (!player) {
-				console.error("player not found");
-			} else {
-				players.push(player);
-			}
-		}
-		return players;
+		
 	}
-}
+}*/
 
 /*export function players(ids: Iterable<number>): Player[] {
 	const players = 
@@ -67,24 +110,21 @@ export function players(ids?: number[]): Player[] {
 export function playerIcon(id: number): number {
 	return players[id].icon;
 }*/
-export function playerIds(): IterableIterator<number> {
-	return playerMap.keys();
-}
-export function setRecap(newRecap: undefined | ((close: () => void) => VNode)) {
+/*export function setRecap(newRecap: undefined | ((close: () => void) => Micron.Node)) {
 	recap = newRecap;
-}
+}*/
 
 
-/*export function playerView(id: number, disabled: boolean): VNode | undefined {
+/*export function playerView(id: number, disabled: boolean): Node | undefined {
 	const _player = player(id);
 	return _player && _player.View();
 }
-export function iconView(id: number, ): VNode | undefined {
+export function iconView(id: number, ): Node | undefined {
 	const _player = player(id);
 	return _player && _player.IconView();
 }*/
 
-const INC = new ReceiveIndex({
+/*const INC = new ReceiveIndex({
 	"accepted": { joinCode: Val.STR },
 	"playerJoined": { playerId: Val.NUM, name: Val.STR, icon: Val.NUM },
 	"playerLeft": { playerId: Val.NUM },
@@ -94,145 +134,16 @@ const INC = new ReceiveIndex({
 });
 const OUT = new SendIndex({
 	
-});
+});*/
 
-client.use(INC, OUT);
-INC.listen("accepted", ({ joinCode }) => setJoinCode(joinCode));
-INC.listen("playerJoined", ({ playerId, name, icon }) => {
-	const player = new Player(playerId, name, icon);
-	playerMap.set(playerId, player);
-	playerJoined.emit(player);
-});
-INC.listen("playerLeft", ({ playerId }) => {
-	const player = playerMap.get(playerId);
-	if (player === undefined) {
-		console.warn("Received playerLeft for player that is not present.");
-	} else {
-		playerMap.delete(playerId);
-		playerLeft.emit(player);
-	}
-});
-INC.listen("playerIconChanged", ({ playerId, icon }) => {
-	const player = playerMap.get(playerId);
-	if (player === undefined) {
-		console.warn("Received playerIconChanged for player that is not present.");
-	} else {
-		player.icon = icon;
-		playerIconChanged.emit(player);
-	}
-});
-INC.listen("playerReconnected", ({ playerId }) => {
-	// Don't need to do anything, but it shuts up warnings!
-	// (I may or may not have made those warnings myself)
-});
-INC.listen("playerDisconnected", ({ playerId }) => {
-	
-});
-client.connected.listen(() => {
-	recap = undefined;
-});
-client.disconnected.listen(() => {
-	joinCode = "";
-	leaderId = 255;
-	playerMap.clear();
-});
 
-export class Player {
-	public id: number;
-	public name: string;
-	public icon: number;
-	get color() { return Shared.playerColor(this.id); }
-	constructor(id: number, name: string, icon: number) {
-		this.id = id;
-		this.name = name;
-		this.icon = icon;
-	}
-	
-	IconView(disabled = false) {
-		return PlayerIcons.View(this.icon, this.color, disabled);
-	}
-	
-	View(disabled = false) {
-		return h("div.player-view", [
-			this.IconView(disabled),
-			this.name
-		]);
-	}
-	ScoredView(score: number) {
-		return h("div.player-view", [
-			this.IconView(),
-			`${this.name} (${score}pts)`,
-		]);
-	}
-}
-
-export class VoteQueue {
-	update = new Signal();
-	votes: number[][] = [];
-	private queue: Array<[number, number]> = [];
-	
-	private build(votes: number[][]) {
-		
-		function shuffle<T>(array: T[]) {
-			let swapIdx, temp;
-			for (let i = 0; i < array.length - 1; i++) {
-				swapIdx = i + Math.floor(Math.random() * (array.length - i));
-				temp = array[i];
-				array[i] = array[swapIdx];
-				array[swapIdx] = temp;
-			}
-		}
-		
-		// shuffle the vote arrays
-		// we *do* need the undefined checks; votes may be sparse!
-		for (const voteArray of votes)
-			if (voteArray)
-				shuffle(voteArray);
-		
-		this.queue = [];
-		
-		// just picking a really big number that prevents looping forever
-		for (let i = 0; i < 1000; i++) {
-			let anyLeft = false;
-			for (const [forId, voters] of votes.entries()) {
-				if (voters !== undefined && voters.length > i) {
-					this.queue.push([forId, voters[i]]);
-					anyLeft = true;
-				}
-			}
-			if (!anyLeft) break;
-		}
-		this.queue.reverse();
-	}
-	start(votes: number[][]) {
-		
-		if (this.queue.length > 0 || this.votes.length > 0) {
-			console.warn("started VoteQueue multiple times");
-		}
-		
-		this.build(votes);
-		
-		const DELAY_MS = 0.8 * 1000;
-		const interval = setInterval(() => {
-			const nextVote = this.queue.pop();
-			if (nextVote === undefined) {
-				clearInterval(interval);
-			} else {
-				let [forId, playerId] = nextVote;
-				(this.votes[forId] ??= []).push(playerId);
-				this.update.emit();
-				console.warn(forId, playerId);
-			}
-		}, DELAY_MS);
-	}
-	get(id: number): number[] {
-		return this.votes[id] ??= [];
-	}
-}
-
-export class ScoreMap {
+/*export class ScoreMap {
 	scores = new Map<number, number>();
 	
+	constructor(ids = playerIds()) {
+		for (const id of ids)
+			this.scores.set(id, 0);
+	}
 	reset() {
 		this.scores.clear();
 		for (const id of playerIds())
@@ -263,7 +174,7 @@ export class ScoreMap {
 		for (const id of this.sortedIds())
 			yield { id, score: this.get(id) };
 	}
-	*rankings(): IterableIterator<{ id: number, score: number, rank: number  }> {
+	*rankings(): IterableIterator<{ id: number, score: number, rank: number }> {
 		let i = 0, rank = 1, prevScore;
 		for (const { score, id } of this.sorted()) {
 			if (!prevScore) {
@@ -289,10 +200,7 @@ export class ScoreMap {
 		
 		return h("div.score-entry-ctr", entries);
 	}
-}
-class Rounds<R> {
-	rounds: R[] = [];
-}
+}*/
 
 
 

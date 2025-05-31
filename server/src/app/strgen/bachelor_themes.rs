@@ -11,7 +11,6 @@ pub fn generate(count: usize) -> Box<[&'static str]> {
 }
 
 const THEMES: &[&str] = &[
-	
 	/* Adjectives */
 	"Sad",
 	"Happy",
@@ -89,7 +88,6 @@ const THEMES: &[&str] = &[
 	"World Leaders",
 	"Historical Figures",
 	"The 1%",
-	
 ];
 
 

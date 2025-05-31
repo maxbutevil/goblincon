@@ -13,7 +13,7 @@ export const CONNECTED_ELSEWHERE = 4008;
 export const MIN_PLAYER_COUNT = 3;
 export const MAX_PLAYER_COUNT = 16;
 
-export const DRAWING_BUFFER_SECS = 2;
+export const DRAWING_BUFFER_SECS = 3;
 export const VOTING_BUFFER_SECS = 2;
 
 export const httpsRoot = `https://${window.location.host}`;

@@ -20,22 +20,25 @@ impl Timeout {
 	pub fn reset_dynamic_scaled(&mut self, duration: DynamicDuration, num_players: usize, scale_factor: f32) -> f32 {
 		self.reset(duration.duration(num_players).mul_f32(scale_factor))
 	}
-	
-	/*pub fn scaled(duration: Duration, scale_factor: f32) -> Duration {
-		duration.mul_f32(scale_factor)
-	}
-	pub fn dynamic(duration: DynamicDuration, num_players: usize) -> Duration {
-		Duration::from_millis(duration.millis(num_players))
-	}
-	pub fn scaled_dynamic(duration: DynamicDuration, scale_factor: f32, num_players: usize) -> Duration {
-		Duration::from_millis(duration.millis(num_players)).mul_f32(scale_factor)
-	}*/
-	
 	pub fn remaining(&self) -> Duration {
 		self.deadline() - tokio::time::Instant::now()
 	}
 	pub fn remaining_secs(&self) -> f32 {
 		self.remaining().as_secs_f32()
+	}
+	pub fn deadline_secs(&self) -> u64 {
+		use std::time::{SystemTime, UNIX_EPOCH};
+		
+		let end_time = SystemTime::now() + self.remaining();
+		let end_duration = end_time.duration_since(UNIX_EPOCH);
+		
+		match end_duration {
+			Ok(duration) => duration.as_secs(),
+			Err(err) => {
+				tracing::error!("error getting deadline timestamp (somehow): {err}");
+				0 // this is probably a bad default, but this error will never happen
+			}
+		}
 	}
 }
 impl std::ops::Deref for Timeout {

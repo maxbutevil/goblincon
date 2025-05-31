@@ -8,7 +8,7 @@ export * from "./validate"
 
 export * as Shared from "./shared"
 
-export * as PlayerIcons from "./player_icons"
+export * as playerIcons from "./player_icons"
 
 
 

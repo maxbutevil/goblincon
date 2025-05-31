@@ -3,8 +3,10 @@
 import {
 	Signal, State,
 	Shared,
-	h, s, c, defer, VNode
+	h, s, c, Micron
 } from "../modules/"
+
+
 
 //import Globals from "../modules/globals"
 
@@ -245,6 +247,9 @@ export default class Drawpad {
 				endDraw();
 		}
 		function startDraw() {
+			if (state.is(CanvasState.BLANK) && drawMode.color === erase) {
+				return;
+			}
 			state.set(CanvasState.DRAWING);
 			redoStack = [];
 			undoStack.push({
@@ -256,9 +261,9 @@ export default class Drawpad {
 			state.set(CanvasState.IDLE);
 			let op = undoStack.at(-1)!;
 			if (op.mode.weight === "thick") {
-				op.path.smooth(2, 1);
+				op.path.smooth(1, 1);
 			} else {
-				op.path.smooth(7, 2);
+				op.path.smooth(4, 2);
 			}
 			rebuildCanvas();
 		}
@@ -310,7 +315,7 @@ export default class Drawpad {
 			onSubmit(drawingData);
 		}
 		
-		function init(vnode: VNode) {
+		function init(vnode: Micron.Node) {
 			
 			if (canvas)
 				return;
@@ -321,17 +326,29 @@ export default class Drawpad {
 				throw new Error("Couldn't get canvas context.");
 			
 			canvas = new Canvas(ctx);
-			//canvas.wipeStyle("white");
 			canvas.clear();
-			canvas.setStrokeStyle("black");
-			canvas.setLineWidth(THIN_LINE_WIDTH);
+			applyMode();
 			canvas.setLineCap("round");
 			canvas.setLineJoin("round");
+			//canvas.setStrokeStyle("black");
+			//canvas.setLineWidth(THIN_LINE_WIDTH);
 		}
 		
 		
-		let submittingTimeout: NodeJS.Timeout;
-		defer(submitted.subscribe(submit));
+		let submittingTimeout: number;
+		Micron.tryDefer(
+			submitted.subscribe(submit),
+			Signal.keydown.subscribe((ev) => {
+				if (ev.ctrlKey) {
+					const key = ev.key.toLowerCase();
+					if (key === 'z') {
+						undo();
+					} else if (key === 'y') {
+						redo();
+					}
+				}
+			}),
+		);
 		function startSubmit() {
 			if (!state.is(CanvasState.IDLE)) {
 				return;
@@ -389,38 +406,41 @@ export default class Drawpad {
 			});
 		});
 		const actionSelect = s(isDisabled, (disabled) => {
-			const weightBtn = s(drawModeChanged, () => {
-				
-				let iconSrc;
-				if (drawMode.color === erase) {
-					iconSrc = drawMode.weight === "thin" ? icons.eraseThin : icons.eraseThick;
-					
-				} else {
-					penIcon.clear();
-					penIcon.setFillStyle(drawMode.color);
-					penIcon.fillEllipse(64, 64, drawMode.weight === "thin" ? 25 : 40);
-					iconSrc = penIcon.element.toDataURL();
-				}
-				
-				return h(
-					"button#weight-btn",
-					{
-						on: {
-							click: () => {
-								if (canChangeMode()) toggleWeight();
-							}
+			
+			function WeightBtn() {
+				return s(drawModeChanged, () => {
+
+					let iconSrc;
+					if (drawMode.color === erase) {
+						iconSrc = drawMode.weight === "thin" ? icons.eraseThin : icons.eraseThick;
+
+					} else {
+						penIcon.clear();
+						penIcon.setFillStyle(drawMode.color);
+						penIcon.fillEllipse(64, 64, drawMode.weight === "thin" ? 25 : 40);
+						iconSrc = penIcon.element.toDataURL();
+					}
+
+					return h(
+						"button#weight-btn",
+						{
+							on: {
+								click: () => {
+									if (canChangeMode()) toggleWeight();
+								}
+							},
+							attrs: { disabled }
 						},
-						attrs: { disabled }
-					},
-					Icon(iconSrc)
-				);
-			});
+						Icon(iconSrc)
+					);
+				});
+			}
 			
 			return h("div#action-btn-row", [
 				//h("button.spacer", { attrs: { disabled: true } }),
 				h("button#undo-btn", { on: { click: undo }, attrs: { disabled } }, Icon(icons.undo)),
 				h("button#redo-btn", { on: { click: redo }, attrs: { disabled } }, Icon(icons.redo)),
-				weightBtn,
+				WeightBtn(),
 				h("button.spacer", { attrs: { disabled: true } }),
 				h(
 					"button#submit-btn",
@@ -451,8 +471,8 @@ export default class Drawpad {
 					pointermove: handleDraw
 				},
 				hook: {
-					create: (_emptyVnode, vnode) => init(vnode),
-					update: (_oldVnode, vnode) => init(vnode)
+					create: (_emptyNode, vnode) => init(vnode),
+					update: (_oldNode, vnode) => init(vnode)
 				}
 			}, "You don't have canvas support!"),
 			actionSelect
@@ -814,13 +834,9 @@ class Canvas {
 		this.wipeStyle(Canvas.rgbaToStyle(r, g, b, a));
 	}
 	wipeStyle(style: string): void {
-		
-		let fillStyle = this.getFillStyle();
-		
 		this.setFillStyle(style);
 		this.fillRect(0, 0, this.sourceWidth, this.sourceHeight);
 		// Maybe reset fillStyle to what it was before
-		
 	}
 	
 	// Shapes
