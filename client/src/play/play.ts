@@ -17,7 +17,7 @@ import * as Dating from "./dating"
 import {
 	Logo,
 	Nav,
-	Tray,
+	TrayRight,
 	TopBar,
 	BottomBar,
 } from "../components"
@@ -359,19 +359,13 @@ function Landing() {
 				Logo(),
 				JoinFlow(),
 			]),
-			//HostLink(),
+			HostLink(),
 			s(nav),
 		]),
-		Tray({
-			left: [],
-			middle: [
-				HostLink()
-			],
-			right: [
-				nav.IconBtn(icons.info, AboutOverlay),
-				nav.IconBtn(icons.help, HelpOverlay),
-			]
-		}),
+		TrayRight([
+			nav.IconBtn(icons.info, AboutOverlay),
+			nav.IconBtn(icons.help, HelpOverlay),
+		]),
 		
 		
 		//Tray(IconBtn(helpIcon, () => overlay.toggle(HelpOverlay)))

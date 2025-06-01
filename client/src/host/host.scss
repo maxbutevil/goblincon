@@ -10,12 +10,10 @@
 
 #lobby {
 	height: 100%;
-	#tray {
-		#close-btn {
-			background-color: #f88;
-			&:hover {
-				background-color: #d55;
-			}
+	#close-btn {
+		background-color: #f88;
+		&:hover {
+			background-color: #d55;
 		}
 	}
 }
@@ -244,16 +242,18 @@
 	@include popup;
 	@include column(flex-start, center);
 	
-	@media only print {
-		width: auto;
-    height: auto;
-    overflow: visible;
-	}
-	
 	margin: 8px;
 	width: calc(100% - 16px);
 	
 	overflow-y: scroll;
+	
+	/*@media only print {
+		width: auto;
+    height: auto;
+    overflow: visible;
+	}*/
+	
+	
 	//min-height: min-content;
 	
 	#recap {

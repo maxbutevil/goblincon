@@ -22,12 +22,12 @@ type BarOptions = {
 	left?: Micron.Children,
 	right?: Micron.Children
 };
-export function Tray({ middle, left, right }: BarOptions) {
-	return h("div#tray", [
-		left && h("div.left", left),
-		middle && h("div.middle", middle),
-		right && h("div.right", right),
-	]);
+
+export function TrayLeft(children: Micron.Children) {
+	return h("div#tray-left", children);
+}
+export function TrayRight(children: Micron.Children) {
+	return h("div#tray-right", children);
 }
 export function TopBar({ middle, left, right }: BarOptions) {
 	return h("div#top-bar", [
@@ -61,7 +61,7 @@ export class Nav extends Micron.Anchor {
 		return new Nav(!initial ? undefined : [initial, initialArgs]);
 	}
 	static Btn(children: Micron.Children, onClick: () => void, { selected, disabled }: { selected?: boolean, disabled?: boolean }) {
-		return h("div.nav-btn",
+		return h("button.nav-btn",
 			{
 				class: { selected: !!selected },
 				attrs: { disabled: !!disabled },

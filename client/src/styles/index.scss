@@ -130,6 +130,7 @@ button, input {
 %bar {
 	
 	@extend %fixture;
+	
 	height: 3.2em;
 	max-height: 3.2em;
 	padding: 6px;
@@ -139,21 +140,22 @@ button, input {
 		max-height: 100%;
 	}
 }
-#tray {
+%tray {
 	@extend %fixture;
 	position: fixed;
-	padding-left: 6px;
-	padding-right: 6px;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	height: 0;
-	
-	.left, .middle, .right {
-		position: fixed;
-		bottom: 6px;
-		height: 2.4em;
-	}
+	bottom: 6px;
+	height: 2.4em;
+	max-height: 2.4em;
+}
+#tray-left {
+	@extend %tray;
+	left: 6px;
+	@include row(flex-start, flex-end);
+}
+#tray-right {
+	@extend %tray;
+	right: 6px;
+	@include row(flex-end, flex-end);
 }
 #top-bar {
 	@extend %bar;

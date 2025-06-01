@@ -11,7 +11,7 @@ import {
 import {
 	Logo,
 	Nav,
-	Tray
+	TrayLeft
 } from "../components"
 import * as icons from "../assets/icons/"
 
@@ -244,33 +244,31 @@ function Lobby() {
 			Players(),
 		]),
 		s(nav),
-		Tray({
-			left: [
-				h("div#close-btn.nav-btn",
-					{
-						attrs: {
-							title: "Close Lobby"
-						},
-						on: {
-							click: () => location.href = "/"
-						}
+		TrayLeft([
+			h("button#close-btn.nav-btn",
+				{
+					attrs: {
+						title: "Close Lobby"
 					},
-					h("img", { attrs: { src: icons.exit } })
-				),
-				h("div#recap-btn.nav-btn",
-					{
-						attrs: {
-							disabled: !hasRecap(),
-							title: hasRecap() ? "" : "Finish a game first!"
-						},
-						on: {
-							click: () => nav.toggle(Recap)
-						}
+					on: {
+						click: () => location.href = "/"
+					}
+				},
+				h("img", { attrs: { src: icons.exit } })
+			),
+			h("button#recap-btn.nav-btn",
+				{
+					attrs: {
+						disabled: !hasRecap(),
+						title: hasRecap() ? "" : "Finish a game first!"
 					},
-					h("img", { attrs: { src: icons.recap } })
-				)
-			]
-		}),
+					on: {
+						click: () => nav.toggle(Recap)
+					}
+				},
+				h("img", { attrs: { src: icons.recap } })
+			)
+		]),
 		/*Tray([
 			IconBtn(icons.exit, () => location.href = "/"),
 			c(
