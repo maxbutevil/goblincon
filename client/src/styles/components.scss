@@ -46,7 +46,9 @@
 	button {
 		$rad: 6px;
 		border-radius: 0;
-		&.selected { background-color: #AAA; }
+		//background-color: gray(1);
+		//&:hover { background-color: gray(2); }
+		//&.selected { background-color: gray(3); }
 		&:first-child {	border-radius: $rad 0 0 $rad; }
 		&:last-child { border-radius: 0 $rad $rad 0; }
 		&:only-child { border-radius: $rad; }
@@ -64,8 +66,16 @@
 
 #logo {
 	#icon-row {
-		@include row(center);
+		@include row(center, center);
+		max-width: 94vw;
 		font-size: 1.6em;
+		>* {
+			flex: 1 1 0;
+			min-width: 0;
+			height: auto;
+			object-fit: contain;
+			
+		}
 	}
 }
 
@@ -97,6 +107,9 @@
 }*/
 .nav-btn {
 	
+	
+	
+	
 	width: auto;
 	height: 100%;
 	aspect-ratio: 1;
@@ -105,22 +118,30 @@
 	padding: 1px;
 	
 	@include border-thin(6px);
-	background-color: primary(2);
+	background-color: gray(2);
 	transition: background-color 0.1s, transform 0.1s;
 	
-	&.primary { aspect-ratio: 2; }
-	&:hover {
-		background-color: primary(1);
-	}
-	&.selected {
-		background-color: primary(1);
-		//aspect-ratio: 7 / 6;
-		transform: scale(1.1);
-	}
 	img {
 		width: 100%;
 		height: 100%;
 	}
+	
+	:disabled {
+		filter: brightness(50%);
+	}
+	&:not(:disabled) {
+		
+		
+		&:hover {
+			background-color: gray(1);
+		}
+		&.selected {
+			background-color: gray(1);
+			transform: scale(1.1);
+		}
+	}
+	
+	
 	
 }
 

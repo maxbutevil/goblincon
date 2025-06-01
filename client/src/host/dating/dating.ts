@@ -105,7 +105,7 @@ export const test = Micron.test("dating")
 		Game.handleMatchup(0);
 		Game.handleMatchup(1);
 		Game.handleMatchup(2);
-		setRecap();
+		//setRecap();
 	});
 
 function setRecap() {

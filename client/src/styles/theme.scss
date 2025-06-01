@@ -9,13 +9,18 @@ $border-weight: 3.5px;
 $border-radius: 8px;
 $background-color: #f9ddcc;
 $light: #fff0e7 #f9ddcc #e0cab6 #d2b48c #a86;
+$gray: #eee #ddd #aaa #888 #555 #222 #000;
 $dark: #543 #432 #321 #210;
+
 
 @function primary($n) {
 	@return list.nth($light, $n);
 }
 @function secondary($n) {
 	@return list.nth($dark, $n)
+}
+@function gray($n) {
+	@return list.nth($gray, $n);
 }
 
 

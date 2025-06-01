@@ -38,6 +38,15 @@ button, input {
 	//font-size: 0.9em;
 	color: black;
 }
+button {
+	background-color: gray(1);
+	
+	&:disabled { filter: brightness(50%); }
+	&:not(:disabled) {
+		&:hover { background-color: gray(2); }
+		&.selected { background-color: gray(3); }
+	}
+}
 
 .flow {
 	flex: 1 1 0;

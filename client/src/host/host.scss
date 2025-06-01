@@ -50,9 +50,12 @@
 	}*/
 	#overview {
 		
+		min-width: min-content;
+		
 		#overview-ctr {
 			
 			flex: 1 1 0;
+			min-width: min-content;
 			//flex: 0 0 auto;
 			@include column(flex-start, stretch, 8px);
 			padding: 8px;

@@ -437,8 +437,9 @@ export const test = Micron.test("host")
 	.nest(datingTest)
 	.create(() => {
 		Room.mock(15);
-		Room.setJoinCode("XXXXX");
+		Room.setJoinCode("WWWWW");
 		Room.handleJoin(15, "WWWWWWWWWWWWWWWW", 7);
+		console.log(Room.recap);
 	});
 
 
