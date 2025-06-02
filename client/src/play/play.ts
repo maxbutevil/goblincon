@@ -374,7 +374,7 @@ function Landing() {
 function Lobby(playerCount: number | null | undefined) {
 	
 	const promoted = playerCount != undefined;
-	const overlay = Micron.anchor();
+	//const overlay = Micron.anchor();
 	
 	function IconSelect() {
 		
@@ -456,11 +456,20 @@ function Lobby(playerCount: number | null | undefined) {
 			middle: h("div.title", "Lobby")
 		}),*/
 		h("div.primary-page", [
-			h("h2", "Lobby"),
-			IconSelect(),
-			StartFlow(),
-			s(overlay)
+			h("div.flow", [
+				h("h2", "Lobby"),
+				IconSelect(),
+				StartFlow(),
+				//s(overlay)
+			]),
+			h("button#leave-btn",
+				{ on: { click: () => OUT.send("leave", undefined) } },
+				"Leave Game",
+			)
 		]),
+		
+		
+		
 		/*BottomBar({
 			//middle: h("button")
 		}),*/

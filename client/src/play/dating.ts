@@ -165,13 +165,8 @@ function DrawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: strin
 					})
 					.View()
 			),
-			left: !nameOverlay ? undefined : [
-				//nav.IconBtn(icons.name, Micron.builder.EMPTY),
-				nav.IconBtn(icons.name, Name)
-			],
-			right: [
-				nav.IconBtn(icons.help, Help)
-			]
+			left: c(nameOverlay && nav.IconBtn(icons.name, Name)),
+			right: nav.IconBtn(icons.help, Help)
 		}),
 	]);
 	
@@ -334,7 +329,7 @@ function DrawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 			),
 			left: [
 				//nav.IconBtn(icons.name, Micron.builder.EMPTY),
-				nav.IconBtn(icons.name, Name),
+				c(nameOverlay && nav.IconBtn(icons.name, Name)),
 				nav.IconBtn(icons.bachelor, Bachelor)
 			],
 			right: [
