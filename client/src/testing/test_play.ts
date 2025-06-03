@@ -22,4 +22,3 @@ function Timers() {
 }
 
 Micron.mount(s(test));
-//Micron.mount(h("div#app", s(test)));

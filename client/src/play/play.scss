@@ -38,7 +38,8 @@ body {
 		//flex: 1;
 		//aspect-ratio: 9 / 10;
 		//max-width: 100%;
-		max-width: 66vh;
+		max-width: 69vh;
+		//padding: 4px;
 		//max-width: min(100%, 66vh);
 		@include column(center, stretch);
 		@include border-thin(6px);
@@ -53,6 +54,7 @@ body {
 			min-height: 0;
 			width: 100%;
 			height: auto;
+			margin: 4px;
 		}
 	}
 	
