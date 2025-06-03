@@ -41,7 +41,7 @@ button, input {
 button {
 	background-color: gray(1);
 	
-	&:disabled { filter: brightness(50%); }
+	//&:disabled { filter: brightness(50%); }
 	&:not(:disabled) {
 		&:hover { background-color: gray(2); }
 		&.selected { background-color: gray(3); }

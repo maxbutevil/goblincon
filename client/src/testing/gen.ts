@@ -46,7 +46,8 @@ function generate() {
 		put2(i);
 	}
 	//canvas.putImage(playerIcons.generate());
-	return canvas.element.toDataURL();
+	
+	return canvas.element;
 }
 
 
@@ -103,8 +104,23 @@ function generateBackground() {
 	return canvas.element.toDataURL();
 }
 function Background() {
-	const src = generate();
-	return h("img", { attrs: { src }, style: { border: "2px solid black" } });
+	const canvas = generate();
+	const srcs = [
+		canvas.toDataURL("image/png"),
+		canvas.toDataURL("image/jpeg"),
+		canvas.toDataURL("image/jpeg", 1.0),
+		canvas.toDataURL("image/jpeg", 0.85),
+		canvas.toDataURL("image/jpeg", 0.75),
+		canvas.toDataURL("image/jpeg", 0.5)
+	];
+	
+	for (const src of srcs) {
+		console.log(src.length);
+	}
+	
+	return h("div",
+		srcs.map(src => h("img", { attrs: { src: src }, style: { border: "2px solid black" } }))
+	);
 }
 
 
