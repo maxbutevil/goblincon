@@ -20,27 +20,11 @@ body {
 #bachelor-popup {
 	@include popup;
 	
+	max-height: 90vh;
 	padding: 8px;
 	
-	//flex-basis: max-content;
-	
-	//max-height: 100%;
-	//max-width: 100%;
-	
-	//flex: 1;
-	//width: 80vh;
-	//max-height: 100%;
-	
-	//flex: 1;
-	max-height: 90vh;
-	
 	#bachelor-ctr {
-		//flex: 1;
-		//aspect-ratio: 9 / 10;
-		//max-width: 100%;
 		max-width: 69vh;
-		//padding: 4px;
-		//max-width: min(100%, 66vh);
 		@include column(center, stretch);
 		@include border-thin(6px);
 		padding-top: 2px;
@@ -50,11 +34,11 @@ body {
 			font-size: 1.6rem;
 		}
 		#bachelor-img {
+			margin: 4px;
 			min-width: 0;
 			min-height: 0;
 			width: 100%;
 			height: auto;
-			margin: 4px;
 		}
 	}
 	

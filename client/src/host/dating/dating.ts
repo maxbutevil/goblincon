@@ -75,6 +75,7 @@ export const test = Micron.test("dating")
 	.add(DrawingBachelors, "testTheme", 120)
 	.add(DrawingSuitors, 120)
 	.add(Voting, 0, 30)
+	.add(Voting, 0, 30)
 	.add(ShowingScores)
 	.create(() => {
 		//Room.mock(6);
@@ -292,7 +293,8 @@ function Voting(bachelorId: number, secsLeft: number) {
 		})
 	);
 	
-	return h("div#voting.page", [
+	// key: Symbol() forces the page to re-render rather than diffing, making the animations play properly
+	return h("div#voting.page", { key: Symbol() }, [
 		s(voteQueue.update, () => {
 			
 			const delay = DELAY_INITIAL;

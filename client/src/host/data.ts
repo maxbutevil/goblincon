@@ -120,7 +120,11 @@ export class PlayerMap {
       return player.score;
     }
   }
-  
+  resetScores() {
+    for (const player of this.iter()) {
+      player.score = 0;
+    }
+  }
   
   /*sortedIds(): number[] {
     return Array.from(this.ids()).sort((a, b) => {

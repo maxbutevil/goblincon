@@ -62,6 +62,7 @@ export class Game {
 	rounds: Round[] = [];
 	
 	private constructor(players: PlayerMap) {
+		players.resetScores();
 		this.players = players;
 	}
 	

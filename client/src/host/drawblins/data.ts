@@ -31,6 +31,7 @@ export class Game {
     return this.current;
   }
   static init(players: PlayerMap) {
+    players.resetScores();
     this.current = new Game(players.clone());
   }
   

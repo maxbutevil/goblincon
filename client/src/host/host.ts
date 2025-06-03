@@ -62,9 +62,11 @@ client.closed.listen((ev) => {
 		}
 	}
 });
-window.addEventListener("DOMContentLoaded", async () => {
+
+window.addEventListener("load", async () => {
 	try {
-		await navigator.wakeLock.request();
+		await navigator.wakeLock.request("screen");
+		console.info("wake lock acquired");
 	} catch(err) {
 		console.error("error acquiring wake lock:", err);
 	}
