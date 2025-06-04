@@ -137,7 +137,7 @@ impl Assignments {
 		
 		// special cases avoid duplication/pairing
 		match self.len() {
-			0..3 =>
+			3 =>
 				[get(1), get(2)],
 			6 =>
 				[get(1), get(3)],
@@ -151,7 +151,7 @@ impl Assignments {
 		
 		// special cases avoid duplication/pairing
 		match self.len() {
-			0..3 =>
+			3 =>
 				[get(2), get(1)],
 			6 =>
 				[get(5), get(3)],
@@ -756,7 +756,7 @@ fn assignments_test() {
 		Assignments::new(submissions).unwrap()
 	}
 	
-	let assignments = init(6);
+	/*let assignments = init(6);
 	
 	let ids = assignments
 		.id_iter()
@@ -770,5 +770,24 @@ fn assignments_test() {
 	
 	println!("{:?}", ids);
 	println!("{:?}", bachelors);
-	println!("{:?}", suitors);
+	println!("{:?}", suitors);*/
+	
+	for i in 3..16 {
+		let assignments = init(i);
+		let ids = assignments.id_iter().collect::<Vec<_>>();
+		let suitors = assignments.suitor_id_iter().collect::<Vec<_>>();
+		//let suitors = assignments.suitor_id_iter().collect::<Vec<_>>();
+		//println!("{:?}", ids);
+		println!("{:?}", suitors);
+		
+		assert!(suitors.len() == i as usize, "wrong number of suitors, somehow (n={i})");
+		for (b_id, [s_id1, s_id2]) in suitors {
+			assert!(b_id != s_id1, "player has self as suitor (n={i})");
+			assert!(b_id != s_id2, "player has self as suitor (n={i})");
+			assert!(s_id1 != s_id2, "player has same suitor twice (n={i})");
+			assert!(assignments.get_bachelors(s_id1).unwrap()[0].0 == b_id, "suitor coherence violation (n={i})");
+			assert!(assignments.get_bachelors(s_id2).unwrap()[1].0 == b_id, "suitor coherence violation (n={i})");
+		}
+	}
+	
 }
