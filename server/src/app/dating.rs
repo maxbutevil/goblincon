@@ -31,7 +31,7 @@ pub struct Settings {
 	naming: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Submission {
 	#[serde(default, deserialize_with = "room::cap_submission_name", skip_serializing_if = "Option::is_none")]
@@ -53,7 +53,7 @@ enum HostMsgOut<'a> {
 	/* State Sync */
 	DrawingBachelors { secs_left: f32, theme: &'a str },
 	DrawingSuitors { secs_left: f32 },
-	Voting { secs_left: f32, bachelor_id: PlayerId },
+	Voting { secs_left: f32, bachelor_id: PlayerId, suitor_ids: [PlayerId; SUITOR_COUNT] },
 	ShowingVotes,
 	ShowingScores,
 	
@@ -89,11 +89,8 @@ enum PlayerMsgOut<'a> {
 	
 	DoneDrawingBachelor,
 	DoneDrawingSuitor,
-	//DoneShipping,
 	DoneVoting,
 	NotVoting, // for when your own submission is being voted on
-	
-	//Finished,
 }
 
 type PlayerMap<T> = [T; MAX_PLAYER_COUNT];
@@ -110,18 +107,18 @@ impl std::ops::DerefMut for Assignments {
 impl Assignments {
 	fn new(bachelor_submissions: PlayerMap<Option<Submission>>) -> Option<Self> {
 		
-		let mut player_ids = bachelor_submissions
+		let mut inner = bachelor_submissions
 			.into_iter()
 			.enumerate()
 			//.filter_map(|(id, s)| s.take().map(|s| (id as PlayerId, s)))
 			.filter_map(|(id, s)| s.map(|s| (id as PlayerId, s)))
 			.collect::<Box<_>>();
 		
-		if player_ids.len() < 3 {
-			None
+		if inner.len() < 3 {
+			None // Not enough submissions to proceed
 		} else {
-			player_ids.shuffle(&mut rand::rng());
-			Some(Self(player_ids))
+			inner.shuffle(&mut rand::rng());
+			Some(Self(inner))
 		}
 	}
 	fn find(&self, player_id: PlayerId) -> Option<usize> {
@@ -134,87 +131,91 @@ impl Assignments {
 		&self[i % self.len()]
 	}
 	
+	
 	fn get_bachelors_at<'a>(&'a self, i: usize) -> [&'a Assignment; SUITOR_COUNT] {
 		let get = |shift| self.get_wrapped(i + shift);
 		
-		if self.len() <= 3 {
-			[get(1), get(2)]
-		} else {
-			[get(1), get(self.len() - 2)]
+		// special cases avoid duplication/pairing
+		match self.len() {
+			0..3 =>
+				[get(1), get(2)],
+			6 =>
+				[get(1), get(3)],
+			_ =>
+				[get(1), get(self.len() - 2)]
 		}
-	}
-	fn get_bachelors<'a>(&'a self, suitor_id: PlayerId) -> Option<[&'a Assignment; SUITOR_COUNT]> {
-		Some(self.get_bachelors_at(self.find(suitor_id)?))
-	}
-	/*fn get_bachelor_drawings<'a>(&'a self, suitor_id: PlayerId) -> Option<[&'a str; SUITOR_COUNT]> {
-		self
-			.get_bachelors(suitor_id)
-			.map(|bachelors| bachelors.map(|b| b.1.as_str()))
-	}*/
-	/*fn get_bachelor_drawings<'a>(&'a self, suitor_id: PlayerId) -> Option<[&'a str; SUITOR_COUNT]> {
-		Some(self.get_bachelor_drawings_at(self.find(suitor_id)?))
-	}*/
-	
-	
-	fn get_suitor_ids_at(&self, i: usize) -> [PlayerId; SUITOR_COUNT] {
-		self.get_suitors_at(i).map(|(id, _)| *id)
 	}
 	
 	fn get_suitors_at<'a>(&'a self, i: usize) -> [&'a Assignment; SUITOR_COUNT] {
 		let get = |shift| self.get_wrapped(i + shift);
 		
-		if self.len() <= 3 {
-			[get(2), get(1)]
-		} else {
-			[get(self.len() - 1), get(2)]
+		// special cases avoid duplication/pairing
+		match self.len() {
+			0..3 =>
+				[get(2), get(1)],
+			6 =>
+				[get(5), get(3)],
+			_ =>
+				[get(self.len() - 1), get(2)]
 		}
 	}
-	/*fn get_suitors<'a>(&'a self, bachelor_id: PlayerId) -> Option<[&'a Assignment; SUITOR_COUNT]> {
+	fn get_bachelors<'a>(&'a self, suitor_id: PlayerId) -> Option<[&'a Assignment; SUITOR_COUNT]> {
+		Some(self.get_bachelors_at(self.find(suitor_id)?))
+	}
+	fn get_suitors<'a>(&'a self, bachelor_id: PlayerId) -> Option<[&'a Assignment; SUITOR_COUNT]> {
 		Some(self.get_suitors_at(self.find(bachelor_id)?))
-	}*/
-	/*fn get_suitor_ids(&self, bachelor_id: PlayerId) -> Option<[PlayerId; SUITOR_COUNT]> {
-		self
-			.get_suitors(bachelor_id)
-			.map(|suitors| suitors.map(|(id, _)| *id))
+	}
+	/*fn get_suitor_ids_at(&self, i: usize) -> [PlayerId; SUITOR_COUNT] {
+		self.get_suitors_at(i).map(|(id, _)| *id)
 	}*/
 	fn player_ids<'a>(&'a self) -> impl Iterator<Item=PlayerId> + 'a {
 		self
 			.iter()
-			.map(|(bachelor_id, _)| *bachelor_id)
+			.map(|(id, _)| *id)
 	}
-	fn bachelors<'a>(&'a self) -> impl Iterator<Item=(PlayerId, [&'a Assignment; SUITOR_COUNT])> {
+	
+	fn id_iter<'a>(&'a self) -> impl 'a + Iterator<Item=PlayerId> {
+		self
+			.iter()
+			.map(|&(id, _)| id)
+	}
+	fn bachelor_iter<'a>(&'a self) -> impl Iterator<Item=(PlayerId, [&'a Assignment; SUITOR_COUNT])> {
 		self
 			.iter()
 			.enumerate()
-			.map(|(i, (player_id, _))|
-				(*player_id, self.get_bachelors_at(i))
+			.map(|(i, &(player_id, _))|
+				(player_id, self.get_bachelors_at(i))
 			)
 	}
-	/*fn bachelor_drawings<'a>(&'a self) -> impl Iterator<Item=(PlayerId, [&'a str; SUITOR_COUNT])> {
-		
+	fn bachelor_id_iter<'a>(&'a self) -> impl 'a + Iterator<Item=(PlayerId, [PlayerId; SUITOR_COUNT])> {
+		self
+			.bachelor_iter()
+			.map(|(id, suitors)|
+				(id, suitors.map(|&(id, _)| id))
+			)
+	}
+	fn suitor_iter<'a>(&'a self) -> impl Iterator<Item=(PlayerId, [&'a Assignment; SUITOR_COUNT])> {
 		self
 			.iter()
 			.enumerate()
-			.map(|(i, (player_id, _))| {
-				let drawings = self
-					.get_bachelors_at(i)
-					.map(|(_, drawing)| drawing.as_str());
-				(*player_id, drawings)
-			})
-	}*/
-	
-	
-	
+			.map(|(i, &(player_id, _))|
+				(player_id, self.get_suitors_at(i))
+			)
+	}
+	fn suitor_id_iter<'a>(&'a self) -> impl 'a + Iterator<Item=(PlayerId, [PlayerId; SUITOR_COUNT])> {
+		self
+			.suitor_iter()
+			.map(|(id, suitors)|
+				(id, suitors.map(|&(id, _)| id))
+			)
+	}
 	fn vote_rounds(&self) -> Box<[VotingRound]> {
-		
-		let mut remaining = self
-			.iter()
-			.enumerate()
-			.map(|(i, (id, _))| (*id, self.get_suitor_ids_at(i)))
+		let mut rounds = self
+			.suitor_id_iter()
 			.collect::<Box<_>>();
 		
-		remaining.shuffle(&mut rand::rng());
-		remaining
+		rounds.shuffle(&mut rand::rng()); // randomize order of voting rounds
+		rounds
 	}
 }
 
@@ -289,7 +290,25 @@ impl<'a> Game<'a> {
 		}
 	}
 	
-	fn vote_choices(&self, mut suitor_ids: [PlayerId; SUITOR_COUNT], submitted: &[PlayerMap<bool>; SUITOR_COUNT]) -> Box<[String]> {
+	fn vote_choices(&self, suitor_ids: [PlayerId; SUITOR_COUNT], submitted: &[PlayerMap<bool>; SUITOR_COUNT]) -> Box<[String]> {
+		let mut pickable_ids = suitor_ids
+			.iter()
+			.enumerate()
+			.filter(|&(round, &id)| submitted[round][id as usize])
+			.map(|(_, &id)| id)
+			.collect::<Box<_>>();
+		
+		// ensure that suitors show up in the same order on host and in votes
+		pickable_ids.sort_unstable();
+		pickable_ids
+			.iter()
+			.filter_map(|&id| {
+				let player = self.clients.player(id);
+				player.map(|p| p.name.to_owned())
+			})
+			.collect()
+		
+		/*
 		suitor_ids.sort_unstable();
 		suitor_ids
 			.iter()
@@ -303,7 +322,7 @@ impl<'a> Game<'a> {
 					player.map(|p| p.name.to_owned())
 				}
 			})
-			.collect::<Box<[String]>>()
+			.collect::<Box<[String]>>()*/
 	}
 	
 	async fn handle_reconnect(&mut self, socket: WebSocket, player_id: PlayerId, token: PlayerToken, manual: bool) {
@@ -604,7 +623,7 @@ impl<'a> Game<'a> {
 		
 		//tracing::info!("{current}");
 		if current >= SUITOR_COUNT {
-			return self.start_vote(&assignments, submitted).await;
+			return self.start_votes(&assignments, submitted).await;
 		}
 		
 		let secs_left = self.timeout.reset_scaled(
@@ -618,7 +637,7 @@ impl<'a> Game<'a> {
 		}).await;
 		
 		/* Tell players */
-		let iter = assignments.bachelors();
+		let iter = assignments.bachelor_iter();
 		for (player_id, bachelors) in iter {
 			let (bachelor_id, bachelor_submission) = bachelors[current];
 			self.clients.players.send(player_id, &PlayerMsgOut::DrawingSuitor {
@@ -631,19 +650,9 @@ impl<'a> Game<'a> {
 		
 		State::DrawSuitors { assignments, current, submitted }
 	}
-	async fn start_vote(&mut self, assignments: &Assignments, submitted: [PlayerMap<bool>; SUITOR_COUNT]) -> State {
-		let mut rounds = assignments
-			.iter()
-			.enumerate()
-			.map(|(i, &(id, _))| {
-				let suitor_ids = assignments.get_suitor_ids_at(i);
-				(id, suitor_ids)
-			})
-			.collect::<Box<_>>();
-		
-		rounds.shuffle(&mut rand::rng());
-		
-		self.start_next_vote(0, assignments.vote_rounds(), submitted).await
+	async fn start_votes(&mut self, assignments: &Assignments, submitted: [PlayerMap<bool>; SUITOR_COUNT]) -> State {
+		let rounds = assignments.vote_rounds();
+		self.start_next_vote(0, rounds, submitted).await
 	}
 	async fn start_next_vote(&mut self, current: usize, rounds: Box<[VotingRound]>, submitted: [PlayerMap<bool>; SUITOR_COUNT]) -> State {
 		
@@ -665,14 +674,19 @@ impl<'a> Game<'a> {
 		);
 		
 		self.clients.host.send(&HostMsgOut::Voting {
+			secs_left,
 			bachelor_id,
-			secs_left
+			suitor_ids
 		}).await;
 		for (id, player) in self.clients.players.iter_mut() {
+			// TODO: Differentiate between these two cases somehow
 			if suitor_ids.contains(&(id as PlayerId)) || choices.is_empty() {
 				player.send(&PlayerMsgOut::NotVoting).await;
 			} else {
-				player.send(&PlayerMsgOut::Voting {	choices, secs_left }).await;
+				player.send(&PlayerMsgOut::Voting {
+					secs_left,
+					choices
+				}).await;
 			}
 		}
 		
@@ -717,4 +731,44 @@ impl<'a> Game<'a> {
 		
 		State::ShowScores
 	}
+}
+
+#[test]
+fn assignments_test() {
+	
+	
+	fn init(n: u8) -> Assignments {
+		
+		/*fn sub(name: &str) -> Option<Submission> {
+			let name = Some(name.to_owned().into_boxed_str());
+			let drawing = String::new().into_boxed_str();
+			Some(Submission { name, drawing })
+		}*/
+		
+		let mut submissions = [const { None }; 16];
+		for i in 0..n {
+			submissions[i as usize] = Some(Submission {
+				name: Some(i.to_string().into_boxed_str()),
+				drawing: Default::default()
+			})
+		}
+		
+		Assignments::new(submissions).unwrap()
+	}
+	
+	let assignments = init(6);
+	
+	let ids = assignments
+		.id_iter()
+		.collect::<Vec<_>>();
+	let bachelors = assignments
+		.bachelor_id_iter()
+		.collect::<Vec<_>>();
+	let suitors = assignments
+		.suitor_id_iter()
+		.collect::<Vec<_>>();
+	
+	println!("{:?}", ids);
+	println!("{:?}", bachelors);
+	println!("{:?}", suitors);
 }
