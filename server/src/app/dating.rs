@@ -774,7 +774,7 @@ fn assignments_test() {
 	
 	for i in 3..16 {
 		let assignments = init(i);
-		let ids = assignments.id_iter().collect::<Vec<_>>();
+		//let ids = assignments.id_iter().collect::<Vec<_>>();
 		let suitors = assignments.suitor_id_iter().collect::<Vec<_>>();
 		//let suitors = assignments.suitor_id_iter().collect::<Vec<_>>();
 		//println!("{:?}", ids);

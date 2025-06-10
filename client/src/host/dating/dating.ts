@@ -33,7 +33,7 @@ import { DRAWING_BUFFER_SECS } from '../../modules/shared';
 const INC = new ReceiveIndex({
 	"drawingBachelors": { theme: Val.STR, secsLeft: Val.NUM },
 	"drawingSuitors": { secsLeft: Val.NUM },
-	"voting": { bachelorId: Val.NUM, secsLeft: Val.NUM },
+	"voting": { secsLeft: Val.NUM, bachelorId: Val.NUM, suitorIds: Val.array(Val.NUM) },
 	"showingVotes": Val.NONE,
 	"showingScores": Val.NONE,
 	
@@ -61,10 +61,10 @@ export default function View() {
 		}),
 		INC.subscribe("drawingSuitors", ({ secsLeft }) => page.put(DrawingSuitors, secsLeft)),
 		INC.subscribe("showingScores", () => page.put(ShowingScores)),
-		INC.subscribe("voting", ({ bachelorId, secsLeft }) => {
+		INC.subscribe("voting", ({ secsLeft, bachelorId, suitorIds }) => {
 			Game.handleMatchup(bachelorId);
 			//currentRound().handleMatchup(bachelorId);
-			page.put(Voting, bachelorId, secsLeft);
+			page.put(Voting, secsLeft, bachelorId, suitorIds);
 		}),
 	);
 	
@@ -74,8 +74,8 @@ export const test = Micron.test("dating")
 	.add(Starting)
 	.add(DrawingBachelors, "testTheme", 120)
 	.add(DrawingSuitors, 120)
-	.add(Voting, 0, 30)
-	.add(Voting, 0, 30)
+	.add(Voting, 30, 0, [1, 2])
+	.add(Voting, 30, 0, [1, 2])
 	.add(ShowingScores)
 	.create(() => {
 		//Room.mock(6);
@@ -257,7 +257,7 @@ function ShowingScores() {
 		Game.players.ScoreView()
 	]);
 }
-function Voting(bachelorId: number, secsLeft: number) {
+function Voting(secsLeft: number, bachelorId: number, suitorIds: number[]) {
 	
 	const DELAY_INITIAL = 0.3;
 	const DELAY_STAGGER = 1.0;
@@ -268,12 +268,12 @@ function Voting(bachelorId: number, secsLeft: number) {
 	
 	const voteQueue = new VoteQueue();
 	const readyDisplay = new ReadyDisplay(Room.players.array(), secsLeft, Shared.VOTING_BUFFER_SECS);
-	for (const { id } of matchup.suitors) {
+	for (const id of suitorIds) {
 		// suitors won't be voting since their own submission is being voted on
 		readyDisplay.ready(id);
 	}
 	
-	// Ensure that suitors show up in the same order on host and in votes
+	// ensure that suitors show up in the same order on host and in votes
 	matchup.suitors.sort((a, b) => a.id - b.id);
 	
 	Micron.defer(
@@ -293,13 +293,12 @@ function Voting(bachelorId: number, secsLeft: number) {
 		})
 	);
 	
-	// key: Symbol() forces the page to re-render rather than diffing, making the animations play properly
+	// `key: Symbol()` forces the page to re-render rather than diffing, making the animations play properly
 	return h("div#voting.page", { key: Symbol() }, [
 		s(voteQueue.update, () => {
 			
 			const delay = DELAY_INITIAL;
 			let bachelorDrawing = Submission(bachelor, matchup.bachelorSubmission, { delay });
-			
 			
 			let suitorDrawings = matchup.suitors.map(({ id, submission }, index) => {
 				const voteIds = voteQueue.get(index);

@@ -141,7 +141,7 @@ export class VoteQueue {
 		for (const voteArray of votes)
 			if (voteArray)
 				shuffle(voteArray);
-
+		
 		this.queue = [];
 
 		// just picking a really big number that prevents looping forever
@@ -174,7 +174,6 @@ export class VoteQueue {
 				let [forId, playerId] = nextVote;
 				(this.votes[forId] ??= []).push(playerId);
 				this.update.emit();
-				console.warn(forId, playerId);
 			}
 		}, DELAY_MS);
 	}
