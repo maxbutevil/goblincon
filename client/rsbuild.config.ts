@@ -17,6 +17,8 @@ export default defineConfig(({ env }) => ({
 	html: {
 		title: "GoblinCon",
 		favicon: "./icons/01/favicon.ico",
+		
+		
 		meta: {
 			charset: { charset: 'UTF-8' },
 			viewport: "width=device-width, initial-scale=1",
@@ -24,6 +26,9 @@ export default defineConfig(({ env }) => ({
 			//"theme-color": "#d2b48c",
 			//viewport: "width=device-width, initial-scale=1, maximum-scale=1"
 		},
+		
+		inject: "body",
+		scriptLoading: "blocking",
 		
 		/*appIcon: {
 			name: "GoblinCon",
