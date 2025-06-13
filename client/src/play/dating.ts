@@ -159,7 +159,7 @@ function DrawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: strin
 					.withPopups()
 					.onFinish(() => drawpad.submit())
 					.onThreshold(20, () => {
-						if (nameOverlay && !nameOverlay.name) {
+						if (nameOverlay && !nameOverlay.name && !drawpad.isSubmitted()) {
 							nav.put(Name);
 						}
 					})
@@ -321,7 +321,7 @@ function DrawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 					.withPopups()
 					.onFinish(() => drawpad.submit())
 					.onThreshold(20, () => {
-						if (nameOverlay && !nameOverlay.name) {
+						if (nameOverlay && !nameOverlay.name && !drawpad.isSubmitted()) {
 							nav.put(Name);
 						}
 					})
