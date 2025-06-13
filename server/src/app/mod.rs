@@ -97,9 +97,10 @@ impl App {
 	}
 	pub async fn accept_host(&self, host_socket: WebSocket) {
 		let Some(id) = self.generate_room_id() else { return };
-		tracing::debug!("[{}] Opening!", id.as_str());
+		// may want to become debug, rather than info
+		tracing::info!("[{}] Opening!", id.as_str());
 		self.init_room(id, host_socket).await;
-		tracing::debug!("[{}] Closed", id.as_str());
+		tracing::info!("[{}] Closed", id.as_str());
 	}
 	pub async fn accept_player_join(&self, socket: WebSocket, room_id: RoomId, name: String, icon: PlayerIcon) {
 		let Some(handle) = self.rooms.get(&room_id) else {
