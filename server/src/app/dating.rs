@@ -6,9 +6,9 @@ const SUITOR_COUNT: usize = 2;
 const START_TIME: Duration = Duration::from_secs(3);
 const DRAW_BACHELOR_TIME: Duration = Duration::from_secs(140);
 const DRAW_SUITOR_TIME: Duration = Duration::from_secs(140);
-const VOTE_TIME: Duration = Duration::from_secs(20);
-const VOTE_TIME_ONE_SUBMISSION: Duration = Duration::from_secs(15);
-const VOTE_TIME_NO_SUBMISSIONS: Duration = Duration::from_secs(12);
+const VOTE_TIME: Duration = Duration::from_secs(22);
+const VOTE_TIME_ONE_SUBMISSION: Duration = Duration::from_secs(18);
+const VOTE_TIME_NO_SUBMISSIONS: Duration = Duration::from_secs(14);
 
 const SHOW_VOTES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
 const SHOW_SCORES_TIME: DynamicDuration = DynamicDuration::from_secs(6, 1);
