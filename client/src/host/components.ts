@@ -178,7 +178,7 @@ export class VoteQueue {
 		}, DELAY_MS);
 	}
 	get(id: number): number[] {
-		return this.votes[id] ??= [];
+		return this.votes[id] ?? [];
 	}
 }
 

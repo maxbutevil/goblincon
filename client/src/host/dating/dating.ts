@@ -274,7 +274,7 @@ function Voting(secsLeft: number, bachelorId: number, suitorIds: number[]) {
 	}
 	
 	// ensure that suitors show up in the same order on host and in votes
-	matchup.suitors.sort((a, b) => a.id - b.id);
+	// matchup.suitors.sort((a, b) => a.id - b.id);
 	
 	Micron.defer(
 		INC.subscribe("voteSubmitted", ({ playerId, forId }) => {

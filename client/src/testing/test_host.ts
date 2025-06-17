@@ -26,6 +26,8 @@ import { Submission, SubmissionGrid, ReadyDisplay } from "../host/components";
 
 import { test } from "../host/host"
 
+//import { VoteQueue } from "../host/components"
+//(new VoteQueue()).start([[0, 1, 2, 3], [4, 5, 6, 7]])
 
 
 function SubmissionGridTest() {

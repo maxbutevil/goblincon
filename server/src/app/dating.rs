@@ -160,10 +160,12 @@ impl Assignments {
 		}
 	}
 	fn get_bachelors<'a>(&'a self, suitor_id: PlayerId) -> Option<[&'a Assignment; SUITOR_COUNT]> {
-		Some(self.get_bachelors_at(self.find(suitor_id)?))
+		let idx = self.find(suitor_id)?;
+		Some(self.get_bachelors_at(idx))
 	}
 	fn get_suitors<'a>(&'a self, bachelor_id: PlayerId) -> Option<[&'a Assignment; SUITOR_COUNT]> {
-		Some(self.get_suitors_at(self.find(bachelor_id)?))
+		let idx = self.find(bachelor_id)?;
+		Some(self.get_suitors_at(idx))
 	}
 	/*fn get_suitor_ids_at(&self, i: usize) -> [PlayerId; SUITOR_COUNT] {
 		self.get_suitors_at(i).map(|(id, _)| *id)
@@ -291,22 +293,34 @@ impl<'a> Game<'a> {
 	}
 	
 	fn vote_choices(&self, suitor_ids: [PlayerId; SUITOR_COUNT], submitted: &[PlayerMap<bool>; SUITOR_COUNT]) -> Box<[String]> {
-		let mut pickable_ids = suitor_ids
+		suitor_ids
 			.iter()
 			.enumerate()
-			.filter(|&(round, &id)| submitted[round][id as usize])
+			.filter_map(|(round, &id)| {
+				if !submitted[round][id as usize] {
+					return None;
+				}
+				
+				let player = self.clients.player(id)?;
+				let name = player.name.to_owned();
+				Some(name)
+			})
+			.collect::<Box<_>>()
+			
+			
+			/* .filter(|&(round, &id)| submitted[round][id as usize])
 			.map(|(_, &id)| id)
-			.collect::<Box<_>>();
+			.collect::<Box<_>>();*/
 		
 		// ensure that suitors show up in the same order on host and in votes
-		pickable_ids.sort_unstable();
+		/*pickable_ids.sort_unstable();
 		pickable_ids
 			.iter()
 			.filter_map(|&id| {
 				let player = self.clients.player(id);
 				player.map(|p| p.name.to_owned())
 			})
-			.collect()
+			.collect()*/
 		
 		/*
 		suitor_ids.sort_unstable();
@@ -470,6 +484,7 @@ impl<'a> Game<'a> {
 			tracing::debug!("player attempted to submit suitor drawing while game in invalid state");
 			return;
 		};
+		
 		
 		let Some(bachelors) = assignments.get_bachelors(player_id) else {
 			tracing::debug!("couldn't find suitor in assignment index");
@@ -756,7 +771,7 @@ fn assignments_test() {
 		Assignments::new(submissions).unwrap()
 	}
 	
-	/*let assignments = init(6);
+	let assignments = init(6);
 	
 	let ids = assignments
 		.id_iter()
@@ -770,7 +785,7 @@ fn assignments_test() {
 	
 	println!("{:?}", ids);
 	println!("{:?}", bachelors);
-	println!("{:?}", suitors);*/
+	println!("{:?}", suitors);
 	
 	for i in 3..16 {
 		let assignments = init(i);
@@ -778,7 +793,7 @@ fn assignments_test() {
 		let suitors = assignments.suitor_id_iter().collect::<Vec<_>>();
 		//let suitors = assignments.suitor_id_iter().collect::<Vec<_>>();
 		//println!("{:?}", ids);
-		println!("{:?}", suitors);
+		//println!("{:?}", suitors);
 		
 		assert!(suitors.len() == i as usize, "wrong number of suitors, somehow (n={i})");
 		for (b_id, [s_id1, s_id2]) in suitors {
@@ -789,5 +804,25 @@ fn assignments_test() {
 			assert!(assignments.get_bachelors(s_id2).unwrap()[1].0 == b_id, "suitor coherence violation (n={i})");
 		}
 	}
-	
 }
+
+/*#[test]
+fn vote_choices_test() {
+	
+	fn vote_choice_ids(suitor_ids: [PlayerId; SUITOR_COUNT], submitted: &[PlayerMap<bool>; SUITOR_COUNT]) -> Box<[PlayerId]> {
+		suitor_ids
+			.iter()
+			.enumerate()
+			.filter(|&(round, &id)| submitted[round][id as usize])
+			.map(|(_, &id)| id)
+			.collect::<Box<_>>()
+	}
+	
+	let submitted: [PlayerMap<bool>; SUITOR_COUNT] = [
+		[true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false],
+		[true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false]
+	];
+	
+	println!("{:?}", vote_choice_ids([0, 1], &submitted));
+	
+}*/
