@@ -82,7 +82,7 @@ export const test = Micron.test("dating")
 		Game.init(Room.players);
 		Game.pushRound("testTheme");
 		const submissions: SubmissionData[] = [
-			{ name: "Sad Sack", drawing: assets.sadSack },
+			{ name: "SadSadSadSadSadSadSadSadSadSadSadSadSadSadSadSadSadSad", drawing: assets.sadSack },
 			{ name: "Licensed Therapist", drawing: assets.licensedTherapist },
 			{ name: "Top Hat Enthusiast", drawing: assets.topHatEnthusiast }
 		];

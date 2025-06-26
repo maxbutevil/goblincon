@@ -24,14 +24,16 @@ body {
 	padding: 8px;
 	
 	#bachelor-ctr {
-		max-width: 69vh;
+		max-width: min(93vw, 63vh); // 69vh, if not for multi-line bachelor-names...
 		@include column(center, stretch);
 		@include border-thin(6px);
 		padding-top: 2px;
 		
 		background-color: primary(1);
 		#bachelor-name {
+			max-width: 100%;
 			font-size: 1.6rem;
+			overflow-wrap: break-word;
 		}
 		#bachelor-img {
 			margin: 4px;

@@ -171,6 +171,8 @@
 	
 	.name {
 		font-size: 1.3em;
+		overflow-wrap: break-word;
+		max-width: 100%;
 		//text-wrap: nowrap;
 	}
 	.img-ctr {

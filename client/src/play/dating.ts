@@ -78,7 +78,7 @@ export function view() {
 export const test = Micron.test("dating")
 	.add(Starting)
 	.add(DrawingBachelor, 20, true, "Test Theme")
-	.add(DrawingSuitor, 30, true, 1, { name: "Legs Lord", drawing: legsLord })
+	.add(DrawingSuitor, 30, true, 1, { name: "LegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegs", drawing: legsLord })
 	.add(DoneDrawing)
 	.add(Voting, 20, ["player0", "player1"])
 	.add(NotVoting)
