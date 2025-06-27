@@ -63,14 +63,17 @@ client.closed.listen((ev) => {
 	}
 });
 
-window.addEventListener("load", async () => {
+async function acquireWakeLock() {
 	try {
 		await navigator.wakeLock.request("screen");
 		console.info("wake lock acquired");
-	} catch(err) {
+	} catch (err) {
 		console.error("error acquiring wake lock:", err);
 	}
-});
+}
+
+acquireWakeLock();
+//window.addEventListener("load", acquireWakeLock);
 window.addEventListener("beforeunload", (event) => {
 	if (Room.players.count > 0 && client.state.is(Connection.OPEN)) {
 		event.preventDefault();
