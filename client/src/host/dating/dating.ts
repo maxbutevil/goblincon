@@ -31,9 +31,9 @@ import * as assets from "../../assets/testing"
 import { DRAWING_BUFFER_SECS } from '../../modules/shared';
 
 const INC = new ReceiveIndex({
-	"drawingBachelors": { theme: Val.STR, secsLeft: Val.NUM },
-	"drawingSuitors": { secsLeft: Val.NUM },
-	"voting": { secsLeft: Val.NUM, bachelorId: Val.NUM, suitorIds: Val.array(Val.NUM) },
+	"drawingBachelors": { endSecs: Val.NUM, theme: Val.STR },
+	"drawingSuitors": { endSecs: Val.NUM },
+	"voting": { endSecs: Val.NUM, bachelorId: Val.NUM, suitorIds: Val.array(Val.NUM) },
 	"showingVotes": Val.NONE,
 	"showingScores": Val.NONE,
 	
@@ -54,17 +54,17 @@ export default function View() {
 	Micron.defer(
 		setRecap,
 		client.use(INC, OUT),
-		INC.subscribe("drawingBachelors", ({ theme, secsLeft }) => {
+		INC.subscribe("drawingBachelors", ({ theme, endSecs }) => {
 			Game.pushRound(theme);
 			//rounds.push(new Round(theme));
-			page.put(DrawingBachelors, theme, secsLeft);
+			page.put(DrawingBachelors, theme, endSecs);
 		}),
-		INC.subscribe("drawingSuitors", ({ secsLeft }) => page.put(DrawingSuitors, secsLeft)),
+		INC.subscribe("drawingSuitors", ({ endSecs }) => page.put(DrawingSuitors, endSecs)),
 		INC.subscribe("showingScores", () => page.put(ShowingScores)),
-		INC.subscribe("voting", ({ secsLeft, bachelorId, suitorIds }) => {
+		INC.subscribe("voting", ({ endSecs, bachelorId, suitorIds }) => {
 			Game.handleMatchup(bachelorId);
 			//currentRound().handleMatchup(bachelorId);
-			page.put(Voting, secsLeft, bachelorId, suitorIds);
+			page.put(Voting, endSecs, bachelorId, suitorIds);
 		}),
 	);
 	
@@ -207,9 +207,9 @@ function Recap(close: () => void) {
 function Starting() {
 	return IdlePage("Game Starting!", "Get ready to draw!");
 }
-function DrawingBachelors(theme: string, secsLeft: number) {
+function DrawingBachelors(theme: string, endSecs: number) {
 	
-	const readyDisplay = new ReadyDisplay(Room.players.array(), secsLeft, Shared.DRAWING_BUFFER_SECS);
+	const readyDisplay = new ReadyDisplay(Room.players.array(), endSecs, Shared.DRAWING_BUFFER_SECS);
 	
 	Micron.defer(INC.subscribe("bachelorSubmitted", ({ playerId, submission }) => {
 		Game.handleBachelor(playerId, submission);
@@ -225,9 +225,9 @@ function DrawingBachelors(theme: string, secsLeft: number) {
 		readyDisplay.View()
 	]);
 }
-function DrawingSuitors(secsLeft: number) {
+function DrawingSuitors(endSecs: number) {
 	
-	const readyDisplay = new ReadyDisplay(Room.players.array(), secsLeft, Shared.DRAWING_BUFFER_SECS);
+	const readyDisplay = new ReadyDisplay(Room.players.array(), endSecs, Shared.DRAWING_BUFFER_SECS);
 	for (const bachelorId of Game.players.ids()) {
 		if (!Game.currentRound().matchups.has(bachelorId)) {
 			// this player didn't submit a bachelor, and therefore won't be submitting a suitor
@@ -257,7 +257,7 @@ function ShowingScores() {
 		Game.players.ScoreView()
 	]);
 }
-function Voting(secsLeft: number, bachelorId: number, suitorIds: number[]) {
+function Voting(endSecs: number, bachelorId: number, suitorIds: number[]) {
 	
 	const DELAY_INITIAL = 0.3;
 	const DELAY_STAGGER = 1.0;
@@ -267,7 +267,7 @@ function Voting(secsLeft: number, bachelorId: number, suitorIds: number[]) {
 	const bachelor = Game.players.get(bachelorId)!;
 	
 	const voteQueue = new VoteQueue();
-	const readyDisplay = new ReadyDisplay(Room.players.array(), secsLeft, Shared.VOTING_BUFFER_SECS);
+	const readyDisplay = new ReadyDisplay(Room.players.array(), endSecs, Shared.VOTING_BUFFER_SECS);
 	for (const id of suitorIds) {
 		// suitors won't be voting since their own submission is being voted on
 		readyDisplay.ready(id);

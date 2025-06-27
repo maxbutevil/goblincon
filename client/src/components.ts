@@ -167,10 +167,13 @@ export class Countdown {
 	private static calculateEnd(secsLeft: number, secsBuffer = 0): number {
 		return Date.now() + 1000 * (secsLeft - secsBuffer);
 	}
-	static fromSecs(secsLeft: number, secsBuffer = 0): Countdown {
-		return new Countdown(Countdown.calculateEnd(secsLeft, secsBuffer));
+	static fromEnd(endSecs: number, bufferSecs = 0): Countdown {
+		return new Countdown((endSecs - bufferSecs) * 1000);
 	}
-	static Simple(endTime: number, onFinish?: () => void): Micron.Node {
+	/*static fromSecs(secsLeft: number, secsBuffer = 0): Countdown {
+		return new Countdown(Countdown.calculateEnd(secsLeft, secsBuffer));
+	}*/
+	/*static Simple(endTime: number, onFinish?: () => void): Micron.Node {
 		const cd = new Countdown(endTime);
 		if (onFinish) cd.onFinish(onFinish);
 		return cd.View();
@@ -180,7 +183,7 @@ export class Countdown {
 		const cd = this.fromSecs(secsLeft, secsBuffer);
 		if (onFinish) cd.onFinish(onFinish);
 		return cd.View();
-	}
+	}*/
 	
 	stop() {
 		this.remainingSecs.set(-1);

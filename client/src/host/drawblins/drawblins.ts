@@ -18,8 +18,8 @@ import * as assets from "../../assets/testing"
 
 
 const INC = new ReceiveIndex({
-	"drawing": { goblinName: Val.STR, secsLeft: Val.NUM },
-	"voting": { secsLeft: Val.NUM },
+	"drawing": { endSecs: Val.NUM, goblinName: Val.STR },
+	"voting": { endSecs: Val.NUM },
 	"showingVotes": Val.NONE,
 	"showingScores": Val.NONE,
 	
@@ -41,11 +41,11 @@ export default function View() {
 	
 	Micron.defer(
 		client.use(INC, OUT),
-		INC.subscribe("drawing", ({ goblinName, secsLeft }) => {
+		INC.subscribe("drawing", ({ goblinName, endSecs }) => {
 			Game.pushRound(goblinName);
-			page.put(Drawing, secsLeft);
+			page.put(Drawing, endSecs);
 		}),
-		INC.subscribe("voting", ({ secsLeft }) => page.put(Voting, secsLeft)),
+		INC.subscribe("voting", ({ endSecs }) => page.put(Voting, endSecs)),
 		INC.subscribe("showingScores", () => page.put(ShowingScores)),
 	);
 	
@@ -86,9 +86,9 @@ function Starting() {
 		h("h1", "Game Starting!")
 	);
 }
-function Drawing(secsLeft: number) {
+function Drawing(endSecs: number) {
 	
-	const readyDisplay = new ReadyDisplay(Room.players.array(), secsLeft, Shared.DRAWING_BUFFER_SECS);
+	const readyDisplay = new ReadyDisplay(Room.players.array(), endSecs, Shared.DRAWING_BUFFER_SECS);
 	
 	Micron.defer(INC.subscribe("drawingSubmitted", ({ playerId, drawing }) => {
 		Game.handleDrawing(playerId, drawing);
@@ -103,13 +103,13 @@ function Drawing(secsLeft: number) {
 		readyDisplay.View()
 	]);
 }
-function Voting(secsLeft: number) {
+function Voting(endSecs: number) {
 	
 	const DELAY_INITIAL = 0.2;
 	const DELAY_STAGGER = 0.6;
 	
 	const voteQueue = new VoteQueue();
-	const readyDisplay = new ReadyDisplay(Room.players.array(), secsLeft, Shared.VOTING_BUFFER_SECS);
+	const readyDisplay = new ReadyDisplay(Room.players.array(), endSecs, Shared.VOTING_BUFFER_SECS);
 	const round = Game.currentRound();
 	//let showing = false;
 	

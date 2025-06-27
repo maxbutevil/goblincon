@@ -22,8 +22,8 @@ import * as icons from "../assets/icons/"
 
 const INC = new ReceiveIndex({
 	//waiting: Val.choice<"start" | "draw" | "vote" | "results" | "score">("start", "draw", "vote", "results", "score"),
-	"drawing": { goblinName: Val.STR, secsLeft: Val.NUM },
-	"voting": { choices: Val.array(Val.STR), secsLeft: Val.NUM },
+	"drawing": { goblinName: Val.STR, endSecs: Val.NUM },
+	"voting": { choices: Val.array(Val.STR), endSecs: Val.NUM },
 	
 	// idle states
 	"starting": Val.NONE,
@@ -43,11 +43,11 @@ export function view() {
 	
 	Micron.defer(
 		client.use(INC, OUT),
-		INC.subscribe("drawing", ({ goblinName, secsLeft }) => {
-			page.put(Drawing, secsLeft, goblinName);
+		INC.subscribe("drawing", ({ goblinName, endSecs }) => {
+			page.put(Drawing, endSecs, goblinName);
 		}),
-		INC.subscribe("voting", ({ choices, secsLeft }) => {
-			page.put(Voting, secsLeft, choices);
+		INC.subscribe("voting", ({ choices, endSecs }) => {
+			page.put(Voting, endSecs, choices);
 		}),
 		INC.subscribe("starting", () => page.put(Starting)),
 		INC.subscribe("doneDrawing", () => page.put(DoneDrawing)),
@@ -69,7 +69,7 @@ export const test = Micron.test("drawblins")
 function Starting() {
 	return IdlePage("Game Starting", "Get ready to draw!");
 }
-function Drawing(secsLeft: number, goblinName: string) {
+function Drawing(endSecs: number, goblinName: string) {
 	
 	const nav = new Nav();
 	const drawpad = new Drawpad({
@@ -109,7 +109,7 @@ function Drawing(secsLeft: number, goblinName: string) {
 		]),
 		BottomBar({
 			middle: (
-				Countdown.fromSecs(secsLeft, Shared.DRAWING_BUFFER_SECS)
+				Countdown.fromEnd(endSecs, Shared.DRAWING_BUFFER_SECS)
 					.onFinish(() => drawpad.submit())
 					.withPopups()
 					.View()
@@ -118,7 +118,7 @@ function Drawing(secsLeft: number, goblinName: string) {
 		}),
 	]);
 }
-function Voting(secsLeft: number, choices: string[]) {
+function Voting(endSecs: number, choices: string[]) {
 	
 	const filtered = choices.filter((choice) => choice !== Session.playerName);
 	const submitVote = (forName: string) => {
@@ -134,7 +134,7 @@ function Voting(secsLeft: number, choices: string[]) {
 		]),
 		BottomBar({
 			middle: (
-				Countdown.fromSecs(secsLeft, Shared.VOTING_BUFFER_SECS)
+				Countdown.fromEnd(endSecs, Shared.VOTING_BUFFER_SECS)
 					.withPopups()
 					.View()
 			)

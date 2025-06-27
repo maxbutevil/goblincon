@@ -94,10 +94,10 @@ export class ReadyDisplay {
 	private readied: number[] = [];
 	private countdown?: Countdown;
 	
-	constructor(players: Player[], secsLeft?: number, secsBuffer?: number) {
+	constructor(players: Player[], endSecs?: number, bufferSecs?: number) {
 		this.players = players;
-		if (secsLeft !== undefined) {
-			this.countdown = Countdown.fromSecs(secsLeft, secsBuffer ?? 0);
+		if (endSecs !== undefined) {
+			this.countdown = Countdown.fromEnd(endSecs, bufferSecs ?? 0);
 		}
 	}
 	ready(id: number) {

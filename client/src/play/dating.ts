@@ -31,9 +31,9 @@ const INC = new ReceiveIndex({
 	//gameStarted: Val.NONE,
 	
 	/* state synchronization */
-	"drawingBachelor": { secsLeft: Val.NUM, naming: Val.BOOL, theme: Val.STR },
-	"drawingSuitor": { secsLeft: Val.NUM, naming: Val.BOOL, bachelorId: Val.NUM, bachelorSubmission: SUBMISSION_DATA },
-	"voting": { secsLeft: Val.NUM, choices: Val.array(Val.STR) },
+	"drawingBachelor": { endSecs: Val.NUM, naming: Val.BOOL, theme: Val.STR },
+	"drawingSuitor": { endSecs: Val.NUM, naming: Val.BOOL, bachelorId: Val.NUM, bachelorSubmission: SUBMISSION_DATA },
+	"voting": { endSecs: Val.NUM, choices: Val.array(Val.STR) },
 	
 	/* idle states */
 	"showingVotes": Val.NONE,
@@ -56,14 +56,14 @@ export function view() {
 	
 	Micron.defer(
 		client.use(INC, OUT),
-		INC.subscribe("drawingBachelor", ({ secsLeft, naming, theme }) => {
-			page.put(DrawingBachelor, secsLeft, naming, theme);
+		INC.subscribe("drawingBachelor", ({ endSecs, naming, theme }) => {
+			page.put(DrawingBachelor, endSecs, naming, theme);
 		}),
-		INC.subscribe("drawingSuitor", ({ secsLeft, naming, bachelorId, bachelorSubmission }) => {
-			page.put(DrawingSuitor, secsLeft, naming, bachelorId, bachelorSubmission)
+		INC.subscribe("drawingSuitor", ({ endSecs, naming, bachelorId, bachelorSubmission }) => {
+			page.put(DrawingSuitor, endSecs, naming, bachelorId, bachelorSubmission)
 		}),
-		INC.subscribe("voting", ({ secsLeft, choices }) => {
-			page.put(Voting, secsLeft, choices);
+		INC.subscribe("voting", ({ endSecs, choices }) => {
+			page.put(Voting, endSecs, choices);
 		}),
 		INC.subscribe("showingVotes", () => page.put(ShowingResults)),
 		INC.subscribe("showingScores", () => page.put(ShowingResults)),
@@ -88,7 +88,7 @@ export const test = Micron.test("dating")
 function Starting() {
 	return IdlePage("Game Starting", "Get ready to draw!");
 }
-function DrawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: string) {
+function DrawingBachelor(endSecs: number, naming: boolean, bachelorTheme: string) {
 	
 	//const overlay = Micron.anchor();
 	const nav = new Nav();
@@ -155,7 +155,7 @@ function DrawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: strin
 		]),
 		BottomBar({
 			middle: (
-				Countdown.fromSecs(secsLeft, Shared.DRAWING_BUFFER_SECS)
+				Countdown.fromEnd(endSecs, Shared.DRAWING_BUFFER_SECS)
 					.withPopups()
 					.onFinish(() => drawpad.submit())
 					.onThreshold(20, () => {
@@ -184,7 +184,7 @@ function DrawingBachelor(secsLeft: number, naming: boolean, bachelorTheme: strin
 		))
 	]);*/
 }
-function DrawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, bachelorSubmission: SubmissionData) {
+function DrawingSuitor(endSecs: number, naming: boolean, bachelorId: number, bachelorSubmission: SubmissionData) {
 	
 	//let name: string | undefined = undefined; // undefined = never opened name overlay
 	
@@ -317,7 +317,7 @@ function DrawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 		
 		BottomBar({
 			middle: (
-				Countdown.fromSecs(secsLeft, Shared.DRAWING_BUFFER_SECS)
+				Countdown.fromEnd(endSecs, Shared.DRAWING_BUFFER_SECS)
 					.withPopups()
 					.onFinish(() => drawpad.submit())
 					.onThreshold(20, () => {
@@ -353,7 +353,7 @@ function DrawingSuitor(secsLeft: number, naming: boolean, bachelorId: number, ba
 		//mountedBtn(showBachelorIcon, toggle)
 	]);*/
 }
-function Voting(secsLeft: number, choices: string[]) {
+function Voting(endSecs: number, choices: string[]) {
 	
 	function submitVote(forName: string) {
 		OUT.send("voteSubmission", { forName });
@@ -373,7 +373,7 @@ function Voting(secsLeft: number, choices: string[]) {
 		]),
 		BottomBar({
 			middle: (
-				Countdown.fromSecs(secsLeft, Shared.VOTING_BUFFER_SECS)
+				Countdown.fromEnd(endSecs, Shared.VOTING_BUFFER_SECS)
 					.withPopups()
 					.View()
 			),
