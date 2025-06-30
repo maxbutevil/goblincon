@@ -11,30 +11,58 @@ pub fn generate(count: usize) -> Box<[&'static str]> {
 }
 
 const THEMES: &[&str] = &[
-	/* Adjectives */
+	
+	/* Misc. Adjectives */
 	"Sad",
 	"Happy",
-	"Cute",
-	"Squishy",
-	"Fluffy",
+	
 	"Soft",
+	"Cute",
+	"Fluffy",
+	"Squishy",
+	
 	"Friendly",
 	"Beautiful",
 	
 	"Bald",
 	"Hairy",
-	"Muscular",
-	"Tough",
 	"Scary",
+	"Tough",
+	"Muscular",
 	"Sinister",
 	
 	"Loud",
 	"Musical",
 	
 	"Microscopic",
+	"Tiny",
 	"Small",
 	"Large",
 	"Gigantic",
+	
+	/* Nature */
+	"Dogs",
+	"Cats",
+	//"Monkeys",
+	
+	"Bugs",
+	"Fish",
+	"Birds",
+	
+	"Trees",
+	"Plants",
+	"Reptiles",
+	"Amphibians",
+	"Pets",
+	"Zoo Animals",
+	"Farm Animals",
+	"Sea Creatures",
+	
+	/* Environments */
+	"Forest",
+	"Desert",
+	"Underwater",
+	"Outer Space",
 	
 	/* Jobs */
 	"Detectives",
@@ -45,42 +73,30 @@ const THEMES: &[&str] = &[
 	"Villains",
 	
 	/* Supernatural */
-	"Goblins",
 	"Ghosts",
-	"Spirits",
-	"Devils",
+	//"Devils",
 	"Demons",
-	"Vampires",
+	"Goblins",
 	"Zombies",
 	"Wizards",
 	"Witches",
-	
-	/* Nature */
-	"Trees",
-	"Plants",
-	"Bugs",
-	"Fish",
-	"Birds",
-	"Reptiles",
-	"Amphibians",
-	"Zoo Animals",
-	"Farm Animals",
-	"Sea Creatures",
+	"Spirits",
+	"Vampires",
 	
 	/* Genre */
-	"Western",
 	"Sci-Fi",
-	"Mystery",
 	"Comedy",
+	"Mystery",
+	"Western",
 	"Cartoon",
 	"Fantasy",
 	
 	/* Abstract */
-	"Abstract Concepts",
-	"Personified Emotions",
 	"Imaginary Friends",
 	"Inanimate Objects",
 	"Mythical Creatures",
+	"Abstract Concepts",
+	"Personified Emotions",
 	
 	/* Other Traits */
 	"Mischief Makers",
@@ -88,6 +104,7 @@ const THEMES: &[&str] = &[
 	"World Leaders",
 	"Historical Figures",
 	"The 1%",
+	
 ];
 
 

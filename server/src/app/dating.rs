@@ -51,9 +51,12 @@ enum HostMsgIn {
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 enum HostMsgOut<'a> {
 	/* State Sync */
-	DrawingBachelors { secs_left: f32, theme: &'a str },
-	DrawingSuitors { secs_left: f32 },
-	Voting { secs_left: f32, bachelor_id: PlayerId, suitor_ids: [PlayerId; SUITOR_COUNT] },
+	//DrawingBachelors { secs_left: f32, theme: &'a str },
+	//DrawingSuitors { secs_left: f32 },
+	//Voting { secs_left: f32, bachelor_id: PlayerId, suitor_ids: [PlayerId; SUITOR_COUNT] },
+	DrawingBachelors { end_secs: u64, theme: &'a str },
+	DrawingSuitors { end_secs: u64 },
+	Voting { end_secs: u64, bachelor_id: PlayerId, suitor_ids: [PlayerId; SUITOR_COUNT] },
 	ShowingVotes,
 	ShowingScores,
 	
@@ -78,11 +81,12 @@ enum PlayerMsgIn {
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 enum PlayerMsgOut<'a> {
 	
-	DrawingBachelor { theme: &'a str, naming: bool, secs_left: f32 },
-	DrawingSuitor { bachelor_id: PlayerId, bachelor_submission: &'a Submission, naming: bool, secs_left: f32 },
-	//DrawingSuitor { bachelor_drawings: &'a [&'a str], secs_left: f32 },
-	//Shipping { choices: &'a [String], secs_left: f32 },
-	Voting { choices: &'a [String], secs_left: f32 },
+	//DrawingBachelor { theme: &'a str, naming: bool, secs_left: f32 },
+	//DrawingSuitor { bachelor_id: PlayerId, bachelor_submission: &'a Submission, naming: bool, secs_left: f32 },
+	//Voting { choices: &'a [String], secs_left: f32 },
+	DrawingBachelor { end_secs: u64, theme: &'a str, naming: bool },
+	DrawingSuitor { end_secs: u64, bachelor_id: PlayerId, bachelor_submission: &'a Submission, naming: bool },
+	Voting { end_secs: u64, choices: &'a [String] },
 	
 	ShowingVotes,
 	ShowingScores,
@@ -360,7 +364,7 @@ impl<'a> Game<'a> {
 						PlayerMsgOut::DrawingBachelor {
 							theme: self.themes[self.round],
 							naming: self.settings.naming,
-							secs_left: self.timeout.remaining_secs()
+							end_secs: self.timeout.absolute_secs()
 						}
 					}
 				},
@@ -385,10 +389,10 @@ impl<'a> Game<'a> {
 					};
 					
 					self.clients.players.send(player_id, &PlayerMsgOut::DrawingSuitor {
+						end_secs: self.timeout.absolute_secs(),
 						bachelor_id: *bachelor_id,
 						bachelor_submission: &bachelor_submission,
 						naming: self.settings.naming,
-						secs_left: self.timeout.remaining_secs()
 					}).await;
 					return;
 				},
@@ -410,10 +414,9 @@ impl<'a> Game<'a> {
 						break 'msg PlayerMsgOut::NotVoting;
 					}
 					
-					let secs_left = self.timeout.remaining_secs();
 					let msg = PlayerMsgOut::Voting {
+						end_secs: self.timeout.absolute_secs(),
 						choices,
-						secs_left
 					};
 					self.clients.players.send(player_id, &msg).await;
 					return;
@@ -611,14 +614,14 @@ impl<'a> Game<'a> {
 		};
 		
 		let naming = self.settings.naming;
-		let secs_left = self.timeout.reset_scaled(
+		let end_secs = self.timeout.reset_scaled(
 			DRAW_BACHELOR_TIME,
 			self.settings.bachelor_draw_time_factor
 		);
 		
 		self.clients.send_all(
-			&PlayerMsgOut::DrawingBachelor { theme, naming, secs_left },
-			&HostMsgOut::DrawingBachelors { theme, secs_left }
+			&PlayerMsgOut::DrawingBachelor { end_secs, theme, naming },
+			&HostMsgOut::DrawingBachelors { end_secs, theme }
 		).await;
 		
 		let submissions = Box::new([const { None }; MAX_PLAYER_COUNT]);
@@ -641,14 +644,14 @@ impl<'a> Game<'a> {
 			return self.start_votes(&assignments, submitted).await;
 		}
 		
-		let secs_left = self.timeout.reset_scaled(
+		let end_secs = self.timeout.reset_scaled(
 			DRAW_SUITOR_TIME,
 			self.settings.suitor_draw_time_factor
 		);
 		
 		/* Tell host */
 		self.clients.host.send(&HostMsgOut::DrawingSuitors {
-			secs_left
+			end_secs
 		}).await;
 		
 		/* Tell players */
@@ -656,10 +659,10 @@ impl<'a> Game<'a> {
 		for (player_id, bachelors) in iter {
 			let (bachelor_id, bachelor_submission) = bachelors[current];
 			self.clients.players.send(player_id, &PlayerMsgOut::DrawingSuitor {
+				end_secs,
 				bachelor_id: *bachelor_id,
 				bachelor_submission,
 				naming: self.settings.naming,
-				secs_left
 			}).await;
 		}
 		
@@ -679,7 +682,7 @@ impl<'a> Game<'a> {
 		let choices = self.vote_choices(suitor_ids, &submitted);
 		let choices = choices.as_ref();
 		
-		let secs_left = self.timeout.reset_scaled(
+		let end_secs = self.timeout.reset_scaled(
 			match choices.len() {
 				0 => VOTE_TIME_NO_SUBMISSIONS,
 				1 => VOTE_TIME_ONE_SUBMISSION,
@@ -689,7 +692,7 @@ impl<'a> Game<'a> {
 		);
 		
 		self.clients.host.send(&HostMsgOut::Voting {
-			secs_left,
+			end_secs,
 			bachelor_id,
 			suitor_ids
 		}).await;
@@ -699,7 +702,7 @@ impl<'a> Game<'a> {
 				player.send(&PlayerMsgOut::NotVoting).await;
 			} else {
 				player.send(&PlayerMsgOut::Voting {
-					secs_left,
+					end_secs,
 					choices
 				}).await;
 			}

@@ -7,7 +7,22 @@ impl Timeout {
 	pub fn new(duration: Duration) -> Self {
 		Self(Box::pin(sleep(duration)))
 	}
-	pub fn reset(&mut self, duration: Duration) -> f32 {
+	
+	pub fn reset(&mut self, duration: Duration) -> u64 {
+		self.as_mut().reset(Instant::now() + duration);
+		self.absolute_secs()
+	}
+	pub fn reset_scaled(&mut self, duration: Duration, scale_factor: f32) -> u64 {
+		self.reset(duration.mul_f32(scale_factor))
+	}
+	pub fn reset_dynamic(&mut self, duration: DynamicDuration, num_players: usize) -> u64 {
+		self.reset(duration.duration(num_players))
+	}
+	pub fn reset_dynamic_scaled(&mut self, duration: DynamicDuration, num_players: usize, scale_factor: f32) -> u64 {
+		self.reset(duration.duration(num_players).mul_f32(scale_factor))
+	}
+	
+	/*pub fn reset(&mut self, duration: Duration) -> f32 {
 		self.as_mut().reset(Instant::now() + duration);
 		duration.as_secs_f32()
 	}
@@ -19,14 +34,34 @@ impl Timeout {
 	}
 	pub fn reset_dynamic_scaled(&mut self, duration: DynamicDuration, num_players: usize, scale_factor: f32) -> f32 {
 		self.reset(duration.duration(num_players).mul_f32(scale_factor))
-	}
+	}*/
 	pub fn remaining(&self) -> Duration {
 		self.deadline() - tokio::time::Instant::now()
 	}
 	pub fn remaining_secs(&self) -> f32 {
 		self.remaining().as_secs_f32()
 	}
-	pub fn deadline_secs(&self) -> u64 {
+	
+	fn absolute_duration(&self) -> Duration {
+		use std::time::{SystemTime, UNIX_EPOCH};
+		let end_time = SystemTime::now() + self.remaining();
+		let end_duration = end_time.duration_since(UNIX_EPOCH);
+		
+		match end_duration {
+			Ok(duration) => duration,
+			Err(err) => {
+				tracing::error!("error getting deadline timestamp (somehow): {err}");
+				Duration::default() // this is a bad default, but this error will never ever happen
+			}
+		}
+	}
+	pub fn absolute_millis(&self) -> u128 {
+		self.absolute_duration().as_millis()
+	}
+	pub fn absolute_secs(&self) -> u64 {
+		self.absolute_duration().as_secs()
+	}
+	/*pub fn deadline_secs(&self) -> u64 {
 		use std::time::{SystemTime, UNIX_EPOCH};
 		
 		let end_time = SystemTime::now() + self.remaining();
@@ -39,7 +74,7 @@ impl Timeout {
 				0 // this is probably a bad default, but this error will never happen
 			}
 		}
-	}
+	}*/
 }
 impl std::ops::Deref for Timeout {
 	type Target = Pin<Box<Sleep>>;
