@@ -6,10 +6,11 @@ import { pluginSass } from '@rsbuild/plugin-sass';
 export default defineConfig(({ env }) => ({
 	source: {
 		entry: {
-			"test/gen": { html: env === "development", import: "./src/testing/gen.ts" },
-			"test/playground": { html: env === "development", import: "./src/testing/playground.ts" },
 			"test/host": { html: env === "development", import: "./src/testing/test_host.ts" },
 			"test/play": { html: env === "development", import: "./src/testing/test_play.ts" },
+			"test/gen": { html: env === "development", import: "./src/testing/gen.ts" },
+			//"test/playground": { html: env === "development", import: "./src/testing/playground.ts" },
+			
 			host: "./src/host/index.ts",
 			play: "./src/play/index.ts",
 		}

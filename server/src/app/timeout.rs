@@ -10,7 +10,7 @@ impl Timeout {
 	
 	pub fn reset(&mut self, duration: Duration) -> u64 {
 		self.as_mut().reset(Instant::now() + duration);
-		self.absolute_secs()
+		self.end_millis()
 	}
 	pub fn reset_scaled(&mut self, duration: Duration, scale_factor: f32) -> u64 {
 		self.reset(duration.mul_f32(scale_factor))
@@ -42,7 +42,7 @@ impl Timeout {
 		self.remaining().as_secs_f32()
 	}
 	
-	fn absolute_duration(&self) -> Duration {
+	fn end_duration(&self) -> Duration {
 		use std::time::{SystemTime, UNIX_EPOCH};
 		let end_time = SystemTime::now() + self.remaining();
 		let end_duration = end_time.duration_since(UNIX_EPOCH);
@@ -55,12 +55,20 @@ impl Timeout {
 			}
 		}
 	}
-	pub fn absolute_millis(&self) -> u128 {
-		self.absolute_duration().as_millis()
+	/*pub fn end_secs(&self) -> u64 {
+		self.end_duration().as_secs()
 	}
-	pub fn absolute_secs(&self) -> u64 {
-		self.absolute_duration().as_secs()
+	pub fn end_millis(&self) -> u128 {
+		self.end_duration().as_millis()
+	}*/
+	pub fn end_millis(&self) -> u64 {
+		self.end_duration()
+			.as_millis()
+			.try_into()
+			.unwrap_or(0_u64) // this is also a bad default, but again, this error will never ever happen
 	}
+	
+	
 	/*pub fn deadline_secs(&self) -> u64 {
 		use std::time::{SystemTime, UNIX_EPOCH};
 		

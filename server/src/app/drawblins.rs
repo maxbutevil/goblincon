@@ -69,8 +69,8 @@ enum HostMsgIn {
 enum HostMsgOut<'a> {
 	//GameStarted,
 	
-	Drawing { end_secs: u64, goblin_name: &'a str },
-	Voting { end_secs: u64 },
+	Drawing { end_millis: u64, goblin_name: &'a str },
+	Voting { end_millis: u64 },
 	ShowingVotes,
 	ShowingScores,
 	
@@ -94,8 +94,8 @@ enum PlayerMsgOut<'a> {
 	
 	//Drawing { goblin_name: &'a str, secs_left: f32 },
 	//Voting { choices: &'a [String], secs_left: f32 },
-	Drawing { end_secs: u64, goblin_name: &'a str },
-	Voting { end_secs: u64, choices: &'a [String] },
+	Drawing { end_millis: u64, goblin_name: &'a str },
+	Voting { end_millis: u64, choices: &'a [String] },
 	
 	Starting,
 	DoneDrawing,
@@ -242,7 +242,7 @@ impl<'a> Game<'a> {
 						return;
 					};
 					PlayerMsgOut::Drawing {
-						end_secs: self.timeout.absolute_secs(),
+						end_millis: self.timeout.end_millis(),
 						goblin_name
 					}
 				}
@@ -251,7 +251,7 @@ impl<'a> Game<'a> {
 				if let Some(None) = votes.get(player_id as usize) {
 					/* If the player hasn't voted, ask them to */
 					self.clients.players.send(player_id, &PlayerMsgOut::Voting {
-						end_secs: self.timeout.absolute_secs(),
+						end_millis: self.timeout.end_millis(),
 						choices
 					}).await;
 					return;
@@ -287,14 +287,14 @@ impl<'a> Game<'a> {
 		
 		self.state = State::Draw { submitted: [false; MAX_PLAYER_COUNT] };
 		
-		let end_secs = self.timeout.reset_scaled(
+		let end_millis = self.timeout.reset_scaled(
 			DRAW_TIME,
 			self.settings.draw_time_factor
 		);
 		
 		self.clients.send_all(
-			&PlayerMsgOut::Drawing { end_secs, goblin_name },
-			&HostMsgOut::Drawing { end_secs, goblin_name },
+			&PlayerMsgOut::Drawing { end_millis, goblin_name },
+			&HostMsgOut::Drawing { end_millis, goblin_name },
 		).await;
 	}
 	async fn start_vote(&mut self, eligible: [bool; MAX_PLAYER_COUNT]) {
@@ -308,15 +308,15 @@ impl<'a> Game<'a> {
 			return;
 		}
 		
-		let end_secs = self.timeout.reset_dynamic_scaled(
+		let end_millis = self.timeout.reset_dynamic_scaled(
 			VOTE_TIME,
 			choices.len(),
 			self.settings.vote_time_factor
 		);
 		
 		self.clients.send_all(
-			&PlayerMsgOut::Voting { end_secs, choices: &choices },
-			&HostMsgOut::Voting { end_secs },
+			&PlayerMsgOut::Voting { end_millis, choices: &choices },
+			&HostMsgOut::Voting { end_millis },
 		).await;
 		self.state = State::Vote { eligible, choices, votes: [None; MAX_PLAYER_COUNT] };	
 	}
