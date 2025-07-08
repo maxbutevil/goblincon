@@ -13,38 +13,43 @@ pub fn generate(count: usize) -> Box<[&'static str]> {
 const THEMES: &[&str] = &[
 	
 	/* Misc. Adjectives */
-	"Sad",
+	"Sad", // Opposing pairs
 	"Happy",
-	
 	"Soft",
-	"Cute",
-	"Fluffy",
-	"Squishy",
-	
-	"Friendly",
-	"Beautiful",
-	
+	"Tough",
+	"Loud",
+	"Quiet",
 	"Bald",
 	"Hairy",
-	"Scary",
-	"Tough",
-	"Muscular",
+	"Friendly",
+	"Unpleasant",
+	
+	"Cute", // 'Cute Little Guy' Descriptors
+	"Round",
+	"Silly",
+	"Clumsy",
+	"Fluffy",
+	"Pretty",
+	"Squishy",
+	"Playful",
+	"Adorable",
+	
+	"Scary", // 'Scary Big Guy' Descriptors
+	"Spooky",
 	"Sinister",
+	"Muscular",
+	"Powerful",
 	
-	"Loud",
-	"Musical",
-	
-	"Microscopic",
-	"Tiny",
+	"Tiny", // Sizes
 	"Small",
 	"Large",
 	"Gigantic",
+	"Microscopic",
 	
 	/* Nature */
 	"Dogs",
 	"Cats",
-	//"Monkeys",
-	
+	"Worm",
 	"Bugs",
 	"Fish",
 	"Birds",
@@ -53,12 +58,14 @@ const THEMES: &[&str] = &[
 	"Plants",
 	"Reptiles",
 	"Amphibians",
+	
 	"Pets",
 	"Zoo Animals",
 	"Farm Animals",
 	"Sea Creatures",
 	
 	/* Environments */
+	"Beach",
 	"Forest",
 	"Desert",
 	"Underwater",
@@ -73,38 +80,45 @@ const THEMES: &[&str] = &[
 	"Villains",
 	
 	/* Supernatural */
-	"Ghosts",
-	//"Devils",
-	"Demons",
-	"Goblins",
-	"Zombies",
 	"Wizards",
 	"Witches",
+	
+	"Elves", // Fantasy Races
+	"Gnomes",
+	"Dwarves",
+	"Goblins",
+	
+	"Ghosts", // Spooky Creatures
+	"Demons",
+	"Zombies",
 	"Spirits",
 	"Vampires",
 	
-	/* Genre */
+	/* Genres */
 	"Sci-Fi",
 	"Comedy",
 	"Mystery",
-	"Western",
 	"Cartoon",
-	"Fantasy",
+	//"Western",
+	//"Fantasy",
 	
-	/* Abstract */
+	/* Abstract/Conceptual */
+	"Abstract Concepts", // Abstract
 	"Imaginary Friends",
-	"Inanimate Objects",
-	"Mythical Creatures",
-	"Abstract Concepts",
 	"Personified Emotions",
 	
+	"Inanimate Objects", // Categories
+	"Mythical Creatures",
+	
 	/* Other Traits */
-	"Mischief Makers",
-	"Good Kissers",
+	"Celebrities", // Pop Culture
 	"World Leaders",
 	"Historical Figures",
-	"The 1%",
 	
+	"The 1%",
+	"Vehicles",
+	"Good Kissers",
+	"Mischief Makers",
 ];
 
 
