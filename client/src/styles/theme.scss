@@ -4,51 +4,96 @@
 //$border-radius: 8px;
 
 @use 'sass:list';
+@use 'sass:meta';
 
 $border-weight: 3.5px;
 $border-radius: 8px;
 $background-color: #f9ddcc;
-$light: #fff0e7 #f9ddcc #e0cab6 #d2b48c #a86;
+/*$light: #fff0e7 #f9ddcc #eed0bb #e0cab6 #d2b48c #a86;
 $gray: #eee #ddd #aaa #888 #555 #222 #000;
-$dark: #543 #432 #321 #210;
+$dark: #543 #432 #321 #210;*/
 
+//$primary: #fff0e7 #f9ddcc #e8cbb6 #e0cab6 #d2b48c #a86;
+//$primary: #fce #fbe #e9e;
+//$primary: #839 #728 #617;
+$secondary: #f7a399 #d99#88c;
+$gray: #eee #ddd #aaa #888 #555 #222 #000;
+$success: #a3c9a8 #8ab990 #8ab990;
+$warning: #f4c47f;
+$error: #d2827c #c2635e #a24a46;
+
+$text: #222 #444;
+
+
+$primary: #fef4d7 #fad8ca #f7cab7 #f2baaf #eda7a2 #e99394 #e58087;
+
+/*//$primary: #f9ddcc 
+$apricot: #ffcdb2;
+$melon: #ffb4a2;
+$salmon-pink: #e5989b;
+$old-rose: #b5838d;
+$dim-gray: #6d6875;
+$primary: white $apricot $melon $salmon-pink $old-rose;
+
+$yinmn-blue: #355070ff;
+$chinese-violet: #6d597aff;
+$china-rose: #b56576ff;
+$light-coral: #e56b6fff;
+$buff: #eaac8bff;*/
 
 @function primary($n) {
-	@return list.nth($light, $n);
+	@return list.nth($primary, $n);
 }
 @function secondary($n) {
-	@return list.nth($dark, $n)
+	@return list.nth($secondary, $n)
 }
 @function gray($n) {
 	@return list.nth($gray, $n);
 }
+@function text($n) {
+	@return list.nth($text, $n);
+}
+@function success($n) { @return list.nth($success, $n); }
+@function error($n) { @return list.nth($error, $n); }
 
 
+$border-dark: #210;
+$border-light: primary(7);
+//$border-thin: 2px solid $border-color;
+//$border-thick: 4px solid $border-color;
 
-$border-color: #210;
-$border-thin: 3px solid $border-color;
-$border-thick: 4px solid $border-color;
+@function border($width: 2px) {
+	@return $width solid $border-dark;
+}
+@function border-light($width: 2px) {
+	@return $width solid $border-light;
+}
+@mixin border($width: 2px, $radius: 0px) {
+	border: border($width);
+	border-radius: $radius;
+}
+@mixin border-light($width: 2px, $radius: 0px) {
+	border: border-light($width);
+	border-radius: $radius;
+}
+
+
 /*@function border($w) {
 	@return $w solid $border-color;
 }*/
-@mixin border($r: 0px) {
-	
+@mixin border-thin($radius: 8px) {
+	@include border(2px, $radius);
 }
-@mixin border-thin($r: 8px) {
-	border: $border-thin;
-	border-radius: $r;
+@mixin border-thick($radius: 8px) {
+	@include border(3px, $radius);
 }
-@mixin border-thick($r: 8px) {
-	border: $border-thick;
-	border-radius: $r;
-}
-@mixin panel-thick($r: 8px) {
+/*@mixin panel-thick($r: 8px) {
 	@include border-thick($r);
-	
+	//background-color: primary(3);
 }
 @mixin panel-thin($r: 8px) {
 	@include border-thin($r);
-}
+}*/
 
 
 

@@ -15,7 +15,7 @@ export default class State<T> {
 	protected curr: T;
 	readonly eq: (curr: T, from: T) => boolean;
 	
-	constructor(initial: T, eq: typeof defaultEq = defaultEq) {
+	constructor(initial: T, eq: typeof defaultEq<T> = defaultEq) {
 		this.curr = initial;
 		this.eq = eq;
 	}

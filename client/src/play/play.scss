@@ -4,6 +4,10 @@
 body {
 	touch-action: manipulation;
 }
+:root {
+	background-image: url("../assets/misc/background.png");
+}
+
 
 #about-popup {
 	@include popup;
@@ -29,7 +33,7 @@ body {
 		@include border-thin(6px);
 		padding-top: 2px;
 		
-		background-color: primary(1);
+		background-color: gray(1); //primary(2);
 		#bachelor-name {
 			max-width: 100%;
 			font-size: 1.6rem;
@@ -43,7 +47,6 @@ body {
 			height: auto;
 		}
 	}
-	
 }
 
 
@@ -81,23 +84,77 @@ body {
 	}
 }
 #landing {
+	
 	input {
-		margin-top: 2px;
-		width: 18ch;
+		width: 100%;
+		max-width: 20ch;
+		//width: min(80vw, 20ch);
+	}
+	b {
+		font-weight: 600;
+	}
+	.page {
+		@include column(flex-start, center, 16px);
+	}
+	.section {
+		@include column(12px);
+	}
+	.header {
+		//@include row(space-between, center, 6px);
+		//padding-bottom: 2px;
+		font-size: 1.4rem;
+		font-weight: 600;
+		text-align: left;
+		border-bottom: border(2px);
+	}
+	
+	.card {
+		//margin: 16px;
+		width: min(30ch, 92vw);
+		
+		@include column(8px);
+		padding: 16px;
+		padding-top: 14px;
+		
+		//font-size: 1.2rem;
+		
+		background-color: primary(3);
+		border: 2px solid primary(7);
+		border-radius: 6px;
+	}
+	.content {
+		@include column(6px);
+		font-size: 0.9rem;
+		text-align: left;
+	}
+	
+	
+	.info-card {
+		@extend .card;
+	}
+	
+	#primary-card {
+		@extend .card;
+		button {
+			align-self: center;
+		}
+	}
+	#host-flow {
+		@include column(12px);
+		font-size: 1.2rem;
 	}
 	#join-flow {
-		margin: 16px;
 		font-size: 1.2rem;
-		gap: 10px;
-	}
-	#join-btn {
-		margin-top: 12px;
 	}
 	#code-input {
 		text-transform: uppercase;
 	}
 	#status {
-		max-width: 36ch;
+		max-width: 100%;
+		text-wrap: wrap;
+	}
+	#info-cards {
+		@include row-wrap(center, stretch, 16px);
 	}
 }
 #lobby {
@@ -169,6 +226,8 @@ body {
 }
 #drawpad {
 	
+	$border: 3px solid black;
+	
 	//flex: 1 1 auto;
   //max-height: 96%;
   
@@ -180,14 +239,14 @@ body {
   
 	@include column(center, stretch);
 	
-	@include border-thick(0px);
+	border: $border;
 	touch-action: pinch-zoom;
 	
 	#canvas {
 		aspect-ratio: 1;
 		background-color: white;
-		border-top: $border-thick;
-		border-bottom: $border-thick;
+		border-top: $border;
+		border-bottom: $border;
 	}
 	
 	%btn-row {

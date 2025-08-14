@@ -14,13 +14,11 @@ use dashmap::DashMap;
 use crate::globals::*;
 
 mod strgen;
-mod timeout;
 
 mod cf;
 mod room;
 mod client;
 
-use timeout::*;
 use client::*;
 
 mod lobby;
@@ -29,7 +27,7 @@ mod dating;
 
 #[derive(Clone)]
 pub struct App {
-	rooms: Arc<DashMap<RoomId, room::Sender>>
+	rooms: Arc<DashMap<RoomToken, room::Sender>>
 }
 impl App {
 	
@@ -37,34 +35,35 @@ impl App {
 		Self { rooms: Arc::new(DashMap::new()) }
 	}
 	
-	fn generate_room_id(&self) -> Option<RoomId> {
+	fn generate_room_token(&self) -> Option<RoomToken> {
 		
 		const ATTEMPTS: usize = 5;
 		
 		for _ in 0..ATTEMPTS {
-			let id = RoomId::generate();
-			if !self.rooms.contains_key(&id) {
-				return Some(id);
+			//let id = RoomToken::generate();
+			let token = RoomToken::generate();
+			if !self.rooms.contains_key(&token) {
+				return Some(token);
 			}
 		}
 		
 		tracing::error!("failed to generate a valid room id (somehow)");
 		None
 	}
-	pub fn find_room(&self, room_code: &str) -> Option<RoomId> {
-		if let Some(room_id) = RoomId::parse(room_code) {
+	/*pub fn find_room(&self, room_code: &str) -> Option<RoomToken> {
+		if let Some(room_id) = RoomToken::from_str(room_code) {
 			//return self.rooms.get_mut(&room_id);
 			if self.has_room(&room_id) {
 				return Some(room_id);
 			}
 		}
 		None
-	}
-	pub fn has_room(&self, room_id: &RoomId) -> bool {
+	}*/
+	pub fn has_room(&self, room_id: &RoomToken) -> bool {
 		self.rooms.contains_key(room_id)
 	}
 	
-	async fn init_room(&self, id: RoomId, host_socket: WebSocket) {
+	async fn init_room(&self, id: RoomToken, host_socket: WebSocket) {
 		let mut clients = ClientIndex::new(host_socket, id).await;
 		
 		loop {
@@ -95,15 +94,26 @@ impl App {
 		self.rooms.remove(&id);
 		clients.close().await;
 	}
-	pub async fn accept_host(&self, host_socket: WebSocket) {
-		let Some(id) = self.generate_room_id() else { return };
+	pub async fn accept_host_connect(&self, socket: WebSocket) {
+		let Some(token) = self.generate_room_token() else { return };
 		// may want to become debug, rather than info
-		tracing::info!("[{}] Opening!", id.as_str());
-		self.init_room(id, host_socket).await;
-		tracing::info!("[{}] Closed", id.as_str());
+		tracing::info!("[{}] Opening!", token.as_str());
+		self.init_room(token, socket).await;
+		tracing::info!("[{}] Closed", token.as_str());
 	}
-	pub async fn accept_player_join(&self, socket: WebSocket, room_id: RoomId, name: String, icon: PlayerIcon) {
-		let Some(handle) = self.rooms.get(&room_id) else {
+	pub async fn accept_host_reconnect(&self, socket: WebSocket, room: RoomToken, token: ClientToken) {
+		let Some(handle) = self.rooms.get(&room) else {
+			tracing::debug!("host reconnect failed (no such room)");
+			ClientIndex::reject_invalid_host_reconnect(socket).await;
+			return;
+		};
+		let _ = handle.send(room::Event::HostReconnect {
+			socket,
+			token
+		}).await;
+	}
+	pub async fn accept_player_join(&self, socket: WebSocket, room: RoomToken, name: String, icon: PlayerIcon) {
+		let Some(handle) = self.rooms.get(&room) else {
 			ClientIndex::reject_invalid_join(socket).await;
 			return;
 		};
@@ -113,8 +123,8 @@ impl App {
 			icon
 		}).await;
 	}
-	pub async fn accept_player_reconnect(&self, socket: WebSocket, room_id: RoomId, player_id: PlayerId, token: PlayerToken, manual: bool) {
-		let Some(handle) = self.rooms.get(&room_id) else {
+	pub async fn accept_player_reconnect(&self, socket: WebSocket, room: RoomToken, player_id: PlayerId, token: ClientToken, manual: bool) {
+		let Some(handle) = self.rooms.get(&room) else {
 			ClientIndex::reject_invalid_rejoin(socket, manual).await;
 			return;
 		};

@@ -2,6 +2,7 @@
 
 use super::*;
 use strgen::goblin_names;
+use timeout::{Timeout, DynamicDuration};
 
 const START_TIME: Duration = Duration::from_secs(3);
 const DRAW_TIME: Duration = Duration::from_secs(120);
@@ -145,6 +146,19 @@ impl<'a> Game<'a> {
 		};
 		(game, sender)
 	}
+	
+	fn vote_choices(&self, eligible: [bool; MAX_PLAYER_COUNT]) -> Box<[String]> {
+		self.clients.players.iter()
+			.filter_map(|(id, player)| {
+				if let Some(true) = eligible.get(id) {
+					Some(player.name.clone())
+				} else {
+					None
+				}
+			})
+			.collect()
+	}
+	
 	pub async fn run(mut self) -> Result<(), ()> {
 		
 		/*self.clients.send_all(
@@ -166,10 +180,12 @@ impl<'a> Game<'a> {
 						break Err(());
 					};
 					match event {
+						room::Event::HostReconnect { socket, token } =>
+							{ self.handle_host_reconnect(socket, token).await; }
 						room::Event::PlayerJoin { socket: _, name: _, icon: _ } =>
 							{ tracing::warn!("player attempted to join a game that is already in progress"); },
 						room::Event::PlayerReconnect { socket, player_id, token, manual } =>
-							{ self.handle_reconnect(socket, player_id, token, manual).await; }
+							{ self.handle_player_reconnect(socket, player_id, token, manual).await; }
 					}
 				},
 				event = self.clients.recv() => {
@@ -181,44 +197,10 @@ impl<'a> Game<'a> {
 			}
 		}
 	}
-	
-	fn vote_choices(&self, eligible: [bool; MAX_PLAYER_COUNT]) -> Box<[String]> {
-		self.clients.players.iter()
-			.filter_map(|(id, player)| {
-				if let Some(true) = eligible.get(id) {
-					Some(player.name.clone())
-				} else {
-					None
-				}
-			})
-			.collect()
+	async fn handle_host_reconnect(&mut self, socket: WebSocket, token: ClientToken) {
+		let _ = self.clients.reconnect_host(socket, token).await;
 	}
-	
-	async fn handle_client_event(&mut self, event: (ClientId, ClientEvent)) -> Result<(), ()> {
-		match event {
-			(ClientId::Host, ClientEvent::Disconnect) =>
-				{ return Err(()) },
-			(ClientId::Player(_player_id), ClientEvent::Disconnect) =>
-				{ /* ClientIndex handles player disconnects for us */ },
-			(ClientId::Host, ClientEvent::Message(msg)) => {
-				tracing::debug!("invalid host message: {msg}");
-			},
-			(ClientId::Player(player_id), ClientEvent::Message(msg)) => {
-				let Ok(msg) = deserialize::<'_, PlayerMsgIn>(&msg) else {
-					tracing::debug!("invalid player message: {msg}");
-					return Ok(());
-				};
-				match msg {
-					PlayerMsgIn::DrawingSubmission { drawing } =>
-						self.handle_drawing_submission(player_id, drawing).await,
-					PlayerMsgIn::VoteSubmission { for_name } =>
-						self.handle_vote_submission(player_id, for_name).await
-				}
-			}
-		}
-		return Ok(())
-	}
-	async fn handle_reconnect(&mut self, socket: WebSocket, player_id: PlayerId, token: PlayerToken, manual: bool) {
+	async fn handle_player_reconnect(&mut self, socket: WebSocket, player_id: PlayerId, token: ClientToken, manual: bool) {
 		
 		let result = self.clients.reconnect_player(socket, player_id, token, manual).await;
 		let Ok(_) = result else { return };
@@ -262,6 +244,36 @@ impl<'a> Game<'a> {
 			},
 		};
 		self.clients.players.send(player_id, &msg).await;
+	}
+	
+	
+	
+	
+	async fn handle_client_event(&mut self, event: ClientEvent) -> Result<(), ()> {
+		match event {
+			ClientEvent::Close =>
+				{ return Err(()); }
+			ClientEvent::Disconnect(ClientId::Host) =>
+				{ /* return Err(()) */ },
+			ClientEvent::Disconnect(ClientId::Player(_)) =>
+				{ /* ClientIndex handles player disconnects for us */ },
+			ClientEvent::Message(ClientId::Host, msg) => {
+				tracing::debug!("invalid host message: {msg}");
+			},
+			ClientEvent::Message(ClientId::Player(player_id), msg) => {
+				let Ok(msg) = deserialize::<'_, PlayerMsgIn>(&msg) else {
+					tracing::debug!("invalid player message: {msg}");
+					return Ok(());
+				};
+				match msg {
+					PlayerMsgIn::DrawingSubmission { drawing } =>
+						self.handle_drawing_submission(player_id, drawing).await,
+					PlayerMsgIn::VoteSubmission { for_name } =>
+						self.handle_vote_submission(player_id, for_name).await
+				}
+			}
+		}
+		return Ok(())
 	}
 	
 	async fn advance(&mut self) {

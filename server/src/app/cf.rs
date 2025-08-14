@@ -34,6 +34,8 @@ pub const PLAYER_KICKED: Frame = custom(4006, "Kicked by host");
 pub const ALREADY_CONNECTED: Frame = custom(4007, "Already connected on this device");
 pub const CONNECTED_ELSEWHERE: Frame = custom(4008, "Connected elsewhere on this device");
 
+pub const INVALID_HOST_RECONNECT: Frame = custom(4099, "Reconnect failed");
+
 pub const NAME_TOO_SHORT: Frame = err("Name Too Short");
 pub const NAME_TOO_LONG: Frame = err("Name Too Long");
 

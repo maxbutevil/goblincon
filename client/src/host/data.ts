@@ -19,7 +19,7 @@ export class Player {
     this.score = score;
   }
   static mock(i: number): Player {
-    return new Player(i, `TestPlayer #${i}`, i % 7);
+    return new Player(i, `Player ${i+1}`, i % 8);
   }
   
   clone(): Player {
@@ -154,6 +154,9 @@ export class PlayerMap {
       prevScore = score;
     }
     return rankings;
+  }
+  winners(n = 3): { rank: number, player: Player }[] {
+    return this.ranked().slice(0, n);
   }
   
   ScoreView() {

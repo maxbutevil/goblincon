@@ -107,21 +107,24 @@ export class Setting<const T> {
 		return this.stringifier(this.get(i));
 	}
 	
+	Selector(): Micron.Node {
+		return s(this.changed, () => {
+			return h("div.multi-btn", this.choices.map((_, i) => {
+				return h(
+					"button",
+					{
+						on: { click: () => this.set(i) },
+						class: { selected: i === this.current }
+					},
+					this.getString(i)
+				);
+			}));
+		});
+	}
 	View(): Micron.Node {
 		return h("div.setting-select", { key: this.name }, [
 			h("div.name", {}, this.name),
-			s(this.changed, () => {
-				return h("div.multi-btn", this.choices.map((_, i) => {
-					return h(
-						"button",
-						{
-							on: { click: () => this.set(i) },
-							class: { selected: i === this.current }
-						},
-						this.getString(i)
-					);
-				}));
-			})
+			this.Selector()
 		]);
 	}
 }
@@ -155,9 +158,11 @@ export class Settings<M extends SettingMap, P extends PresetMap<M>> {
 		return remote as SettingMapRemote<M>;
 	}
 	
-	*views(): Iterable<Micron.Node> {
+	views(): Micron.Node[] {
+		const views: Micron.Node[] = [];
 		for (const setting of Object.values(this.map))
-			yield setting.View();
+			views.push(setting.View());
+		return views;
 	}
 }
 /*export class Presets<M extends SettingMap> {

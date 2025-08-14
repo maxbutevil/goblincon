@@ -57,13 +57,13 @@ export default class Session {
 			console.warn("localStorage error:", err);
 		}
 	}
-	static storeRejoinInfo(id: number, token: number) {
+	static storeRejoinInfo(id: number, token: string) {
 		this.playerId = id;
 		try {
 			if (this.joinCode !== "") localStorage.setItem("rejoinCode", this.joinCode);
 			localStorage.setItem("rejoinName", this.playerName);
 			localStorage.setItem("rejoinId", this.playerId.toString());
-			localStorage.setItem("rejoinToken", token.toString());
+			localStorage.setItem("rejoinToken", token);
 		} catch(e) {
 			console.error("error saving rejoinInfo to localStorage:", e);
 		}

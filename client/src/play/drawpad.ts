@@ -3,6 +3,7 @@
 import {
 	Signal, State,
 	Shared,
+	Val,
 	h, s, c, Micron
 } from "../modules/"
 
@@ -21,7 +22,7 @@ const THICK_LINE_WIDTH = 20;
 
 //type DrawMode = { type: "erase" | "draw", weight: "thick" | "thin", color: string };
 
-const erase = Symbol("erase");
+const erase = null;
 type DrawMode = { color: string | typeof erase, weight: "thick" | "thin" };
 
 type DrawOperation = {
@@ -29,358 +30,631 @@ type DrawOperation = {
 	mode: DrawMode
 };
 
-enum CanvasState {
-	BLANK,
+type Point = [number, number];
+type Segment = [number, number, number, number];
+type Operation = Mode & Path;
+//type Path = { x: number[], y: number[] };
+const a: Operation = { weight: "thick", x: [], y: [], color: null };
+
+enum Drawing {
+	//BLANK,
 	IDLE,
 	DRAWING,
-	LOCKED, // vestigial
+	//LOCKED, // vestigial
 	SUBMITTED
 };
 
 type DrawpadOptions = {
+	key?: string,
 	onSubmit: (drawing: string) => void,
 	onStartSubmit?: () => boolean
 };
 
+//const visibilityChange = Signal.documentEvent("visibilitychange");
+
+/*const DRAWING_DATA = Val.array({
+	color: Val.STR,
+	weight: Val.choice("thick", "thin"),
+	x: Val.array(Val.NUM),
+	y: Val.array(Val.NUM)
+});*/
+
+
+class Path {
+	
+	//style: CanvasColorStyle;
+	//lineWidth: number;
+	//pointData: Array<number> = [];
+	
+	x: number[] = [];
+	y: number[] = [];
+	
+	static length({ x }: Path) {
+		return x.length;
+	}
+	static empty({ x }: Path) {
+		return x.length === 0;
+	}
+	static *points({ x, y }: Path): Iterable<Point> {
+		for (let i = 0; i < x.length; i++)
+			yield [x[i], y[i]];
+	}
+	static *segments({ x, y }: Path): Iterable<Segment> {
+		for (let i = 1; i < x.length; i++) {
+			yield [x[i-1], y[i-1], x[i], y[i]];
+		}
+	}
+	static start({ x, y }: Path): Point | undefined {
+		return x.length === 0 ? undefined : [x[0], y[0]];
+	}
+	static end({ x, y }: Path): Point | undefined {
+		return x.length === 0 ? undefined : [x.at(-1)!, y.at(-1)!];
+	}
+	static at({ x, y }: Path, i: number): Point | undefined {
+		return i >= x.length ? undefined : [x[i], y[i]]; 
+	}
+	static push({ x, y }: Path, [px, py]: Point) {
+		x.push(px);
+		y.push(py);
+	}
+	static pop({ x, y }: Path): Point | undefined {
+		return x.length === 0 ? undefined : [x.pop()!, y.pop()!];
+	}
+	static smoothed({ x, y }: Path, omitDistance: number, iterations: number): Path {
+		/* this could use some improvements, but it's a good start */
+		if (x.length <= 2) return { x, y };
+		
+		/* Omit points that are too close to the point immediately before and after them */
+		let smoothed = new Path();
+		Path.push(smoothed, Path.start({ x, y })!);
+		
+		const end = x.length - 1;
+		const omitDistanceSq = omitDistance * omitDistance;
+		for (let i = 1; i < end; i++) {
+			const cx = x[i], cy = y[i];
+			const [px, py] = Path.end(smoothed)!; // previous point
+			const [nx, ny] = Path.at({ x, y }, i + 1)!;
+			const x0 = cx - px, y0 = cy - py; // difference from previous point
+			const x1 = nx - cx, y1 = ny - cy; // difference from next point
+			const dot = x0 * x1 + y0 * y1;
+			if (dot >= 0) {
+				if (x0 * x0 + y0 * y0 <= omitDistanceSq) {
+					if (x1 * x1 + y1 * y1 <= omitDistanceSq) {
+						continue;
+					}
+				}
+			}
+			
+			Path.push(smoothed, [cx, cy]);
+		}
+		
+		Path.push(smoothed, Path.end({ x, y })!);
+		x = smoothed.x;
+		y = smoothed.y;
+
+		/* Move points around */
+		for (let i = 0; i < iterations; i++) {
+			const smoothed = new Path();
+			Path.push(smoothed, Path.start({ x, y })!);
+			
+			for (const [x1, y1, x2, y2] of Path.segments({ x, y })) {
+				let dx = x1 - x2, dy = y1 - y2;
+				let d = dx * dx + dy * dy;
+				if (d >= 5 * 5) {
+					Path.push(smoothed, [
+						x1 * 0.7 + x2 * 0.3,
+						y1 * 0.7 + y2 * 0.3,
+					]);
+					Path.push(smoothed, [
+						x1 * 0.3 + x2 * 0.7,
+						y1 * 0.3 + y2 * 0.7
+					]);
+				} else {
+					Path.push(smoothed, [
+						x1 * 0.5 + x2 * 0.5,
+						y1 * 0.5 + y2 * 0.5
+					]);
+				}
+				//let length = (x1 - x2) * (x1 - x2) - (y1 - y2) 
+			}
+			Path.push(smoothed, Path.end({ x, y })!);
+			x = smoothed.x;
+			y = smoothed.y;
+		}
+		
+		function round(n: number): number {
+			return Math.round(n * 10) / 10;
+		}
+		
+		x = x.map(round);
+		y = y.map(round);
+		
+		/*const rounded = new Path();
+		Path.push(rounded, [Math.round(x[0]), Math.round(y[0])]);
+		for (let i = 1; i < x.length; i++) {
+			const [cx, cy] = [Math.round(x[i]), Math.round(y[i])];
+			const [px, py] = Path.end(rounded)!;
+			if (px !== cx || py !== cy) {
+				Path.push(rounded, [cx, cy]);
+			}
+		}
+		x = rounded.x;
+		y = rounded.y;*/
+		
+		return { x, y };
+	}
+	static smooth(path: Path, omitDistance: number, iterations: number) {
+		const smoothed = Path.smoothed(path, omitDistance, iterations);
+		path.x = smoothed.x;
+		path.y = smoothed.y;
+	}
+	
+	constructor(x: number[] = [], y: number[] = []) {
+		if (x.length !== y.length) {
+			console.error("path with different amount of x and y coordinates");
+			this.x = [];
+			this.y = [];
+		} else {
+			this.x = x;
+			this.y = y;
+		}
+	}
+		
+}
+
+type Mode = { color: string | null, weight: "thick" | "thin" };
+
+
 export default class Drawpad {
 	
-	private readonly options: DrawpadOptions;
-	private readonly submitted = new Signal();
-	private readonly drawModeChanged = new Signal();
-	private readonly state = new State(CanvasState.BLANK);
-	private readonly isDisabled = this.state.map(s => s === CanvasState.SUBMITTED);
+	private static readonly defaultMode: Mode = { color: "#000000", weight: "thin" };
+	private static readonly storageKey = "savedDrawing";
+	
+	state = new State<Drawing>(Drawing.IDLE);
+	mode = new State<Mode>(
+		Drawpad.defaultMode,
+		(curr, from) => curr.color === from.color && curr.weight === from.weight
+	);
+	
+	submitted = new Signal<[string]>();
+	disabled = this.state.map(s => s === Drawing.SUBMITTED);
+	color = this.mode.map(m => m.color);
+	weight = this.mode.map(m => m.weight);
+	
+	options: DrawpadOptions;
+	canvas: Canvas | null = null;
+	undoStack: Operation[] = [];
+	redoStack: Operation[] = [];
+	backupIndex = 0;
+	backup?: ImageData;
 	
 	constructor(options: DrawpadOptions) {
 		this.options = options;
+		
+		const ok = this.loadDrawing();
+		if (!ok) {
+			localStorage.removeItem(Drawpad.storageKey);
+		}
+		
 	}
 	
-	/*readonly state = new State(CanvasState.BLANK);
 	
-	private mode: DrawMode = "draw";
-	private weight: DrawWeight = "thin";
-	private color: string = "#000000";
-	private undoStack: Array<DrawOperation> = [];
-	private redoStack: Array<DrawOperation> = [];
-	private backup?: ImageData;
-	private backupIndex = 0;
+	loadDrawing(): boolean {
+		
+		const { key } = this.options;
+		if (!key) {
+			return false;
+		}
+		
+		const VAL = {
+			mode: {
+				color: Val.STR,
+				weight: Val.choice("thin", "thick")
+			},
+			ops: Val.array({
+				color: Val.STR,
+				weight: Val.choice("thin", "thick"),
+				x: Val.array(Val.ANY),
+				y: Val.array(Val.ANY)
+			})
+		};
+		
+		try {
+			console.log(`loading drawing (${key})`);
+			const encoded = localStorage.getItem(Drawpad.storageKey);
+			if (!encoded) return false;
+			
+			const data = JSON.parse(encoded);
+			
+			if (data.key !== key) {
+				return false;
+			}
+			if (!Val.is(VAL, data)) {
+				console.error("error parsing drawing data: ", data);
+				return false;
+			}
+			
+			const { mode, ops } = data;
+			
+			this.mode.set(mode);
+			this.undoStack = ops;
+			return true;
+		} catch(err) {
+			
+			//this.canvas?.clear();
+			//this.undoStack = [];
+			
+			console.error("error loading drawing: ", err);
+			return false;
+		}
+	}
+	saveDrawing() {
+		//console.log(ops)
+		
+		if (this.state.is(Drawing.SUBMITTED)) {
+			return;
+		}
+		
+		const { key } = this.options;
+		const mode = this.mode.get();
+		const ops = this.undoStack;
+		const data = { key, mode, ops };
+		
+		try {
+			console.log(`saving drawing (${key})`);
+			localStorage.setItem(Drawpad.storageKey, JSON.stringify(data));
+		} catch (err) {
+			console.error("error saving drawing: ", err);
+		}
+	}
 	
-	canvas?: Canvas;*/
+	
+	applyMode({ color, weight } = this.mode.get()) {
+		
+		const canvas = this.canvas;
+		if (!canvas) return;
+		
+		canvas.setLineWidth(
+			weight === "thin" ?
+				THIN_LINE_WIDTH :
+				THICK_LINE_WIDTH
+		);
+		
+		if (color === erase) {
+			canvas.setOperation("destination-out");
+		} else {
+			canvas.setStrokeStyle(color);
+			canvas.setOperation(
+				weight === "thin" ?
+					"source-over" :
+					"destination-over"
+			); // thin pen draws over existing content; thick pen draws under
+		}
+	}
+	setMode(mode: Mode) {
+		this.applyMode(mode);
+		this.mode.set(mode);
+	}
+	
+	setColor(color: string | null) {
+		const { weight } = this.mode.get();
+		this.setMode({ color, weight });
+	}
+	selectColor(color: string | null) {
+		const prev = this.mode.get();
+		if (color === erase) {
+			// color -> erase; set pen to thick
+			this.setMode({ color, weight: "thick" });
+		} else if (prev.color === erase) {
+			// erase -> color; set pen to thin
+			this.setMode({ color, weight: "thin" })
+		} else {
+			// color -> color; keep pen
+			this.setMode({ color, weight: prev.weight });
+		}
+	}
+	setWeight(weight: "thin" | "thick") {
+		const { color } = this.mode.get();
+		this.setMode({ color, weight });
+	}
+	toggleWeight() {
+		const { weight } = this.mode.get();
+		this.setWeight(weight === "thin" ? "thick" : "thin");
+	}
+	
+	applyOperation(op: Operation) {
+		this.applyMode(op);
+		this.canvas?.path(op);
+	}
+	applyOperationRange(start = 0, end = Infinity) {
+		end = Math.min(end, this.undoStack.length);
+		for (let i = start; i < end; i++)
+			this.applyOperation(this.undoStack[i]);
+	}
 	
 	
+	storeBackup(index: number) {
+		this.backupIndex = index;
+		this.backup = this.canvas?.getImageData();
+	}
+	restoreBackup() {
+		if (!this.canvas) return;
+		
+		this.canvas.clear();
+		if (this.backup) {
+			this.canvas.putImageData(this.backup);
+		}
+	}
+	rebuildBackup(index: number) {
+		if (!this.canvas) return;
+		
+		if (index < 0)
+			index = 0;
+		else if (index > this.undoStack.length)
+			index = this.undoStack.length;
+		
+		if (index === this.backupIndex) {
+			// identical to the old backup, just restore
+			this.restoreBackup();
+		} else if (index > this.backupIndex) {
+			// we can refer to the old backup, so just use that
+			this.restoreBackup();
+			this.applyOperationRange(this.backupIndex, index);
+			this.storeBackup(index);
+		} else {
+			// we have to rebuild everything, so do that
+			this.canvas.clear();
+			this.applyOperationRange(0, index);
+			this.storeBackup(index);
+		}
+	}
+	rebuild() {
+		
+		const index = this.undoStack.length;
+		
+		if (index < this.backupIndex) // rebuild the backup, we're going deeper
+			this.rebuildBackup(index - BACKUP_MED_LAG);
+		else if (index > this.backupIndex + BACKUP_MAX_LAG) // catch up
+			this.rebuildBackup(index - BACKUP_MIN_LAG);
+		else // stay where we are
+			this.rebuildBackup(this.backupIndex);
+
+		// now apply everything that happened since the backup
+		this.applyOperationRange(this.backupIndex);
+		this.applyMode(); // keep the same user settings
+
+	}
+	
+	private pop(redoable = false) {
+		if (!this.canvas || this.undoStack.length === 0) return;
+		if (!this.state.is(Drawing.IDLE)) return; // ?????
+		
+		const op = this.undoStack.pop()!;
+		if (redoable) this.redoStack.push(op);
+		
+		this.rebuild();
+	}
+	abort() {
+		this.pop(false);
+	}
+	undo() {
+		this.pop(true);
+	}
+	redo() {
+		if (!this.canvas || this.redoStack.length === 0)
+			return;
+		if (!this.state.is(Drawing.IDLE))
+			return;
+		
+		const op = this.redoStack.pop()!;
+		this.undoStack.push(op);
+		this.applyOperation(op); // don't really need to mess with the backup here
+		this.applyMode();
+	}
+	
+	draw({ offsetX, offsetY }: PointerEvent) {
+		
+		if (!this.canvas) return;
+		
+		const op = this.undoStack.at(-1)!;
+		const prev = Path.end(op);
+		const curr = this.canvas.map(offsetX, offsetY);
+		curr[0] = Math.round(curr[0]);
+		curr[1] = Math.round(curr[1]);
+		const [x, y] = curr;
+		
+		const inBounds = (
+			x >= 0 && x <= this.canvas.sourceWidth &&
+			y >= 0 && y <= this.canvas.sourceHeight
+		);
+		
+		if (!prev) {
+			if (!inBounds) {
+				this.endDraw();
+				return;
+			}
+			
+			// some platforms won't draw a path at all without this fuzzing
+			this.canvas.line(x + 0.001, y + 0.001, x, y);
+			Path.push(op, curr);
+		} else {
+			
+			const [px, py] = prev;
+			this.canvas.line(px, py, x, y);
+			Path.push(op, curr);
+			
+			if (!inBounds) {
+				this.endDraw();
+			}
+		}
+		
+		/*if (!prev) {
+			
+		} else {
+			const [px, py] = prev;
+			if (px === x && py === y) {
+				return;
+			}
+			this.canvas.line(px, py, x, y);
+			
+		}
+		
+		Path.push(op, [x, y]);
+		
+		// if we go out of bounds, finish and end the current operation
+		if (x < 0 || y < 0 || x > this.canvas.sourceWidth || y > this.canvas.sourceHeight) {
+			this.endDraw();
+		}
+			
+		
+		
+		
+		if (prev) {
+			const [px, py] = prev;
+			
+		} else {
+			
+		}
+		
+		//const [x, y] = this.canvas.map(offsetX, offsetY);
+		//x = Math.round(x);
+		//y = Math.round(y);
+		
+		
+		//const [x, y] = this.canvas.map(offsetX, offsetY);
+		const [px, py] = Path.end(op) ?? [x + 0.01, y + 0.01]; // if this is the first point, just draw a dot at x, y
+		
+		this.canvas!.line(px, py, x, y);
+		Path.push(op, [x, y]);*/
+
+		
+	}
+	startDraw() {
+		const { color, weight } = this.mode.get();
+		
+		if (this.isBlank() && color === erase)
+			return;
+		
+		this.state.set(Drawing.DRAWING);
+		this.redoStack = [];
+		this.undoStack.push({ x: [], y: [], color, weight });
+	}
+	endDraw() {
+		this.state.set(Drawing.IDLE);
+		const op = this.undoStack.at(-1)!;
+		if (Path.length(op) === 0) {
+			this.undoStack.pop();
+			return;
+		} else if (op.weight === "thick") {
+			Path.smooth(op, 1, 1);
+		} else {
+			Path.smooth(op, 4, 2);
+		}
+		this.rebuild();
+	}
+	handleDraw(ev: PointerEvent) {
+		if (!ev.isPrimary || !this.canvas)
+			return;
+		if (!this.state.is(Drawing.DRAWING))
+			return;
+		this.draw(ev);
+	}
+	handleStartDraw(ev: PointerEvent) {
+		if (this.state.is(Drawing.DRAWING)) {
+			this.endDraw();
+			
+			// this is so you can pinch zoom without leaving a point or short line under the first finger to touch the canvas
+			const op = this.undoStack.at(-1);
+			if (op && Path.length(op) <= 3) {
+				this.abort();
+			}
+			
+			return;
+		}
+		
+		if (!ev.isPrimary || !this.canvas)
+			return;
+		if (this.state.is(Drawing.SUBMITTED))
+			return;
+		
+		this.startDraw();
+		this.draw(ev);
+	}
+	handleEndDraw(ev: PointerEvent) {
+		if (!ev.isPrimary || !this.state.is(Drawing.DRAWING))
+			return;
+		this.draw(ev);
+		this.endDraw();
+	}
 	
 	submit() {
-		this.submitted.emit();
-	}
-	isSubmitted(): boolean {
-		return this.state.is(CanvasState.SUBMITTED);
+		if (this.isBlank() || this.state.is(Drawing.SUBMITTED))
+			return;
+		if (this.canvas === null)
+			return console.error("Couldn't get canvas data");
+		
+		this.state.set(Drawing.SUBMITTED);
+		const drawingData = this.canvas.element.toDataURL("image/png");
+		this.submitted.emit(drawingData);
 	}
 	
-	View() {
-		
-		const { onSubmit, onStartSubmit } = this.options;
-		const { state, isDisabled, submitted, drawModeChanged } = this;
-		
-		const penIcon = Canvas.create(128, 128);
-		
-		let undoStack: Array<DrawOperation> = [];
-		let redoStack: Array<DrawOperation> = [];
-		let backup: ImageData | undefined;
-		let backupIndex = 0;
-		let drawMode: DrawMode = { color: "#000000", weight: "thin" };
-		
-		let canvas: Canvas | null = null;
-		
-		function applyMode(mode: DrawMode = drawMode) {
-			
-			if (canvas === null) return;
-			
-			if (mode.weight === "thin") {
-				canvas.setLineWidth(THIN_LINE_WIDTH);
-			} else {
-				canvas.setLineWidth(THICK_LINE_WIDTH);
-			}
-			
-			if (mode.color === erase) {
-				canvas.setOperation("destination-out");
-			} else {
-				canvas.setStrokeStyle(mode.color);
-				if (mode.weight === "thin") {
-					canvas.setOperation("source-over");
-				} else {
-					canvas.setOperation("destination-over");
-				}
-			}
-		}
-		function setMode(color: string | typeof erase, weight = drawMode.weight) {
-			drawMode = { color, weight };
-			applyMode();
-			drawModeChanged.emit();
+	init(vnode: Micron.Node) {
+		if (this.canvas) {
+			console.warn("Drawpad.init() called multiple times");
 		}
 		
-		function applyOperation(operation: DrawOperation) {
-			applyMode(operation.mode);
-			canvas?.path(operation.path);
+		const ctx = (vnode.elm as HTMLCanvasElement).getContext("2d");
+		if (!ctx) throw new Error("Couldn't get canvas context.");
+		
+		const canvas = this.canvas = new Canvas(ctx);
+		canvas.clear();
+		canvas.setLineCap("round");
+		canvas.setLineJoin("round");
+		
+		try {
+			this.applyOperationRange(0, Infinity);
+		} catch(err) {
+			console.error("error with loaded canvas data", err)
+			this.undoStack = [];
+			this.mode.set(Drawpad.defaultMode);
 		}
 		
-		function canChangeMode(): boolean {
-			return canvas !== null && state.any(CanvasState.IDLE, CanvasState.BLANK);
-		}
-		function selectColor(color: typeof erase | string) {
-			if (color === erase) {
-				if (drawMode.color !== erase) {
-					setMode(erase, "thick");
-				}
-			} else {
-				if (drawMode.color === erase) {
-					setMode(color, "thin");
-				} else {
-					setMode(color);
-				}
-			}
-		}
-		function toggleWeight() {
-			setMode(drawMode.color, drawMode.weight === "thin" ? "thick" : "thin");
-		}
+		this.applyMode();
 		
-		function applyOperationRange(start: number, end = Infinity) {
-			end = Math.min(end, undoStack.length);
-			for (let i = start; i < end; i++)
-				applyOperation(undoStack[i]);
-		}
-		function restoreBackup() {
-			if (canvas) {
-				canvas.clear();
-				if (backup) canvas.putImageData(backup);
-			}
-		}
-		function saveBackup(index: number) {
-			//if (backupIndex === index) return;
-			backupIndex = index;
-			backup = canvas?.getImageData();
-		}
-		function rebuildBackup(index: number) {
-			
-			if (!canvas)
-				return;
-			
-			if (index < 0)
-				index = 0;
-			else if (index > undoStack.length)
-				index = undoStack.length;
-			
-			if (index === backupIndex) {
-				// identical to the old backup, just restore
-				restoreBackup();
-			} else if (index > backupIndex) {
-				// we can refer to the old backup, so just use that
-				restoreBackup();
-				applyOperationRange(backupIndex, index);
-				saveBackup(index);
-			} else {
-				// we have to rebuild everything, so do that
-				canvas.clear();
-				applyOperationRange(0, index);
-				saveBackup(index);
-			}
-		}
-		function rebuildCanvas() {
-			
-			if (undoStack.length < backupIndex) // rebuild the backup, we're going deeper
-				rebuildBackup(undoStack.length - BACKUP_MED_LAG);
-			else if (undoStack.length > backupIndex + BACKUP_MAX_LAG) // catch up
-				rebuildBackup(undoStack.length - BACKUP_MIN_LAG);
-			else // stay where we are
-				rebuildBackup(backupIndex);
-			
-			// apply everything that happened since the backup
-			applyOperationRange(backupIndex);
-			applyMode(); // keep the same user settings
-			
-		}
+		//this.applyMode();
+		//canvas.setStrokeStyle("black");
+		//canvas.setLineWidth(THIN_LINE_WIDTH);
+	}
+	
+	isBlank() {
+		return this.undoStack.length === 0;
+	}
+	isIdle() {
+		//return this.state.is(Drawing.IDLE);
+	}
+	isSubmitted() {
+		return this.state.is(Drawing.SUBMITTED);
+	}
+	
+	Icon(src: string) {
+		return h("img", { attrs: { src } });
+	}
+	ColorSelect() {
 		
-		function abort(redoable = false) {
-			
-			if (!canvas || undoStack.length === 0)
-				return;
-			if (!state.is(CanvasState.IDLE))
-				return;
-			
-			let op = undoStack.pop()!;
-			if (redoable) redoStack.push(op);
-			rebuildCanvas();
-			
-			let isBlank = (backupIndex === 0 && undoStack.length === 0);
-			if (isBlank)
-				state.set(CanvasState.BLANK);
-		}
-		function undo() {
-			abort(true);
-		}
-		
-		function redo() {
-			
-			if (!canvas || redoStack.length === 0)
-				return;
-			if (state.any(CanvasState.LOCKED, CanvasState.SUBMITTED))
-				return;
-			
-			state.set(CanvasState.IDLE);
-			let op = redoStack.pop()!;
-			undoStack.push(op);
-			applyOperation(op); // don't really need to mess with the backup here
-			applyMode();
-			
-		}
-		
-		function draw(ev: PointerEvent) {
-			
-			if (!canvas) return;
-			
-			let [x, y] = canvas.map(ev.offsetX, ev.offsetY);
-			
-			let op = undoStack.at(-1)!;
-			let [px, py] = op.path.end() ?? [x + 0.01, y + 0.01]; // if this is the first point, just draw a dot at x, y
-			canvas.line(px, py, x, y);
-			op.path.push(x, y);
-			
-			if (x < 0 || y < 0 || x > canvas.sourceWidth || y > canvas.sourceHeight)
-				endDraw();
-		}
-		function startDraw() {
-			if (state.is(CanvasState.BLANK) && drawMode.color === erase) {
-				return;
-			}
-			state.set(CanvasState.DRAWING);
-			redoStack = [];
-			undoStack.push({
-				path: new Path(),
-				mode: Object.assign({}, drawMode)
-			});
-		}
-		function endDraw() {
-			state.set(CanvasState.IDLE);
-			let op = undoStack.at(-1)!;
-			if (op.mode.weight === "thick") {
-				op.path.smooth(1, 1);
-			} else {
-				op.path.smooth(4, 2);
-			}
-			rebuildCanvas();
-		}
-		function handleDraw(ev: PointerEvent) {
-			if (!ev.isPrimary || !canvas)
-				return;
-			if (state.get() !== CanvasState.DRAWING)
-				return;
-			draw(ev);
-		}
-		function handleStartDraw(ev: PointerEvent) {
-			
-			if (state.is(CanvasState.DRAWING)) {
-				// multiple touches cancels drawing
-				endDraw();
+		return s(this.disabled, disabled => {
+			return s(this.mode, mode => {
 				
-				// if we try to pinch-zoom on the drawpad we leave a single point behind
-				// this fixes that
-				let op = undoStack.at(-1);
-				let isPoint = op != undefined && op.path.length() <= 1;
-				if (isPoint) abort();
-				
-				return;
-			}
-			
-			if (!ev.isPrimary || !canvas)
-				return;
-			if (state.any(CanvasState.LOCKED, CanvasState.SUBMITTED))
-				return;
-			
-			startDraw();
-			draw(ev);
-		}
-		function handleEndDraw(ev: PointerEvent) {
-			if (!ev.isPrimary || state.get() !== CanvasState.DRAWING)
-				return;
-			draw(ev);
-			endDraw();
-		}
-		
-		function submit() {
-			if (state.any(CanvasState.BLANK, CanvasState.SUBMITTED))
-				return;
-			if (canvas === null)
-				return console.error("Couldn't get canvas data");
-			
-			state.set(CanvasState.SUBMITTED);
-			const drawingData = canvas.element.toDataURL("image/png");
-			onSubmit(drawingData);
-		}
-		
-		function init(vnode: Micron.Node) {
-			
-			if (canvas)
-				return;
-			
-			const ctx = (vnode.elm as HTMLCanvasElement).getContext("2d");
-			
-			if (!ctx)
-				throw new Error("Couldn't get canvas context.");
-			
-			canvas = new Canvas(ctx);
-			canvas.clear();
-			applyMode();
-			canvas.setLineCap("round");
-			canvas.setLineJoin("round");
-			//canvas.setStrokeStyle("black");
-			//canvas.setLineWidth(THIN_LINE_WIDTH);
-		}
-		
-		
-		let submittingTimeout: number;
-		Micron.tryDefer(
-			submitted.subscribe(submit),
-			Signal.keydown.subscribe((ev) => {
-				if (ev.ctrlKey) {
-					const key = ev.key.toLowerCase();
-					if (key === 'z') {
-						undo();
-					} else if (key === 'y') {
-						redo();
-					}
-				}
-			}),
-		);
-		function startSubmit() {
-			if (!state.is(CanvasState.IDLE)) {
-				return;
-			}
-			if (onStartSubmit) {
-				if (!onStartSubmit()) {
-					return;
-				}
-			}
-			clearTimeout(submittingTimeout);
-			submittingTimeout = setTimeout(submit, 0.7 * 1000);
-		}
-		function cancelSubmit() {
-			clearTimeout(submittingTimeout);
-		}
-		
-		function Icon(src: string) {
-			return h("img", { attrs: { src } });
-		}
-		
-		const colorSelect = s(isDisabled, disabled => {
-			return s(drawModeChanged, () => {
-				
-				function Btn(color: typeof erase | string) {
-					
-					const selected = drawMode.color === color;
+				const Btn = (color: string | null) => {
+
 					const click = () => {
-						if (canChangeMode()) selectColor(color);
+						if (this.state.is(Drawing.IDLE)) {
+							this.selectColor(color);
+						}
 					};
-					let backgroundColor;
-					let borderColor;
-					
+
+					const selected = mode.color === color;
+					let backgroundColor, borderColor;
+
 					if (color === erase) {
 						backgroundColor = "white";
 						borderColor = selected ? "black" : "white";
@@ -388,62 +662,90 @@ export default class Drawpad {
 						backgroundColor = color;
 						borderColor = selected ? "white" : color;
 					}
-					
+
 					return h("button",
 						{
 							style: { backgroundColor, borderColor },
 							on: { click },
 							attrs: { disabled }
 						},
-						c(color === erase && Icon(icons.eraseThick))
+						c(color === erase && this.Icon(icons.eraseThick))
 					);
-				}
+				};
 				
 				return h("div#color-btn-row", [
-					...Shared.DRAW_COLORS.map(color => Btn(color)),
+					...Shared.DRAW_COLORS.map(Btn),
 					Btn(erase)
 				]);
 			});
 		});
-		const actionSelect = s(isDisabled, (disabled) => {
+	}
+	ActionSelect() {
+		
+		let submittingTimeout: number;
+		
+		const penIcon = Canvas.create(128, 128);
+		
+		
+		const submit = this.submit.bind(this);
+		const startSubmit = () => {
+			if (this.isBlank() || !this.state.is(Drawing.IDLE))
+				return;
 			
-			function WeightBtn() {
-				return s(drawModeChanged, () => {
-
-					let iconSrc;
-					if (drawMode.color === erase) {
-						iconSrc = drawMode.weight === "thin" ? icons.eraseThin : icons.eraseThick;
-
-					} else {
-						penIcon.clear();
-						penIcon.setFillStyle(drawMode.color);
-						penIcon.fillEllipse(64, 64, drawMode.weight === "thin" ? 25 : 40);
-						iconSrc = penIcon.element.toDataURL();
-					}
-
-					return h(
-						"button#weight-btn",
-						{
-							on: {
-								click: () => {
-									if (canChangeMode()) toggleWeight();
-								}
-							},
-							attrs: { disabled }
-						},
-						Icon(iconSrc)
-					);
-				});
+			const { onStartSubmit } = this.options;
+			if (onStartSubmit) {
+				if (!onStartSubmit()) {
+					return;
+				}
 			}
+			
+			clearTimeout(submittingTimeout);
+			submittingTimeout = setTimeout(submit, 0.7 * 1000);
+		};
+		const cancelSubmit = () => {
+			clearTimeout(submittingTimeout);
+		};
+		
+		return s(this.disabled, disabled => {
+			
+			const undo = this.undo.bind(this);
+			const redo = this.redo.bind(this);
+			
+			const weightBtn = s(this.mode, ({ color, weight }) => {
+				
+				let iconSrc;
+				if (color === erase) {
+					iconSrc = weight === "thin" ? icons.eraseThin : icons.eraseThick;
+				} else {
+					penIcon.clear();
+					penIcon.setFillStyle(color);
+					penIcon.fillEllipse(64, 64, weight === "thin" ? 24 : 44);
+					iconSrc = penIcon.element.toDataURL();
+				}
+
+				return h(
+					"button#weight-btn",
+					{
+						on: {
+							click: () => {
+								if (this.state.is(Drawing.IDLE)) {
+									this.toggleWeight();
+								}
+							}
+						},
+						attrs: { disabled }
+					},
+					this.Icon(iconSrc)
+				);
+			});
 			
 			return h("div#action-btn-row", [
 				//h("button.spacer", { attrs: { disabled: true } }),
-				h("button#undo-btn", { on: { click: undo }, attrs: { disabled } }, Icon(icons.undo)),
-				h("button#redo-btn", { on: { click: redo }, attrs: { disabled } }, Icon(icons.redo)),
-				WeightBtn(),
+				h("button#undo-btn", { on: { click: undo }, attrs: { disabled } }, this.Icon(icons.undo)),
+				h("button#redo-btn", { on: { click: redo }, attrs: { disabled } }, this.Icon(icons.redo)),
+				weightBtn,
 				h("button.spacer", { attrs: { disabled: true } }),
-				h(
-					"button#submit-btn",
+				h("button#submit-btn",
 					{
 						on: {
 							pointerdown: startSubmit,
@@ -456,9 +758,34 @@ export default class Drawpad {
 				)
 			])
 		});
+	}
+	View() {
+		
+		const handleStartDraw = this.handleStartDraw.bind(this);
+		const handleEndDraw = this.handleEndDraw.bind(this);
+		const handleDraw = this.handleDraw.bind(this);
+		
+		Micron.tryDefer(
+			//submitted.subscribe(submit),
+			Signal.documentEvent("keydown").subscribe((ev) => {
+				if (ev.ctrlKey) {
+					const key = ev.key.toLowerCase();
+					if (key === 'z') {
+						this.undo();
+					} else if (key === 'y') {
+						this.redo();
+					}
+				}
+			}),
+			Signal.documentEvent("visibilitychange").subscribe((ev) => {
+				if (document.hidden) {
+					this.saveDrawing();
+				}
+			})
+		);
 		
 		return h("div#drawpad", [
-			colorSelect,
+			this.ColorSelect(),
 			h("canvas#canvas", {
 				attrs: {
 					width: Shared.SUBMISSION_SIZE,
@@ -471,172 +798,16 @@ export default class Drawpad {
 					pointermove: handleDraw
 				},
 				hook: {
-					create: (_emptyNode, vnode) => init(vnode),
-					update: (_oldNode, vnode) => init(vnode)
+					create: (_emptyNode, vnode) => this.init(vnode),
+					update: (_oldNode, vnode) => this.init(vnode)
 				}
 			}, "You don't have canvas support!"),
-			actionSelect
+			this.ActionSelect()
 		]);
-		
-		
 	}
 }
 
 type CanvasColorStyle = string | CanvasGradient | CanvasPattern;
-
-type Point = [number, number];
-
-class Path {
-	
-	//style: CanvasColorStyle;
-	//lineWidth: number;
-	//pointData: Array<number> = [];
-	
-	x: number[] = [];
-	y: number[] = [];
-	
-	/*constructor(style: CanvasColorStyle, lineWidth: number) {
-		this.style = style;
-		this.lineWidth = lineWidth;
-		//this.pointData = start.slice();
-	}*/
-	*points(): Iterable<Point> {
-		for (let i = 0; i < this.x.length; i++)
-			yield [this.x[i], this.y[i]];
-	}
-	*segments(): Iterable<[Point, Point]> {
-		let prev: Point | undefined;
-		for (const point of this.points())
-			if (prev == undefined)
-				prev = point;
-			else
-				yield [prev, prev = point];
-	}
-	
-	length(): number {
-		return this.x.length;
-	}
-	isEmpty(): boolean {
-		return this.length() === 0;
-	}
-	
-	start(): Point | undefined {
-		if (this.isEmpty()) return;
-		return [this.x[0], this.y[0]];
-	}
-	end(): Point | undefined {
-		if (this.isEmpty()) return;
-		return [this.x.at(-1)!, this.y.at(-1)!];
-	}
-	pop(): Point | undefined {
-		if (this.isEmpty()) return undefined;
-		return [this.x.pop()!, this.y.pop()!];
-	}
-	
-	push(x: number, y: number) {
-		this.x.push(x);
-		this.y.push(y);
-	}
-	
-	/*extend(x2: number, y2: number) {
-		if (this.length() <= 1) {
-			this.push(x2, y2);
-			return;
-		}
-		
-		let [x1, y1] = this.pop()!;
-		let dx = x1 - x2, dy = y1 - y2;
-		let d = dx * dx + dy * dy;
-		
-		if (d <= 5 * 5) {
-			this.push(x1 * 0.5 + x2 * 0.5, y1 * 0.5 + y2 * 0.5);
-			this.push(x2, y2);
-		}
-		
-	}*/
-	/*smooth() {
-		if (this.isEmpty()) return;
-		
-		const A = 0.5, B = 1.0 - A;
-		let x = [], y = [];
-		x.push(this.x[0]);
-		y.push(this.y[0]);
-		for (const [[x1, y1], [x2, y2]] of this.segments()) {
-			x.push(x1 * B + x2 * A, x1 * A + x2 * B);
-			y.push(y1 * B + y2 * A, y1 * A + y2 * B);
-		}
-		x.push(this.x.at(-1)!);
-		y.push(this.y.at(-1)!);
-		this.x = x;
-		this.y = y;
-	}*/
-	
-	smooth(omitDistance: number, iterations: number) {
-		/* this could use some improvements, but it's a good start */
-		if (this.length() <= 2) return;
-		
-		/* Omit points that are too close to the point immediately before and after them */
-		let smoothed = new Path();
-		smoothed.push(this.x[0], this.y[0]);
-		
-		
-		const end = this.length() - 1;
-		const max = omitDistance * omitDistance;
-		for (let i = 1; i < end; i++) {
-			const x = this.x[i], y = this.y[i];
-			const [px, py] = smoothed.end()!; // previous point
-			const x0 = px - x, y0 = py - y;
-			const x1 = this.x[i+1] - x, y1 = this.y[i+1] - y; // to next point
-			//const x2 = this.x[i+1] - px, y2 = this.y[i+1] - y2;
-			const dot = x0 * x1 + y0 * y1
-			if (dot >= 0) {
-				if (x0 * x0 + y0 * y0 <= max) {
-					if (x1 * x1 + y1 * y1 <= max) {
-						continue;
-					}
-				}
-			}
-			
-			
-			/**/
-			smoothed.push(x, y);
-		}
-		smoothed.push(...this.end()!);
-		this.x = smoothed.x;
-		this.y = smoothed.y;
-		
-		/* Move points around */
-		for (let i = 0; i < iterations; i++) {
-			let smoothed = new Path();
-			smoothed.push(this.x[0], this.y[0]);
-			for (const [[x1, y1], [x2, y2]] of this.segments()) {
-				let dx = x1 - x2, dy = y1 - y2;
-				let d = dx * dx + dy * dy;
-				if (d >= 5 * 5) {
-					smoothed.push(
-						x1 * 0.7 + x2 * 0.3,
-						y1 * 0.7 + y2 * 0.3,
-					);
-					smoothed.push(
-						x1 * 0.25 + x2 * 0.75,
-						y1 * 0.25 + y2 * 0.75
-					);
-				} else {
-					smoothed.push(
-						x1 * 0.5 + x2 * 0.5,
-						y1 * 0.5 + y2 * 0.5
-					);
-				}
-				//let length = (x1 - x2) * (x1 - x2) - (y1 - y2) 
-			}
-			const [ex, ey] = this.end()!;
-			smoothed.push(ex, ey);
-			this.x = smoothed.x;
-			this.y = smoothed.y;
-		}
-	}
-	
-}
 
 class Canvas {
 	
@@ -886,16 +1057,16 @@ class Canvas {
 	}
 	path(path: Path) {
 		
-		if (path.isEmpty())
-			return;
+		const length = Path.length(path);
+		if (length === 0) return;
 		
-		this.ctx.beginPath();
-		let [sx, sy] = path.start()!;
+		const [sx, sy] = Path.start(path)!;
 		
 		// mildly shitty hack because some browsers won't draw anything if the start and end are identical
-		this.ctx.moveTo(sx + 0.01, sy + 0.01);
-		for (const [x, y] of path.points())
-			this.ctx.lineTo(x, y);
+		this.ctx.beginPath();
+		this.ctx.moveTo(sx + 0.001, sy + 0.001);
+		for (let i = 0; i < length; i++)
+			this.ctx.lineTo(path.x[i], path.y[i]);
 		
 		this.ctx.stroke();
 	}

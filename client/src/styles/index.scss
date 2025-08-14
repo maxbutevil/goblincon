@@ -16,10 +16,16 @@
 	width: 100%;
 	height: 100%;
 	font-size: 1.2rem;
-	font-family: Arial;
+	font-family: 'Inter', Arial;
+	//font-family: Arial;
 	background-color: primary(2);
 	user-select: none;
 }
+h1, h2, h3, h4, h5, h6 {
+	font-weight: 600;
+}
+
+
 body {
 	width: 100%;
 	height: 100%;
@@ -32,11 +38,10 @@ body {
 }
 
 button, input {
-	border: 3px solid #321;
-	border-radius: 8px;
+	@include border-thin(6px);
 	font-size: 1.0em;
 	//font-size: 0.9em;
-	color: black;
+	color: text(1);
 }
 button {
 	background-color: gray(1);
@@ -54,6 +59,7 @@ button {
 	text-align: center;
 }
 .page {
+	width: 100vw;
 	@extend .flow;
 	@extend .padded;
 	@extend .gapped;
@@ -114,8 +120,8 @@ button {
 	padding: 12px;
 	max-width: 100%;
 	@include column(center, center, 12px);
-	@include border-thick(8px);
-	background-color: primary(2);
+	@include border(2px, 8px);
+	background-color: primary(3);
 	
 	animation: swoop-in 0.1s;
 }
@@ -140,8 +146,8 @@ button {
 	
 	@extend %fixture;
 	
-	height: 3.2em;
-	max-height: 3.2em;
+	height: 3.2rem;
+	max-height: 3.2rem;
 	padding: 6px;
 	background-color: primary(3);
 	
@@ -153,8 +159,8 @@ button {
 	@extend %fixture;
 	position: fixed;
 	bottom: 6px;
-	height: 2.4em;
-	max-height: 2.4em;
+	height: 2.4rem;
+	max-height: 2.4rem;
 }
 #tray-left {
 	@extend %tray;
@@ -168,12 +174,12 @@ button {
 }
 #top-bar {
 	@extend %bar;
-	border-bottom: $border-thin;
-	font-size: 1.6rem;
+	border-bottom: border(2px);
+	//font-size: 1.6rem;
 }
 #bottom-bar {
 	@extend %bar;
-	border-top: $border-thin;
+	border-top: border(2px);
 	
 	.countdown {
 		position: relative;
@@ -202,7 +208,7 @@ button {
 			
 			pointer-events: none;
 			
-
+			
 			&:not(.final) {
 				color: white;
 				background-color: black;

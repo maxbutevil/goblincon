@@ -1,9 +1,12 @@
 
 use crate::globals::*;
+use timeout::Timeout;
 use super::cf;
 
-use slab::Slab;
 use std::ops::{Deref, DerefMut};
+use std::collections::VecDeque;
+
+use slab::Slab;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use async_scoped::TokioScope;
@@ -11,52 +14,128 @@ use async_scoped::TokioScope;
 
 pub use serde::{Serialize, Deserialize};
 
+
+#[derive(Deserialize, Debug)]
+#[serde(tag="type", content="data")]
+#[serde(rename_all="camelCase")]
+enum HostMsgIn {
+	Ack(usize),
+	Close
+}
+
+#[derive(Serialize, Debug)]
+#[serde(tag = "type", content = "data")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+enum HostMsgOut {
+	Accepted { join_code: RoomToken, token: ClientToken },
+	
+	//PlayerDisconnected { player_id: PlayerId },
+	//PlayerReconnected { player_id: PlayerId },
+	PlayerJoined { player_id: PlayerId, name: String, icon: PlayerIcon },
+	PlayerLeft { player_id: PlayerId },
+}
+
+#[derive(Serialize, Debug)]
+#[serde(tag = "type", content = "data")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+enum PlayerMsgOut<'a> {
+	Accepted { player_id: PlayerId, token: &'a str }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TaggedMsg<'a, T: Serialize> {
+	seq: usize,
+	#[serde(flatten)]
+	msg: &'a T
+}
+
 #[derive(Clone, Copy)]
 pub enum ClientId {
 	Host,
 	Player(PlayerId)
 }
 
+pub enum ClientEvent {
+	Close,
+	Disconnect(ClientId),
+	Message(ClientId, Utf8Bytes)
+}
+
 pub struct Presence {
 	sender: WebSocketSender,
 	handle: JoinHandle<()>
 }
-pub struct Host {
-	pub presence: Presence,
-}
 pub struct Player {
 	presence: Presence,
-	pub token: PlayerToken,
+	pub token: ClientToken,
 	pub name: String,
 }
+pub struct Host {
+	presence: Presence,
+	buffer: HostBuffer,
+	timeout: Timeout,
+	pub token: ClientToken,
+}
+struct HostBuffer {
+	msgs: VecDeque<Utf8Bytes>,
+	msg_idx: usize, // index of last sent message
+	ack_idx: usize, // index of last acknowledged message
+}
+
 
 impl Presence {
 	pub fn new(sender: WebSocketSender, handle: JoinHandle<()>) -> Self {
 		Self { sender, handle }
 	}
-	pub fn is_connected(&self) -> bool {
+	pub fn create(sender: Sender, socket: WebSocket, client_id: ClientId) -> Presence {
+		let (tx, mut rx) = socket.split();
+		let handle = tokio::spawn(async move {
+			while let Some(content) = next_bytes(&mut rx).await {
+				if content.is_empty() {
+					/* This is an empty keep-alive msg, ignore */
+					continue;
+				}
+				
+				let event = ClientEvent::Message(client_id, content);
+				let result = sender.send(event).await;
+				if result.is_err() {
+					break;
+				}
+			}
+			
+			let event = ClientEvent::Disconnect(client_id);
+			let _ = sender.send(event).await;
+		});
+		Presence::new(tx, handle)
+	}
+	pub fn is_open(&self) -> bool {
 		!self.handle.is_finished()
 	}
-	pub async fn send_raw(&mut self, msg: Message) -> bool {
-		// evil short-circuiting techniques
-		self.is_connected() && send_raw(&mut self.sender, msg).await.is_ok()
-	}
-	pub async fn send(&mut self, msg: &impl Serialize) -> bool {
-		let Ok(msg) = serialize(msg) else { return false };
-		self.send_raw(Message::Text(msg.into())).await
+	pub fn abort(&mut self) {
+		self.handle.abort()
 	}
 	pub async fn close(&mut self, close_frame: cf::Frame) -> bool {
 		self.send_raw(Message::Close(Some(close_frame))).await
 	}
+	
+	async fn send_raw(&mut self, msg: Message) -> bool {
+		// evil short-circuiting techniques
+		self.is_open() && send_raw(&mut self.sender, msg).await.is_ok()
+	}
+	async fn send_bytes(&mut self, bytes: Utf8Bytes) -> bool {
+		self.send_raw(Message::Text(bytes)).await
+	}
+	pub async fn send(&mut self, msg: &impl Serialize) -> bool {
+		let Ok(msg) = serialize_bytes(msg) else { return false };
+		self.send_bytes(msg).await
+	}
+	pub async fn ping(&mut self) -> bool {
+		use axum::body::Bytes;
+		self.send_raw(Message::Ping(Bytes::new())).await
+	}
 }
 
-impl Deref for Host {
-	type Target = Presence;
-	fn deref(&self) -> &Presence { &self.presence }
-}
-impl DerefMut for Host {
-	fn deref_mut(&mut self) -> &mut Presence { &mut self.presence }
-}
 impl Deref for Player {
 	type Target = Presence;
 	fn deref(&self) -> &Presence { &self.presence }
@@ -64,7 +143,115 @@ impl Deref for Player {
 impl DerefMut for Player {
 	fn deref_mut(&mut self) -> &mut Presence { &mut self.presence }
 }
+impl Deref for Host {
+	type Target = Presence;
+	fn deref(&self) -> &Presence { &self.presence }
+}
+impl DerefMut for Host {
+	fn deref_mut(&mut self) -> &mut Presence { &mut self.presence }
+}
 
+type Sender = mpsc::Sender<ClientEvent>;
+type Receiver = mpsc::Receiver<ClientEvent>;
+
+impl Host {
+	
+	const TIMEOUT_SHORT_DURATION: Duration = Duration::from_secs(30);
+	const TIMEOUT_LONG_DURATION: Duration = Duration::from_secs(480);
+	
+	fn new(presence: Presence) -> Self {
+		Self {
+			presence,
+			buffer: HostBuffer::new(),
+			timeout: Timeout::new(Self::TIMEOUT_LONG_DURATION),
+			token: ClientToken::generate(),
+		}
+	}
+	pub async fn send(&mut self, msg: &impl Serialize) -> bool {
+		
+		let msg = self.buffer.handle_send(&msg);
+		let Ok(msg) = msg else {
+			self.timeout.reset(Duration::ZERO);
+			return false;
+		};
+		
+		self.presence.send_bytes(msg).await
+	}
+	fn acknowledge(&mut self, idx: usize) {
+		let result = self.buffer.handle_acknowledge(idx);
+		if result.is_ok() {
+			self.reset_timeout();
+		}
+	}
+	fn reset_timeout(&mut self) {
+		/*if self.buffer.is_full() {
+			self.timeout.reset(Duration::ZERO);
+		} else */
+		if self.buffer.is_empty() {
+			self.timeout.reset(Self::TIMEOUT_LONG_DURATION);
+		} else {
+			self.timeout.reset(Self::TIMEOUT_SHORT_DURATION);
+		}
+	}
+	async fn resend_buffer(&mut self) -> bool {
+		let msgs = self.buffer.msgs.iter().cloned();
+		for msg in msgs {
+			let ok = self.presence.send_bytes(msg).await;
+			if !ok { return false }
+		}
+		true
+	}
+}
+impl HostBuffer {
+	
+	const CAPACITY: usize = 32;
+	
+	fn new() -> Self {
+		Self {
+			msgs: VecDeque::new(),
+			msg_idx: 1, // must start 1 higher than ack_idx
+			ack_idx: 0,
+		}
+	}
+	fn is_full(&self) -> bool {
+		self.msgs.len() >= Self::CAPACITY
+	}
+	fn is_empty(&self) -> bool {
+		self.msgs.is_empty()
+	}
+	fn handle_send(&mut self, msg: &impl Serialize) -> Result<Utf8Bytes, ()> {
+		
+		if self.is_full() {
+			return Err(());
+		}
+		
+		let seq = self.msg_idx;
+		let msg = TaggedMsg { seq, msg };
+		let msg = serialize_bytes(&msg);
+		let Ok(msg) = msg else {
+			return Err(());
+		};
+		
+		self.msg_idx += 1;
+		self.msgs.push_back(msg.clone());
+		Ok(msg)
+	}
+	fn handle_acknowledge(&mut self, idx: usize) -> Result<(), ()> {
+		if idx <= self.ack_idx {
+			tracing::error!("ack error");
+			return Err(());
+		}
+		if idx >= self.msg_idx {
+			tracing::error!("ack error");
+			return Err(());
+		}
+		
+		let diff = idx - self.ack_idx;
+		self.ack_idx = idx;
+		self.msgs.drain(0..diff);
+		Ok(())
+	}
+}
 
 
 pub struct Players(Slab<Box<Player>>);
@@ -154,36 +341,11 @@ impl Players {
 	pub async fn send_all_except_one(&mut self, except_id: PlayerId, msg: &impl Serialize) -> bool {
 		self.send_all_except(|&(id, _)| id as PlayerId != except_id, msg).await
 	}
-	
-	
-	
 }
 
-#[derive(Serialize)]
-#[serde(tag = "type", content = "data")]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-enum HostMsgOut<'a> {
-	Accepted { join_code: &'a str },
-	PlayerDisconnected { player_id: PlayerId },
-	PlayerReconnected { player_id: PlayerId },
-	PlayerJoined { player_id: PlayerId, name: String, icon: PlayerIcon },
-	PlayerLeft { player_id: PlayerId },
-}
 
-#[derive(Serialize)]
-#[serde(tag = "type", content = "data")]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-enum PlayerMsgOut {
-	Accepted { player_id: PlayerId, token: PlayerToken }
-}
 
-type Sender = mpsc::Sender<(ClientId, ClientEvent)>;
-type Receiver = mpsc::Receiver<(ClientId, ClientEvent)>;
 
-pub enum ClientEvent {
-	Disconnect,
-	Message(Utf8Bytes)
-}
 pub struct ClientIndex {
 	sender: Sender,
 	receiver: Receiver,
@@ -194,19 +356,20 @@ pub struct ClientIndex {
 impl ClientIndex {
 	
 	
-	pub async fn new(host_socket: WebSocket, id: RoomId) -> Self {
+	pub async fn new(host_socket: WebSocket, room_token: RoomToken) -> Self {
 		
 		const EVENT_QUEUE_SIZE: usize = 2;
 		let (sender, receiver) = mpsc::channel(EVENT_QUEUE_SIZE);
 		
 		let players = Players(Slab::with_capacity(MAX_PLAYER_COUNT));
 		let mut host = {
-			let presence = Self::new_presence(sender.clone(), host_socket, ClientId::Host);
-			Host { presence }
+			let presence = Presence::create(sender.clone(), host_socket, ClientId::Host);
+			Host::new(presence)
 		};
 		
 		host.send(&HostMsgOut::Accepted {
-			join_code: id.as_str()
+			join_code: room_token,
+			token: host.token
 		}).await;
 		
 		Self {
@@ -221,6 +384,7 @@ impl ClientIndex {
 		let msg = Message::Close(Some(close_frame));
 		let _ = socket.send(msg).await;
 	}
+	
 	pub async fn reject_invalid_join(socket: WebSocket) {
 		Self::reject_socket(socket, cf::INVALID_JOIN).await;
 	}
@@ -234,30 +398,12 @@ impl ClientIndex {
 		
 		Self::reject_socket(socket, frame).await;
 	}
-	
-	fn generate_token() -> PlayerToken {
-		rand::rng().random::<PlayerToken>()
+	pub async fn reject_invalid_host_reconnect(socket: WebSocket) {
+		Self::reject_socket(socket, cf::INVALID_HOST_RECONNECT).await;
 	}
-	fn new_presence(sender: Sender, socket: WebSocket, client_id: ClientId) -> Presence {
-		let (tx, mut rx) = socket.split();
-		let handle = tokio::spawn(async move {
-			while let Some(content) = next_bytes(&mut rx).await {
-				if content.is_empty() {
-					/* This is an empty keep-alive msg, ignore */
-					continue;
-				}
-				
-				let event = (client_id, ClientEvent::Message(content));
-				let result = sender.send(event).await;
-				if result.is_err() {
-					break;
-				}
-			}
-			let event = (client_id, ClientEvent::Disconnect);
-			let _ = sender.send(event).await;
-		});
-		Presence::new(tx, handle)
-	}
+	/*fn create_presence(&self, socket: WebSocket, client_id: ClientId) -> Presence {
+		Presence::create(self.sender.clone(), socket, client_id)
+	}*/
 	
 	pub fn is_full(&self) -> bool {
 		self.players.len() == self.players.capacity()
@@ -281,16 +427,57 @@ impl ClientIndex {
 		self.players.get_mut(id as usize).map(|player| player.as_mut())
 	}*/
 	
-	pub async fn recv(&mut self) -> Option<(ClientId, ClientEvent)> {
-		let event = self.receiver.recv().await;
-		if let Some((ClientId::Player(player_id), ClientEvent::Disconnect)) = event {
-			// if a player disconnects, tell the host
-			let msg = &HostMsgOut::PlayerDisconnected { player_id };
-			self.host.send(msg).await;
+	pub async fn recv(&mut self) -> Option<ClientEvent> {
+		
+		loop {
+			tokio::select! {
+				_ = &mut *self.host.timeout => {
+					tracing::debug!("host connection timed out");
+					return Some(ClientEvent::Close);
+				},
+				event = self.receiver.recv() => {
+					/* Handle Ack from host */
+					if let Some(ClientEvent::Message(ClientId::Host, ref msg)) = event {
+						if let Ok(msg) = deserialize::<HostMsgIn>(&msg) {
+							match msg {
+								HostMsgIn::Close => {
+									return Some(ClientEvent::Close);
+								},
+								HostMsgIn::Ack(idx) => {
+									self.host.acknowledge(idx);
+									continue; // Ack messages are NOT passed on - wait for the next event
+								}
+							}
+						}
+					}
+					
+					return event;
+				}
+			}
+			
+			/*/* If a player disconnects, let the host know */
+			if let (ClientId::Player(player_id), ClientEvent::Disconnect) = event {
+				let msg = &HostMsgOut::PlayerDisconnected { player_id };
+				self.host.send(msg).await;
+			}*/
 		}
-		event
 	}
 	
+	pub async fn reconnect_host(&mut self, socket: WebSocket, token: ClientToken) -> Result<(), ()> {
+		
+		let host = &mut self.host;
+		
+		if token != host.token {
+			tracing::debug!("host reconnect failed (invalid token)");
+			Self::reject_invalid_host_reconnect(socket).await;
+			return Err(())
+		}
+		
+		host.close(cf::CONNECTED_ELSEWHERE).await; // this should never really happen
+		host.presence = Presence::create(self.sender.clone(), socket, ClientId::Host);
+		host.resend_buffer().await;
+		Ok(())
+	}
 	pub async fn connect_player(&mut self, socket: WebSocket, name: String, icon: PlayerIcon) -> Result<PlayerId, ()> {
 		
 		if self.is_full() {
@@ -315,22 +502,23 @@ impl ClientIndex {
 			return Err(());
 		}
 		
-		let token = Self::generate_token();
 		let player_id = self.players.vacant_key() as PlayerId;
 		let client_id = ClientId::Player(player_id);
-		let presence = Self::new_presence(self.sender.clone(), socket, client_id);
+		let presence = Presence::create(self.sender.clone(), socket, client_id);
+	
+		let token = ClientToken::generate();
 		let player = Player { presence, token, name: name.clone() };
 		self.players.insert(Box::new(player));
 		
 		self.send_player_and_host(
 			player_id,
-			&PlayerMsgOut::Accepted { player_id, token },
+			&PlayerMsgOut::Accepted { player_id, token: token.as_str() },
 			&HostMsgOut::PlayerJoined { player_id, name, icon }
 		).await;
 		
 		Ok(player_id)
 	}
-	pub async fn reconnect_player(&mut self, socket: WebSocket, player_id: PlayerId, player_token: PlayerToken, manual: bool) -> Result<(), ()> {
+	pub async fn reconnect_player(&mut self, socket: WebSocket, player_id: PlayerId, token: ClientToken, manual: bool) -> Result<(), ()> {
 		
 		let Some(player) = self.players.get_mut(player_id as usize) else {
 			tracing::debug!("game rejoin failed (no such player)");
@@ -338,13 +526,13 @@ impl ClientIndex {
 			return Err(());
 		};
 		
-		if player_token != player.token {
+		if token != player.token {
 			tracing::debug!("game rejoin failed (invalid token)");
 			Self::reject_invalid_rejoin(socket, manual).await;
 			return Err(());
 		}
 		
-		if player.is_connected() {
+		if player.is_open() {
 			if manual {
 				/* Manual rejoins override the current connection */
 				player.presence.close(cf::CONNECTED_ELSEWHERE).await;
@@ -355,13 +543,15 @@ impl ClientIndex {
 				return Err(());
 			}
 		} else {
-			let msg = &HostMsgOut::PlayerReconnected { player_id };
-			self.host.send(msg).await;
+			//let msg = &HostMsgOut::PlayerReconnected { player_id };
+			//self.host.send(msg).await;
 		}
 		
 		// replace presence with new, connected one
+		// can't use self.create_presence due to multi-borrowing issue
 		let client_id = ClientId::Player(player_id);
-		player.presence = Self::new_presence(self.sender.clone(), socket, client_id);
+		let presence = Presence::create(self.sender.clone(), socket, client_id);
+		player.presence = presence;
 		Ok(())
 	}
 	async fn drop_player(&mut self, player_id: PlayerId, close_frame: cf::Frame) -> bool {
@@ -446,6 +636,9 @@ pub fn serialize(value: &impl Serialize) -> Result<String, ()> {
 		}
 	}
 }
+pub fn serialize_bytes(value: &impl Serialize) -> Result<Utf8Bytes, ()> {
+	serialize(value).map(|s| s.into())
+}
 pub fn deserialize<'a, T: Deserialize<'a>>(str: &'a str) -> Result<T, ()> {
 	match serde_json::from_str::<T>(str) {
 		Ok(value) => Ok(value),
@@ -456,10 +649,13 @@ async fn next_bytes<'a>(receiver: &'a mut WebSocketReceiver) -> Option<Utf8Bytes
 	while let Some(msg) = receiver.next().await {
 		match msg {
 			Ok(Message::Text(content)) => return Some(content),
-			Ok(Message::Close(_)) => return None,
+			Ok(Message::Close(_)) => {
+				tracing::debug!("websocket closed");
+				// DON'T return None here - we need to keep polling to finish the closing handshake properly
+			},
 			Ok(Message::Pong(_) | Message::Ping(_)) => {}, // Ignore these, tungstenite handles them
 			Ok(Message::Binary(_)) => {
-				tracing::warn!("binary websocket message received (expected text)");
+				tracing::debug!("binary websocket message received (expected text)");
 			},
 			Err(err) => {
 				tracing::debug!("websocket receive: {err}");
@@ -479,3 +675,17 @@ async fn send_raw(sender: &mut WebSocketSender, msg: Message) -> Result<(), ()> 
 	}
 }
 
+#[test]
+fn serialize_tagged_msg() {
+	//println!("{")
+	let inner = HostMsgOut::Accepted {
+		join_code: RoomToken::generate(),
+		token: ClientToken::generate()
+	};
+	let outer = TaggedMsg::<HostMsgOut> {
+		seq: 100,
+		msg: &inner
+	};
+	
+	println!("{:?}", serialize(&outer));
+}

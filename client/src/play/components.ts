@@ -26,7 +26,7 @@ export class NameOverlay {
 		}
 		
 		return h("div#overlay", [
-			h("div#name-popup.popup", [
+			h("div#name-popup", [
 				h("div.vflow", [
 					h("h2", "Name Your Creation?"),
 					h("input", {
@@ -58,4 +58,32 @@ export class NameOverlay {
 			])
 		]);
 	}
+}
+
+const tips = [
+	//"Click on a tip to show a new one (try it on this one!)",
+	//"Join the discord!",
+	
+	// Creative
+	"The main goal of GoblinCon is to draw silly creatures",
+	"Don't worry if you're not happy with your drawing. It's the concept that counts!",
+	"Prompts are there for inspiration; don't worry about sticking to them perfectly",
+	
+	// Technical
+	"If you're ever confused, try the help button at the bottom left",
+	
+	// Hosting
+	"You can use an HDMI cable and a TV to host on a larger device",
+	//"You can play remotely if you use a Discord voice channel to stream from the host device",
+	
+	// Drawpad
+	"You can use two fingers to \"pinch zoom\" on your mobile device",
+	"Use the arrow buttons at the bottom of the drawing pad to undo and redo",
+	"Use the circular button at the bottom of the drawing pad to change your pen size",
+	"Use the large pen for backgrounds - it draws behind what you already have!",
+];
+
+export function Tip() {
+	const tip = tips[Math.floor(Math.random() * tips.length)];
+	return h("div.tip", `Tip: ${tip}`);
 }

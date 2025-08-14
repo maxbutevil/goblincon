@@ -61,7 +61,8 @@ async fn main() {
 	let dist_path = "../client/dist";
 	
 	let ws_router = Router::new()
-		.route("/host", any(ws_upgrade_host))
+		.route("/host/connect", any(ws_upgrade_host_connect))
+		.route("/host/reconnect", any(ws_upgrade_host_reconnect))
 		.route("/play/join", any(ws_upgrade_player_join))
 		.route("/play/rejoin", any(ws_upgrade_player_reconnect));
 	
@@ -123,8 +124,18 @@ async fn init_rustls_config() -> Option<RustlsConfig> {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct JoinQuery {
-	code: String,
+struct HostReconnect {
+	#[serde(rename = "code")]
+	room: RoomToken,
+	token: ClientToken
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PlayerJoin {
+	
+	#[serde(rename = "code")]
+	room: RoomToken,
 	
 	name: String,
 	#[serde(default)]
@@ -132,10 +143,13 @@ struct JoinQuery {
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct RejoinQuery {
-	code: String,
+struct PlayerReconnect {
+	
+	#[serde(rename = "code")]
+	room: RoomToken,
+	
 	id: PlayerId,
-	token: PlayerToken,
+	token: ClientToken,
 	
 	#[serde(default)]
 	manual: bool
@@ -144,38 +158,52 @@ struct RejoinQuery {
 /*async fn random_icon() {
 	
 }*/
-async fn ws_upgrade_host(State(app): State<App>, ws: WebSocketUpgrade) -> Response {
-	ws.on_upgrade(async move |socket| app.accept_host(socket).await)
+async fn ws_upgrade_host_connect(
+	State(app): State<App>,
+	ws: WebSocketUpgrade
+) -> Response {
+	ws.on_upgrade(async move |socket| {
+		app.accept_host_connect(socket).await
+	})
+}
+async fn ws_upgrade_host_reconnect(
+	State(app): State<App>,
+	Query(query): Query<HostReconnect>,
+	ws: WebSocketUpgrade
+) -> Response {
+	ws.on_upgrade(async move |socket| {
+		let HostReconnect { room, token } = query;
+		app.accept_host_reconnect(socket, room, token).await
+	})
 }
 
 async fn ws_upgrade_player_join(
 	State(app): State<App>,
-	Query(query): Query<JoinQuery>,
+	Query(query): Query<PlayerJoin>,
 	ws: WebSocketUpgrade
-) -> Result<Response, StatusCode>
+) -> Response
 {
-	let Some(room_id) = RoomId::parse(&query.code) else {
-		tracing::debug!("Invalid Room Code [{}]", query.code);
-		return Err(StatusCode::BAD_REQUEST);
-	};
-	
-	Ok(ws.on_upgrade(async move |socket| {
-		app.accept_player_join(socket, room_id, query.name, query.icon).await
-	}))
+	ws.on_upgrade(async move |socket| {
+		let PlayerJoin { room, name, icon } = query;
+		app.accept_player_join(socket, room, name, icon).await
+	})
 }
 async fn ws_upgrade_player_reconnect(
 	State(app): State<App>,
-	Query(query): Query<RejoinQuery>,
+	Query(query): Query<PlayerReconnect>,
 	ws: WebSocketUpgrade
-) -> Result<Response, StatusCode>
+) -> Response
 {
-	let Some(room_id) = RoomId::parse(&query.code) else {
-		tracing::debug!("Invalid Room Code [{}]", query.code);
-		return Err(StatusCode::BAD_REQUEST);
-	};
-	
-	Ok(ws.on_upgrade(async move |socket| {
-		app.accept_player_reconnect(socket, room_id, query.id, query.token, query.manual).await
-	}))
+	ws.on_upgrade(async move |socket| {
+		let PlayerReconnect { room, id, token, manual } = query;
+		app.accept_player_reconnect(socket, room, id, token, manual).await
+	})
+}
+
+#[test]
+fn deserialize_host_reconnect() {
+	let raw = r#"{ "code": "ABCDE", "token": "012345678901234567890123" }"#;
+	let HostReconnect { room, token } = serde_json::from_str(raw).unwrap();
+	println!("{:?}, {:?}", room, token);
 }
 

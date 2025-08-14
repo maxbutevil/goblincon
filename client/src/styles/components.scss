@@ -1,8 +1,6 @@
 @use "theme.scss" as *;
 @use "flow.scss" as *;
 
-
-
 .countdown {
 	font-size: 1.6em;
 	text-align: center;
@@ -39,6 +37,18 @@
 	}
 }
 
+button {
+	&.green {
+		background-color: success(1);
+		&:hover { background-color: success(2) !important; }
+		&.selected { background-color: success(2); }
+	}
+	&.red {
+		background-color: error(1);
+		&:hover { background-color: error(2) !important; }
+		&.selected { background-color: error(2); }
+	}
+}
 .multi-btn {
 	@include row(center);
 	font-size: 0.9em;
@@ -55,6 +65,19 @@
 		&:not(:first-child) { border-left: none; }
 	}
 }
+.card {
+	@include column(flex-start, stretch, 8px);
+	padding: 8px;
+	
+	@include border-light(2px, 6px);
+	background-color: primary(3);
+	
+	.header {
+		@include row(space-between, center);
+		border-bottom: border(2px);
+	}
+}
+
 
 #status {
 	text-align: center;
@@ -64,19 +87,16 @@
 	color: #A00;
 }
 
-#logo {
-	#icon-row {
-		@include row(center, center);
-		max-width: 94vw;
-		font-size: 1.6em;
-		>* {
-			flex: 1 1 0;
-			min-width: 0;
-			height: auto;
-			object-fit: contain;
-			
-		}
-	}
+#logo-icons {
+	@include row(center, center);
+	max-width: 94vw;
+	font-size: 1.4rem;
+	/*>* {
+		flex: 1 1 0;
+		min-width: 0;
+		height: auto;
+		object-fit: contain;
+	}*/
 }
 
 #overlay {

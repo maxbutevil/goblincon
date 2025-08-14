@@ -72,15 +72,26 @@ export default class Signal<T extends any[] = []> extends Set<Callback<T>> {
 		
 	}*/
 	
-	private static _keydown?: Signal<[KeyboardEvent]>;
-	private static _keyup?: Signal<[KeyboardEvent]>;
-	static get keydown() {
-		return this._keydown ??= Signal.fromDocumentEvent("keydown");
+	private static windowMap: { [E in keyof WindowEventMap]?: Signal<[WindowEventMap[E]]> } = {};
+	private static documentMap: { [E in keyof DocumentEventMap]?: Signal<[DocumentEventMap[E]]> } = {};
+	/*static get keydown() {
+		return this.documentEvent("keydown");
 	}
 	static get keyup() {
-		return this._keyup ??= Signal.fromDocumentEvent("keyup");
+		return this.documentEvent("keyup");
+	}*/
+	static windowEvent<const E extends keyof WindowEventMap>(event: E): Signal<[WindowEventMap[E]]> {
+		return this.windowMap[event] ??= this.fromWindowEvent(event) as any;
 	}
-	static fromDocumentEvent<E extends keyof DocumentEventMap>(event: E): Signal<[DocumentEventMap[E]]> {
+	static documentEvent<const E extends keyof DocumentEventMap>(event: E): Signal<[DocumentEventMap[E]]> {
+		return this.documentMap[event] ??= this.fromDocumentEvent(event) as any;
+	}
+	static fromWindowEvent<const E extends keyof WindowEventMap>(event: E): Signal<[WindowEventMap[E]]> {
+		const signal = new Signal<[WindowEventMap[E]]>();
+		window.addEventListener(event, ev => signal.emit(ev));
+		return signal;
+	}
+	static fromDocumentEvent<const E extends keyof DocumentEventMap>(event: E): Signal<[DocumentEventMap[E]]> {
 		const signal = new Signal<[DocumentEventMap[E]]>();
 		document.addEventListener(event, ev => signal.emit(ev));
 		return signal;

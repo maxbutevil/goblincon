@@ -14,6 +14,7 @@ import { SubmissionData, SUBMISSION_DATA } from "../modules/data"
 import * as icons from "../assets/icons"
 
 import Drawpad from "./drawpad"
+import Session from "./session"
 import {
 	Countdown,
 	VoteButtons,
@@ -31,9 +32,9 @@ const INC = new ReceiveIndex({
 	//gameStarted: Val.NONE,
 	
 	/* state synchronization */
-	"drawingBachelor": { endSecs: Val.NUM, naming: Val.BOOL, theme: Val.STR },
-	"drawingSuitor": { endSecs: Val.NUM, naming: Val.BOOL, bachelorId: Val.NUM, bachelorSubmission: SUBMISSION_DATA },
-	"voting": { endSecs: Val.NUM, choices: Val.array(Val.STR) },
+	"drawingBachelor": { endMillis: Val.NUM, naming: Val.BOOL, theme: Val.STR },
+	"drawingSuitor": { endMillis: Val.NUM, naming: Val.BOOL, bachelorId: Val.NUM, bachelorSubmission: SUBMISSION_DATA },
+	"voting": { endMillis: Val.NUM, choices: Val.array(Val.STR) },
 	
 	/* idle states */
 	"showingVotes": Val.NONE,
@@ -56,14 +57,14 @@ export function view() {
 	
 	Micron.defer(
 		client.use(INC, OUT),
-		INC.subscribe("drawingBachelor", ({ endSecs, naming, theme }) => {
-			page.put(DrawingBachelor, endSecs, naming, theme);
+		INC.subscribe("drawingBachelor", ({ endMillis, naming, theme }) => {
+			page.put(DrawingBachelor, endMillis, naming, theme);
 		}),
-		INC.subscribe("drawingSuitor", ({ endSecs, naming, bachelorId, bachelorSubmission }) => {
-			page.put(DrawingSuitor, endSecs, naming, bachelorId, bachelorSubmission)
+		INC.subscribe("drawingSuitor", ({ endMillis, naming, bachelorId, bachelorSubmission }) => {
+			page.put(DrawingSuitor, endMillis, naming, bachelorId, bachelorSubmission)
 		}),
-		INC.subscribe("voting", ({ endSecs, choices }) => {
-			page.put(Voting, endSecs, choices);
+		INC.subscribe("voting", ({ endMillis, choices }) => {
+			page.put(Voting, endMillis, choices);
 		}),
 		INC.subscribe("showingVotes", () => page.put(ShowingResults)),
 		INC.subscribe("showingScores", () => page.put(ShowingResults)),
@@ -77,8 +78,8 @@ export function view() {
 }
 export const test = Micron.test("dating")
 	.add(Starting)
-	.add(DrawingBachelor, 20, true, "Test Theme")
-	.add(DrawingSuitor, 30, true, 1, { name: "LegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegs", drawing: legsLord })
+	.add(() => DrawingBachelor(Date.now() + 30 * 1000, true, "Test Theme"))
+	.add(() => DrawingSuitor(Date.now() + 30 * 1000, true, 1, { name: "LegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegsLegs", drawing: legsLord }))
 	.add(DoneDrawing)
 	.add(Voting, 20, ["player0", "player1"])
 	.add(NotVoting)
@@ -88,7 +89,7 @@ export const test = Micron.test("dating")
 function Starting() {
 	return IdlePage("Game Starting", "Get ready to draw!");
 }
-function DrawingBachelor(endSecs: number, naming: boolean, bachelorTheme: string) {
+function DrawingBachelor(endMillis: number, naming: boolean, bachelorTheme: string) {
 	
 	//const overlay = Micron.anchor();
 	const nav = new Nav();
@@ -96,11 +97,12 @@ function DrawingBachelor(endSecs: number, naming: boolean, bachelorTheme: string
 		onClose: () => nav.clear()
 	});
 	
-	Micron.defer(Signal.keydown.subscribe((ev) => {
+	Micron.defer(Signal.documentEvent("keydown").subscribe((ev) => {
 		if (ev.key === "Escape") nav.clear()
 	}));
 	
 	const drawpad = new Drawpad({
+		key: `bachelor-${Session.joinCode}`,
 		onSubmit: (drawing) => {
 			const submission = { drawing, name: nameOverlay?.name };
 			OUT.send("bachelorSubmission", { submission });
@@ -155,7 +157,7 @@ function DrawingBachelor(endSecs: number, naming: boolean, bachelorTheme: string
 		]),
 		BottomBar({
 			middle: (
-				Countdown.fromEnd(endSecs, Shared.DRAWING_BUFFER_SECS)
+				Countdown.fromEnd(endMillis, Shared.DRAWING_BUFFER_SECS)
 					.withPopups()
 					.onFinish(() => drawpad.submit())
 					.onThreshold(20, () => {
@@ -184,7 +186,7 @@ function DrawingBachelor(endSecs: number, naming: boolean, bachelorTheme: string
 		))
 	]);*/
 }
-function DrawingSuitor(endSecs: number, naming: boolean, bachelorId: number, bachelorSubmission: SubmissionData) {
+function DrawingSuitor(endMillis: number, naming: boolean, bachelorId: number, bachelorSubmission: SubmissionData) {
 	
 	//let name: string | undefined = undefined; // undefined = never opened name overlay
 	
@@ -197,13 +199,14 @@ function DrawingSuitor(endSecs: number, naming: boolean, bachelorId: number, bac
 	
 	
 	Micron.defer(
-		Signal.keydown.subscribe((ev) => {
+		Signal.documentEvent("keydown").subscribe((ev) => {
 			if (ev.key === "Escape") nav.clear()
 		})
 	);
 	
 	//const nameOverlayView = nameOverlay?.view.bind(nameOverlay);
 	const drawpad = new Drawpad({
+		key: `suitor-${Session.joinCode}-${bachelorId}`,
 		onSubmit: (drawing) => {
 			const submission = { drawing, name: nameOverlay?.name };
 			OUT.send("suitorSubmission", { bachelorId, submission });
@@ -219,7 +222,7 @@ function DrawingSuitor(endSecs: number, naming: boolean, bachelorId: number, bac
 	});
 	
 	Micron.defer(
-		Signal.keydown.subscribe((ev) => {
+		Signal.documentEvent("keydown").subscribe((ev) => {
 			if (ev.key === "Escape")
 				nav.clear();
 		})
@@ -317,7 +320,7 @@ function DrawingSuitor(endSecs: number, naming: boolean, bachelorId: number, bac
 		
 		BottomBar({
 			middle: (
-				Countdown.fromEnd(endSecs, Shared.DRAWING_BUFFER_SECS)
+				Countdown.fromEnd(endMillis, Shared.DRAWING_BUFFER_SECS)
 					.withPopups()
 					.onFinish(() => drawpad.submit())
 					.onThreshold(20, () => {
@@ -353,7 +356,7 @@ function DrawingSuitor(endSecs: number, naming: boolean, bachelorId: number, bac
 		//mountedBtn(showBachelorIcon, toggle)
 	]);*/
 }
-function Voting(endSecs: number, choices: string[]) {
+function Voting(endMillis: number, choices: string[]) {
 	
 	function submitVote(forName: string) {
 		OUT.send("voteSubmission", { forName });
@@ -367,13 +370,13 @@ function Voting(endSecs: number, choices: string[]) {
 		h("div.primary-page", [
 			h("div.flow.gapped", [
 				h("h2", "Voting"),
-				h("div", "Vote for your favorite suitor!"),
+				h("div", "Vote for your favorite suitor for the bachelor (at the top)!"),
 				...VoteButtons(choices, submitVote)
 			]),
 		]),
 		BottomBar({
 			middle: (
-				Countdown.fromEnd(endSecs, Shared.VOTING_BUFFER_SECS)
+				Countdown.fromEnd(endMillis, Shared.VOTING_BUFFER_SECS)
 					.withPopups()
 					.View()
 			),

@@ -1,4 +1,4 @@
-import { h, s, Micron } from "../modules"
+import { h, s, Micron, Shared } from "../modules"
 import { test } from "../play/play"
 
 import { Countdown, BottomBar } from "../components";
@@ -6,7 +6,10 @@ test.nest(
   Micron.test("abstract")
     .add(Timers)
 );
-test.next();
+
+if (Shared.isMobileClient) {
+  test.next();
+}
 
 function Timers() {
   return h("div.scaffold", [

@@ -15,6 +15,7 @@ import Room from "../room"
 import { Player, PlayerMap } from "../data"
 import { SubmissionData, SUBMISSION_DATA } from "../../modules/data"
 import { Suitor, Matchup, Round, Game } from "./data"
+import { Recap } from "../components"
 import settings from "./settings"
 
 import {
@@ -31,9 +32,9 @@ import * as assets from "../../assets/testing"
 import { DRAWING_BUFFER_SECS } from '../../modules/shared';
 
 const INC = new ReceiveIndex({
-	"drawingBachelors": { endSecs: Val.NUM, theme: Val.STR },
-	"drawingSuitors": { endSecs: Val.NUM },
-	"voting": { endSecs: Val.NUM, bachelorId: Val.NUM, suitorIds: Val.array(Val.NUM) },
+	"drawingBachelors": { endMillis: Val.NUM, theme: Val.STR },
+	"drawingSuitors": { endMillis: Val.NUM },
+	"voting": { endMillis: Val.NUM, bachelorId: Val.NUM, suitorIds: Val.array(Val.NUM) },
 	"showingVotes": Val.NONE,
 	"showingScores": Val.NONE,
 	
@@ -54,17 +55,17 @@ export default function View() {
 	Micron.defer(
 		setRecap,
 		client.use(INC, OUT),
-		INC.subscribe("drawingBachelors", ({ theme, endSecs }) => {
+		INC.subscribe("drawingBachelors", ({ theme, endMillis }) => {
 			Game.pushRound(theme);
 			//rounds.push(new Round(theme));
-			page.put(DrawingBachelors, theme, endSecs);
+			page.put(DrawingBachelors, theme, endMillis);
 		}),
-		INC.subscribe("drawingSuitors", ({ endSecs }) => page.put(DrawingSuitors, endSecs)),
+		INC.subscribe("drawingSuitors", ({ endMillis }) => page.put(DrawingSuitors, endMillis)),
 		INC.subscribe("showingScores", () => page.put(ShowingScores)),
-		INC.subscribe("voting", ({ endSecs, bachelorId, suitorIds }) => {
+		INC.subscribe("voting", ({ endMillis, bachelorId, suitorIds }) => {
 			Game.handleMatchup(bachelorId);
 			//currentRound().handleMatchup(bachelorId);
-			page.put(Voting, endSecs, bachelorId, suitorIds);
+			page.put(Voting, endMillis, bachelorId, suitorIds);
 		}),
 	);
 	
@@ -82,7 +83,7 @@ export const test = Micron.test("dating")
 		Game.init(Room.players);
 		Game.pushRound("testTheme");
 		const submissions: SubmissionData[] = [
-			{ name: "SadSadSadSadSadSadSadSadSadSadSadSadSadSadSadSadSadSad", drawing: assets.sadSack },
+			{ name: "Sad Sack", drawing: assets.sadSack },
 			{ name: "Licensed Therapist", drawing: assets.licensedTherapist },
 			{ name: "Top Hat Enthusiast", drawing: assets.topHatEnthusiast }
 		];
@@ -100,31 +101,29 @@ export const test = Micron.test("dating")
 		Game.handleMatchup(0);
 		Game.handleMatchup(1);
 		Game.handleMatchup(2);
-		Game.handleMatchup(0);
-		Game.handleMatchup(1);
-		Game.handleMatchup(2);
-		Game.handleMatchup(0);
-		Game.handleMatchup(1);
-		Game.handleMatchup(2);
-		//setRecap();
+		setRecap();
 	});
 
 function setRecap() {
-	let needsRecap = false;
+	if (needsRecap()) {
+		Room.setResults({
+			players: Game.players,
+			recap: DatingRecap
+		});
+	} else {
+		Room.clearResults();
+	}
+}
+function needsRecap() {
 	for (const round of Game.rounds) {
 		if (round.matchups.size > 0) {
-			needsRecap = true;
+			return true;
 			break;
 		}
 	}
-
-	if (needsRecap) {
-		Room.setRecap(Recap);
-	} else {
-		Room.clearRecap();
-	}
+	return false;
 }
-function Recap(close: () => void) {
+function DatingRecap(close: () => void) {
 
 	function MatchupRecap(matchup: Matchup): Micron.Node {
 		const { bachelorId, bachelorSubmission, suitors } = matchup;
@@ -183,33 +182,26 @@ function Recap(close: () => void) {
 		if (matchups.length === 0) {
 			return null;
 		} else {
-			return h("div.round", [
-				h("h2", `Round ${i + 1}: ${round.theme}`),
+			return h("div.dating-round", [
+				h("h3", `Round ${i + 1}: ${round.theme}`),
 				...matchups.map(MatchupRecap)
 			]);
 		}
 	}
-
-	return h("div#overlay", [
-		h("div#dating-recap.popup", [
-			h("div#recap", [
-				h("h1", "Recap"),
-				...Game.rounds.map(RoundRecap),
-			]),
-			h("button",
-				{ on: { click: close } },
-				"Close"
-			)
-		])
-	]);
+	
+	return Recap(
+		"Recap - Dating Mode",
+		Game.rounds.map(RoundRecap),
+		close
+	);
 }
 
 function Starting() {
 	return IdlePage("Game Starting!", "Get ready to draw!");
 }
-function DrawingBachelors(theme: string, endSecs: number) {
+function DrawingBachelors(theme: string, endMillis: number) {
 	
-	const readyDisplay = new ReadyDisplay(Room.players.array(), endSecs, Shared.DRAWING_BUFFER_SECS);
+	const readyDisplay = new ReadyDisplay(Room.players.array(), endMillis, Shared.DRAWING_BUFFER_SECS);
 	
 	Micron.defer(INC.subscribe("bachelorSubmitted", ({ playerId, submission }) => {
 		Game.handleBachelor(playerId, submission);
@@ -225,9 +217,9 @@ function DrawingBachelors(theme: string, endSecs: number) {
 		readyDisplay.View()
 	]);
 }
-function DrawingSuitors(endSecs: number) {
+function DrawingSuitors(endMillis: number) {
 	
-	const readyDisplay = new ReadyDisplay(Room.players.array(), endSecs, Shared.DRAWING_BUFFER_SECS);
+	const readyDisplay = new ReadyDisplay(Room.players.array(), endMillis, Shared.DRAWING_BUFFER_SECS);
 	for (const bachelorId of Game.players.ids()) {
 		if (!Game.currentRound().matchups.has(bachelorId)) {
 			// this player didn't submit a bachelor, and therefore won't be submitting a suitor
@@ -257,7 +249,7 @@ function ShowingScores() {
 		Game.players.ScoreView()
 	]);
 }
-function Voting(endSecs: number, bachelorId: number, suitorIds: number[]) {
+function Voting(endMillis: number, bachelorId: number, suitorIds: number[]) {
 	
 	const DELAY_INITIAL = 0.3;
 	const DELAY_STAGGER = 1.0;
@@ -267,7 +259,7 @@ function Voting(endSecs: number, bachelorId: number, suitorIds: number[]) {
 	const bachelor = Game.players.get(bachelorId)!;
 	
 	const voteQueue = new VoteQueue();
-	const readyDisplay = new ReadyDisplay(Room.players.array(), endSecs, Shared.VOTING_BUFFER_SECS);
+	const readyDisplay = new ReadyDisplay(Room.players.array(), endMillis, Shared.VOTING_BUFFER_SECS);
 	for (const id of suitorIds) {
 		// suitors won't be voting since their own submission is being voted on
 		readyDisplay.ready(id);

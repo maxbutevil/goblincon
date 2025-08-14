@@ -75,7 +75,7 @@ const COMPOUND_POST: StrTable = StrTable::new(&[
 ]);*/
 
 const ADJECTIVE: StrTable = Table::new(&[
-	(8, &[
+	(4, &[
 		"Hairy",
 		"Bald",
 		"Magnificent",
@@ -102,11 +102,13 @@ const ADJECTIVE: StrTable = Table::new(&[
 		"Villainous",
 		"Heroic",
 		"Deranged",
-	]),
-	(2, &[
-		"Pompous",
+		"Kissable",
+		"Adorable",
+		"Muscular",
+		"Cruel",
 	]),
 	(1, &[
+		"Pompous",
 		"Goblinistic",
 		"Vainglorious",
 	]),
@@ -159,7 +161,7 @@ const PREFIX: StrTable = Table::new(&[
 	]),
 	(4, &[
 		"Mrs.",
-		"Ms.",
+		"Ms.", // "Mrs." and "Ms." are together as common as "Mr."
 		"Uncle",
 		"Aunt",
 	]),
@@ -196,7 +198,7 @@ const ROOT: StrTable = Table::new(&[
 		/* Goblinsonas */
 		"Mikmak",
 		"Gatthew",
-		"Jobnis",
+		//"Jobnis",
 		"Glarsom",
 		"Burger",
 		"Bibi Bano",
@@ -207,7 +209,6 @@ const ROOT: StrTable = Table::new(&[
 		"Quirko",
 		"Wackine",
 		"Milburt",
-		//"Chrysanthorp",
 		"Graggle",
 		"Mindoid",
 		"Twisselton",
@@ -219,8 +220,20 @@ const ROOT: StrTable = Table::new(&[
 		
 		/* Epithets-ish */
 		"Moneylaunder",
+		"Bankrob",
+		"Dumpsterdive",
 		"Leg Lord",
+		"Legs Lord",
 		"Butterlord",
+		"Megadog",
+		"Doubledog",
+		"Snakelegs",
+		"Horsehead",
+		"Divorceo",
+		
+		/* Adjective-ish */
+		"Baldo",
+		"Hairyus",
 		
 		/* Misc */
 		"Wonk",
@@ -302,8 +315,6 @@ const ROOT: StrTable = Table::new(&[
 		"Toes",
 		"Chompers",
 		//"Nab",
-		//"Jaxon",
-		"Baldo",
 		"Dingus",
 		"Smooch",
 		//"Grin",
@@ -312,6 +323,7 @@ const ROOT: StrTable = Table::new(&[
 		"Wrangle",
 		//"Gub",
 		"Bluntus",
+		"Bongus",
 		"Cowlick",
 		"Cupcake",
 		"Gullet",
@@ -330,6 +342,8 @@ const ROOT: StrTable = Table::new(&[
 		"Wiggles",
 		"Wobbler",
 		"Gug",
+		"Foofles",
+		"Orbo",
 		
 		/* C's Contributions */
 		//"Jorm",
@@ -385,7 +399,7 @@ const ROOT: StrTable = Table::new(&[
 		
 		/* P's */
 		"Loopus",
-		"Frundick",
+		//"Frundick",
 		"Peablar",
 		
 		/* V's */
@@ -409,6 +423,6 @@ fn check_duplicates() {
 
 
 #[test]
-fn name_dump() {
+fn goblin_name_dump() {
 	println!("{:?}", generate(100));
 }

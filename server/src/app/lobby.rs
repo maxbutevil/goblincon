@@ -72,7 +72,7 @@ impl<'a> Lobby<'a> {
 	
 	fn new_leader_id(&self) -> Option<PlayerId> {
 		for (player_id, player) in self.clients.players.iter() {
-			if player.is_connected() {
+			if player.is_open() {
 				return Some(player_id as PlayerId);
 			}
 		}
@@ -100,44 +100,6 @@ impl<'a> Lobby<'a> {
 		self.clients.players.send(player_id, &msg).await;
 	}
 	
-	pub async fn run(mut self) -> Result<Settings, ()> {
-		
-		self.open().await;
-		
-		loop {
-			
-			if let State::Done(result) = self.state {
-				return result;
-			}
-			
-			tokio::select! {
-				event = self.receiver.recv() => {
-					let Some(event) = event else { break Err(()); };
-					match event {
-						room::Event::PlayerJoin { socket, name, icon } =>
-							{ self.handle_join(socket, name, icon).await; },
-						room::Event::PlayerReconnect { socket, player_id, token, manual } =>
-							{ self.handle_reconnect(socket, player_id, token, manual).await; },
-					}
-				},
-				client_event = self.clients.recv() => {
-					let Some(event) = client_event else { break Err(()) };
-					match event {
-						(client_id, ClientEvent::Disconnect) => {
-							match client_id {
-								ClientId::Host =>
-									break Err(()),
-								ClientId::Player(_player_id) =>
-									{ /*self.handle_player_disconnect(player_id).await*/ }
-							}
-						},
-						(client_id, ClientEvent::Message(msg)) =>
-							self.handle_client_message(client_id, msg).await
-					}
-				}
-			}
-		}
-	}
 	async fn open(&mut self) {
 		
 		let leader_id;
@@ -158,6 +120,81 @@ impl<'a> Lobby<'a> {
 			&GlobalHostMsgOut::InLobby { leader_id }
 		).await;
 	}
+	pub async fn run(mut self) -> Result<Settings, ()> {
+		
+		self.open().await;
+		
+		loop {
+			
+			if let State::Done(result) = self.state {
+				return result;
+			}
+			
+			tokio::select! {
+				event = self.receiver.recv() => {
+					let Some(event) = event else { break Err(()); };
+					match event {
+						room::Event::HostReconnect { socket, token } =>
+							{ self.handle_host_reconnect(socket, token).await; }
+						room::Event::PlayerJoin { socket, name, icon } =>
+							{ self.handle_player_join(socket, name, icon).await; },
+						room::Event::PlayerReconnect { socket, player_id, token, manual } =>
+							{ self.handle_player_reconnect(socket, player_id, token, manual).await; },
+					}
+				},
+				client_event = self.clients.recv() => {
+					let Some(event) = client_event else { break Err(()) };
+					match event {
+						ClientEvent::Close => break Err(()),
+						ClientEvent::Disconnect(client_id) => {},
+						ClientEvent::Message(client_id, msg) =>
+							self.handle_client_message(client_id, msg).await
+					}
+				}
+			}
+		}
+	}
+	async fn handle_host_reconnect(&mut self, socket: WebSocket, token: ClientToken) {
+		let _ = self.clients.reconnect_host(socket, token).await;
+	}
+	async fn handle_player_join(&mut self, socket: WebSocket, name: String, icon: PlayerIcon) {
+		
+		let State::Open { leader_id } = self.state else {
+			tracing::debug!("player attempted to join lobby while not open");
+			return;
+		};
+		
+		let result = self.clients.connect_player(socket, name, icon).await;
+		let Ok(player_id) = result else { return };
+		
+		if self.clients.has_player(leader_id) {
+			self.sync_nonleader(player_id).await;
+			self.sync_leader(leader_id).await; // tell leader updated player count
+		} else {
+			// no leader, make inc the new one
+			self.state = State::Open { leader_id: player_id };
+			self.sync_leader_and_host(player_id).await;
+		}
+		
+		//self.clients.kick_player(player_id).await;
+		
+	}
+	async fn handle_player_reconnect(&mut self, socket: WebSocket, player_id: PlayerId, token: ClientToken, manual: bool) {
+		let State::Open { leader_id } = self.state else {
+			tracing::warn!("player attempted to reconnect to lobby while not open");
+			return;
+		};
+		
+		let result = self.clients.reconnect_player(socket, player_id, token, manual).await;
+		let Ok(()) = result else { return; };
+		
+		if leader_id == player_id {
+			self.sync_leader(player_id).await;
+		} else {
+			self.sync_nonleader(player_id).await;
+		}
+	}
+	
 	
 	
 	async fn handle_client_message(&mut self, client_id: ClientId, msg: Utf8Bytes) {
@@ -203,43 +240,7 @@ impl<'a> Lobby<'a> {
 		
 	
 	}
-	async fn handle_join(&mut self, socket: WebSocket, name: String, icon: PlayerIcon) {
-		
-		let State::Open { leader_id } = self.state else {
-			tracing::debug!("player attempted to join lobby while not open");
-			return;
-		};
-		
-		let result = self.clients.connect_player(socket, name, icon).await;
-		let Ok(player_id) = result else { return };
-		
-		if self.clients.has_player(leader_id) {
-			self.sync_nonleader(player_id).await;
-			self.sync_leader(leader_id).await; // tell leader updated player count
-		} else {
-			// no leader, make inc the new one
-			self.state = State::Open { leader_id: player_id };
-			self.sync_leader_and_host(player_id).await;
-		}
-		
-		//self.clients.kick_player(player_id).await;
-		
-	}
-	async fn handle_reconnect(&mut self, socket: WebSocket, player_id: PlayerId, token: PlayerToken, manual: bool) {
-		let State::Open { leader_id } = self.state else {
-			tracing::warn!("player attempted to reconnect to lobby while not open");
-			return;
-		};
-		
-		let result = self.clients.reconnect_player(socket, player_id, token, manual).await;
-		let Ok(_) = result else { return; };
-		
-		if leader_id == player_id {
-			self.sync_leader(player_id).await;
-		} else {
-			self.sync_nonleader(player_id).await;
-		}
-	}
+	
 	async fn handle_player_leave(&mut self, player_id: PlayerId) {
 		let State::Open { leader_id } = self.state else {
 			tracing::debug!("player left lobby while not open");

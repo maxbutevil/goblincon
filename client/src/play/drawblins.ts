@@ -22,8 +22,8 @@ import * as icons from "../assets/icons/"
 
 const INC = new ReceiveIndex({
 	//waiting: Val.choice<"start" | "draw" | "vote" | "results" | "score">("start", "draw", "vote", "results", "score"),
-	"drawing": { goblinName: Val.STR, endSecs: Val.NUM },
-	"voting": { choices: Val.array(Val.STR), endSecs: Val.NUM },
+	"drawing": { goblinName: Val.STR, endMillis: Val.NUM },
+	"voting": { choices: Val.array(Val.STR), endMillis: Val.NUM },
 	
 	// idle states
 	"starting": Val.NONE,
@@ -43,11 +43,11 @@ export function view() {
 	
 	Micron.defer(
 		client.use(INC, OUT),
-		INC.subscribe("drawing", ({ goblinName, endSecs }) => {
-			page.put(Drawing, endSecs, goblinName);
+		INC.subscribe("drawing", ({ goblinName, endMillis }) => {
+			page.put(Drawing, endMillis, goblinName);
 		}),
-		INC.subscribe("voting", ({ choices, endSecs }) => {
-			page.put(Voting, endSecs, choices);
+		INC.subscribe("voting", ({ choices, endMillis }) => {
+			page.put(Voting, endMillis, choices);
 		}),
 		INC.subscribe("starting", () => page.put(Starting)),
 		INC.subscribe("doneDrawing", () => page.put(DoneDrawing)),
@@ -60,7 +60,7 @@ export function view() {
 }
 export const test = Micron.test("drawblins")
 	.add(Starting)
-	.add(Drawing, 120, "Test Goblin Name")
+	.add(() => Drawing(Date.now() + 30 * 1000, "Test Goblin Name"))
 	.add(DoneDrawing)
 	.add(Voting, 15, ["player0", "player1", "player2"])
 	.add(DoneVoting)
@@ -69,10 +69,11 @@ export const test = Micron.test("drawblins")
 function Starting() {
 	return IdlePage("Game Starting", "Get ready to draw!");
 }
-function Drawing(endSecs: number, goblinName: string) {
+function Drawing(endMillis: number, goblinName: string) {
 	
 	const nav = new Nav();
 	const drawpad = new Drawpad({
+		key: `drawblins-${Session.joinCode}-${goblinName}`,
 		onSubmit: (drawing: string) => {
 			OUT.send("drawingSubmission", { drawing });
 		}
@@ -109,7 +110,7 @@ function Drawing(endSecs: number, goblinName: string) {
 		]),
 		BottomBar({
 			middle: (
-				Countdown.fromEnd(endSecs, Shared.DRAWING_BUFFER_SECS)
+				Countdown.fromEnd(endMillis, Shared.DRAWING_BUFFER_SECS)
 					.onFinish(() => drawpad.submit())
 					.withPopups()
 					.View()
@@ -118,7 +119,7 @@ function Drawing(endSecs: number, goblinName: string) {
 		}),
 	]);
 }
-function Voting(endSecs: number, choices: string[]) {
+function Voting(endMillis: number, choices: string[]) {
 	
 	const filtered = choices.filter((choice) => choice !== Session.playerName);
 	const submitVote = (forName: string) => {
@@ -134,7 +135,7 @@ function Voting(endSecs: number, choices: string[]) {
 		]),
 		BottomBar({
 			middle: (
-				Countdown.fromEnd(endSecs, Shared.VOTING_BUFFER_SECS)
+				Countdown.fromEnd(endMillis, Shared.VOTING_BUFFER_SECS)
 					.withPopups()
 					.View()
 			)

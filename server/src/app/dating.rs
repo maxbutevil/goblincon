@@ -1,5 +1,6 @@
 
 use super::*;
+use timeout::{Timeout, DynamicDuration};
 use strgen::bachelor_themes;
 
 const SUITOR_COUNT: usize = 2;
@@ -282,10 +283,12 @@ impl<'a> Game<'a> {
 				event = self.receiver.recv() => {
 					let Some(event) = event else { break Err(()) };
 					match event {
+						room::Event::HostReconnect { socket, token } =>
+							{ self.handle_host_reconnect(socket, token).await; },
 						room::Event::PlayerJoin { socket: _, name: _, icon: _ } =>
 							{ tracing::warn!("player attempted to join a game that is already in progress"); },
 						room::Event::PlayerReconnect { socket, player_id, token, manual } =>
-							{ self.handle_reconnect(socket, player_id, token, manual).await; }
+							{ self.handle_player_reconnect(socket, player_id, token, manual).await; },
 					}
 				},
 				event = self.clients.recv() => {
@@ -295,55 +298,10 @@ impl<'a> Game<'a> {
 			}
 		}
 	}
-	
-	fn vote_choices(&self, suitor_ids: [PlayerId; SUITOR_COUNT], submitted: &[PlayerMap<bool>; SUITOR_COUNT]) -> Box<[String]> {
-		suitor_ids
-			.iter()
-			.enumerate()
-			.filter_map(|(round, &id)| {
-				if !submitted[round][id as usize] {
-					return None;
-				}
-				
-				let player = self.clients.player(id)?;
-				let name = player.name.to_owned();
-				Some(name)
-			})
-			.collect::<Box<_>>()
-			
-			
-			/* .filter(|&(round, &id)| submitted[round][id as usize])
-			.map(|(_, &id)| id)
-			.collect::<Box<_>>();*/
-		
-		// ensure that suitors show up in the same order on host and in votes
-		/*pickable_ids.sort_unstable();
-		pickable_ids
-			.iter()
-			.filter_map(|&id| {
-				let player = self.clients.player(id);
-				player.map(|p| p.name.to_owned())
-			})
-			.collect()*/
-		
-		/*
-		suitor_ids.sort_unstable();
-		suitor_ids
-			.iter()
-			.enumerate()
-			.filter_map(|(r, &id)| {
-				if !submitted[r][id as usize] {
-					// This player did not submit, can't vote for their nonexistent drawing
-					None
-				} else {
-					let player = self.clients.player(id);
-					player.map(|p| p.name.to_owned())
-				}
-			})
-			.collect::<Box<[String]>>()*/
+	async fn handle_host_reconnect(&mut self, socket: WebSocket, token: ClientToken) {
+		let _ = self.clients.reconnect_host(socket, token).await;
 	}
-	
-	async fn handle_reconnect(&mut self, socket: WebSocket, player_id: PlayerId, token: PlayerToken, manual: bool) {
+	async fn handle_player_reconnect(&mut self, socket: WebSocket, player_id: PlayerId, token: ClientToken, manual: bool) {
 		let result = self.clients.reconnect_player(socket, player_id, token, manual).await;
 		let Ok(_) = result else { return };
 		
@@ -426,18 +384,65 @@ impl<'a> Game<'a> {
 		
 		self.clients.players.send(player_id, &msg).await;
 	}
-	async fn handle_client_event(&mut self, event: (ClientId, ClientEvent)) -> Result<(), ()> {
+	
+	fn vote_choices(&self, suitor_ids: [PlayerId; SUITOR_COUNT], submitted: &[PlayerMap<bool>; SUITOR_COUNT]) -> Box<[String]> {
+		suitor_ids
+			.iter()
+			.enumerate()
+			.filter_map(|(round, &id)| {
+				if !submitted[round][id as usize] {
+					return None;
+				}
+				
+				let player = self.clients.player(id)?;
+				let name = player.name.to_owned();
+				Some(name)
+			})
+			.collect::<Box<_>>()
+			
+			
+			/* .filter(|&(round, &id)| submitted[round][id as usize])
+			.map(|(_, &id)| id)
+			.collect::<Box<_>>();*/
+		
+		// ensure that suitors show up in the same order on host and in votes
+		/*pickable_ids.sort_unstable();
+		pickable_ids
+			.iter()
+			.filter_map(|&id| {
+				let player = self.clients.player(id);
+				player.map(|p| p.name.to_owned())
+			})
+			.collect()*/
+		
+		/*
+		suitor_ids.sort_unstable();
+		suitor_ids
+			.iter()
+			.enumerate()
+			.filter_map(|(r, &id)| {
+				if !submitted[r][id as usize] {
+					// This player did not submit, can't vote for their nonexistent drawing
+					None
+				} else {
+					let player = self.clients.player(id);
+					player.map(|p| p.name.to_owned())
+				}
+			})
+			.collect::<Box<[String]>>()*/
+	}
+	
+	async fn handle_client_event(&mut self, event: ClientEvent) -> Result<(), ()> {
 		match event {
-			(ClientId::Host, ClientEvent::Disconnect) =>
-				{ return Err(()) },
-			(ClientId::Player(_), ClientEvent::Disconnect) =>
+			ClientEvent::Close =>
+				{ return Err(()) }
+			ClientEvent::Disconnect(ClientId::Host) =>
+				{ /* return Err(()) */ },
+			ClientEvent::Disconnect(ClientId::Player(_)) =>
 				{ /* ClientIndex handles disconnects for us */ },
-			(ClientId::Host, ClientEvent::Message(msg)) => {
-				//let Ok(msg) = deserialize::<'_, HostMsgIn>(&msg) else { return Ok(()) };
-				//self.handle_host_message(msg).await;
-				tracing::debug!("invalid host message: {msg}");
-			},
-			(ClientId::Player(player_id), ClientEvent::Message(msg)) => {
+			ClientEvent::Message(ClientId::Host, msg) =>
+				{ tracing::debug!("invalid host message: {msg}"); },
+			ClientEvent::Message(ClientId::Player(player_id), msg) => {
 				if let Ok(msg) = deserialize::<'_, PlayerMsgIn>(&msg) {
 					self.handle_player_message(player_id, msg).await;
 				} else {

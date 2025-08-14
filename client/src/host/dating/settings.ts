@@ -9,17 +9,13 @@ export default new Settings({
     [1, 2, 3],
     { key: "datingRoundCount" }
   ),
-  naming: Setting.boolean(
-    "Creature Naming",
-    { key: "datingNaming", initial: true }
-  ),
   bachelorDrawTimeFactor: Setting.multiplier(
-    "Bachelor Drawing Time",
+    "Bachelor Draw Time",
     [0.5, 0.8, 1.0, 1.3, 2.0],
     { key: "datingBachelorDrawTimeFactor" }
   ),
   suitorDrawTimeFactor: Setting.multiplier(
-    "Suitor Drawing Time",
+    "Suitor Draw Time",
     [0.5, 0.8, 1.0, 1.3, 2.0],
     { key: "datingSuitorDrawTimeFactor" }
   ),
@@ -30,9 +26,13 @@ export default new Settings({
   ),
   scoreTimeFactor: Setting.multiplier(
     "Scoring Time",
-    [0.7, 1.0, 1.3],
+    [0.8, 1.0, 1.3],
     { key: "datingScoreTimeFactor" }
-  )
+  ),
+  naming: Setting.boolean(
+    "Creature Naming",
+    { key: "datingNaming", initial: true }
+  ),
 }, {
   "Default": {
     "naming": true,

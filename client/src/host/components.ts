@@ -6,8 +6,42 @@ import {
 	Shared,
 } from "../modules/"
 import { Player } from "./data"
-import { Countdown } from "../components"
+import { Countdown, Autoscroll } from "../components"
 import type { SubmissionData } from "../modules/data"
+
+export function Recap(title: string, content: Micron.Children, close: () => void) {
+	
+	const autoscroll = new Autoscroll({
+		strength: 16,
+		startMs: 1000,
+		restartMs: 800
+	});
+	return h("div#overlay", [
+		h("div#recap", [
+			h("div.header", [
+				h("div.description", [
+					h("h2", title),
+					h("div", "Click any image to download it!")
+				]),
+				/*h("button.scroll-btn", 
+					{ on: { click: () => autoscroll.start(autoscrollElm!) } }
+				),*/
+				h("div.buttons", [
+					h("button.scroll-btn",
+						{ on: { click: () => autoscroll.toggle() } },
+						"Toggle Auto-Scroll"
+					),
+					h("button.close-btn.red",
+						{ on: { click: close } },
+						"Close"
+					),
+				])
+				
+			]),
+			autoscroll.Wrap("div.content", content),
+		]),
+	]);
+}
 
 export function Submission(player: Player, data: SubmissionData, { votes, delay }: { votes?: Player[], delay?: number } = {}) {
 	
@@ -94,10 +128,10 @@ export class ReadyDisplay {
 	private readied: number[] = [];
 	private countdown?: Countdown;
 	
-	constructor(players: Player[], endSecs?: number, bufferSecs?: number) {
+	constructor(players: Player[], endMillis?: number, bufferSecs?: number) {
 		this.players = players;
-		if (endSecs !== undefined) {
-			this.countdown = Countdown.fromEnd(endSecs, bufferSecs ?? 0);
+		if (endMillis !== undefined) {
+			this.countdown = Countdown.fromEnd(endMillis, bufferSecs ?? 0);
 		}
 	}
 	ready(id: number) {

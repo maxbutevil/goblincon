@@ -27,7 +27,7 @@ const INC = new ReceiveIndex({
 	terminated: Val.NONE,
 	error: Val.STR,
 	
-	accepted: { playerId: Val.NUM, token: Val.NUM },
+	accepted: { playerId: Val.NUM, token: Val.STR },
 	inLobby: { playerCount: Val.orNullish(Val.NUM) }, //promoted: Val.BOOL },
 	//inGame: Val.NONE, // eventually needs to hold the settings
 	inDrawblins: Val.NONE,
@@ -158,7 +158,7 @@ function Landing() {
 			return _error("Choose a nickname!");
 		if (code.length === 0)
 			return _error("You need a room code!");
-
+		
 		if (name.length < Session.MIN_NAME_LEN)
 			return _error("Name too short");
 		if (name.length > Session.MAX_NAME_LEN)
@@ -167,7 +167,7 @@ function Landing() {
 			return _error("Invalid code (should be 5 characters)");
 		if (code.length > Session.CODE_LEN)
 			return _error("Invalid code (too long?? somehow???)");
-
+		
 		if (Session.canManualRejoin()) {
 			Session.pullRejoinInfo();
 			attemptManualRejoin();
@@ -188,7 +188,7 @@ function Landing() {
 			if (code.length !== Session.CODE_LEN) return;
 			return code;
 		}
-
+		
 		const content = ev.clipboardData?.getData("text");
 		const elm = ev.currentTarget as HTMLInputElement;
 		if (!content) return;
@@ -200,7 +200,7 @@ function Landing() {
 		//const elm = document.querySelector("#code-input") as HTMLInputElement;
 		Session.joinCode = elm.value = "";
 		ev.preventDefault();
-
+		
 		const code = extractUrlCode(content);
 		if (code) {
 			Session.joinCode = elm.value = code;
@@ -211,7 +211,7 @@ function Landing() {
 	
 	const nav = new Nav();
 	
-	Micron.defer(Signal.keydown.subscribe(keydown));
+	Micron.defer(Signal.documentEvent("keydown").subscribe(keydown));
 	function keydown(ev: KeyboardEvent) {
 		if (ev.key === "Escape") {
 			nav.clear();
@@ -255,8 +255,12 @@ function Landing() {
 	}
 	function JoinFlow() {
 		return s(client.state, curr => {
+			
 			const disabled = (curr !== Connection.CLOSED);
-			return h("div#join-flow.flow", [
+			
+			
+			return h("div#join-flow.section", [
+				h("div.header", "Join"),
 				h("div.join-section", [
 					h("div", "Nickname"),
 					NameInput(disabled)
@@ -268,21 +272,35 @@ function Landing() {
 				h("button#join-btn", {
 					attrs: { disabled },
 					on: { click: attemptJoin }
-				}, "Join!"),
+				}, "Join Game!"),
+				/*h("div.divider", [
+					h("div.line"),
+					h("div.content", "OR"),
+					h("div.line")
+				]),*/
+				//h("hr"),
 				s(status),
 			]);
 		});
 	}
-	function HostLink() {
+	function HostFlow() {
 		const canHost = !Shared.isMobileClient;
 		if (!canHost) {
 			return null;
 		} else {
-			return h("a#footer", {
-				attrs: { href: "/host" }
-			}, "Hosting a game? Click here");
+			
+			const click = () => location.href = "/host";
+			
+			return h("div#host-flow", [
+				h("h3.header", "Host"),
+				h("button",
+					{ on: { click } },
+					"Host New Game!"
+				),
+			]);
 		}
 	}
+	/*
 	function HelpOverlay() {
 		
 		return h("div#overlay",
@@ -339,7 +357,8 @@ function Landing() {
 									rel: "noopener noreferrer",
 								}
 							},
-							"official discord server"),
+							"official discord server"
+						),
 						" here!"
 					]),
 				]),
@@ -349,23 +368,74 @@ function Landing() {
 				)
 			])
 		]);
+		
 	}
+	*/
 	
+	function AboutCard() {
+		return h("div#about-card.info-card", [
+			h("div.header", "About"),
+			h("div.content", [
+				h("div", [
+					h("b", "GoblinCon is a silly drawing game for 3-16 players!"),
+					" One person hosts the game on a PC or similar device. Players may then join from their mobile devices."
+				]),
+				h("div", [h("b", "Make sure everybody can see the host device!"), " For a larger screen, you can connect a laptop to a TV. You can play together in person, or use a chat app that allows screen sharing." ]),
+			]),
+		]);
+	}
+	function ModesCard() {
+		return h("div#drawing-card.info-card", [
+			h("div.header", "Game Modes"),
+			h("div.content", [
+				h("div", [
+					"There are currently two modes: Drawing Mode and Dating Mode.",
+				]),
+				h("div", [
+					"In ",
+					h("b", "Drawing Mode"),
+					", a \"Goblin Name\" is randomly generated, and each player draws a creature inspired by that name. Then, everyone votes for their favorites drawings!",
+					
+				]),
+				h("div", [
+					"In ",
+					h("b", "Dating Mode"),
+					", players draw \"bachelors\" and pair them with \"suitors\"! Then, everyone votes for their favorite couples.",
+				])
+			]),
+		])
+	}
+	function DatingCard() {
+		return h("div#drawing-card.info-card", [
+			h("div.header", "Dating Mode"),
+			h("div.content", [
+				"In dating mode, players draw \"bachelors\" and pair them with \"suitors\"! Then, everyone votes for their favorite couples.",
+			]),
+		])
+	}
 	
 	return h("div#landing.scaffold", [
 		//TopBar({}),
 		h("div.page", [
-			h("div.flow", [
-				Logo(),
+			Logo(),
+			
+			h("div#primary-card", [
+				HostFlow(),
 				JoinFlow(),
 			]),
-			HostLink(),
-			s(nav),
+			h("div#info-cards", [
+				AboutCard(),
+				ModesCard(),
+				//DatingCard(),
+			]),
+			
+			
+			//s(nav),
 		]),
-		TrayRight([
+		/*TrayRight([
 			nav.IconBtn(icons.info, AboutOverlay),
 			nav.IconBtn(icons.help, HelpOverlay),
-		]),
+		]),*/
 		
 		
 		//Tray(IconBtn(helpIcon, () => overlay.toggle(HelpOverlay)))

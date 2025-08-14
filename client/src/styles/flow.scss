@@ -66,11 +66,51 @@
 	@include flex(column-reverse wrap, $args...);
 }
 
+
+
+
+@mixin grid($args...) {
+	display: grid;
+	
+	@if list.length($args) == 0 {
+		
+	} @if list.length($args) == 1 {
+		@if is-length(list.nth($args, 1)) {
+			gap: list.nth($args, 1);
+		} @else {
+			grid-template-columns: list.nth($args, 1);
+		}
+	} @else if list.length($args) == 2 {
+		grid-template-columns: list.nth($args, 1);
+		@if is-length(list.nth($args, 2)) {
+			gap: list.nth($args, 2);
+		} @else {
+			grid-template-rows: list.nth($args, 2);
+		}
+	} @else {
+		grid-template-columns: list.nth($args, 1);
+		grid-template-rows: list.nth($args, 2);
+		gap: list.nth($args, 3);
+	}
+}
+@mixin grid-column-range($start, $end) {
+	grid-column-start: $start;
+	grid-column-end: $end;
+}
+@mixin grid-row-range($start, $end) {
+	grid-row-start: $start;
+	grid-row-end: $end;
+}
+@mixin grid-range($column-start, $column-end, $row-start, $row-end) {
+	@include grid-column-range($column-start, $column-end);
+	@include grid-row-range($row-start, $row-end);
+}
+
 @mixin vflow($gap: 0.3em) {
 	@include column($gap);
 	text-align: center;
 }
-@mixin popup {
+/*@mixin popup {
 	@include vflow(0.3em);
 	
 	max-width: 90vw;
@@ -78,7 +118,7 @@
 	padding: 0.6em;
 	
 	font-size: 1em;
-}
+}*/
 
 .vflow {
 	@include vflow;

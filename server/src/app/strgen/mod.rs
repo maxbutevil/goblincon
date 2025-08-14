@@ -27,7 +27,7 @@ impl<T: Copy + 'static> Table<T> {
 			total_weight += weight * values.len();
 			i += 1;
 		}
-		assert!(total_weight > 0, "Table cannot be empty");
+		assert!(total_weight > 0, "table cannot be empty");
 		Self { total_weight, entries }
 	}
 	fn pick(&self) -> T {

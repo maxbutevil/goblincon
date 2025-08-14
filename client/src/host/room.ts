@@ -6,6 +6,7 @@ import {
 	Shared,
 	playerIcons,
 	h,*/
+	Shared,
 	Micron
 } from "../modules/"
 import { 
@@ -13,11 +14,23 @@ import {
 	PlayerMap
 } from "./data"
 
-type Recap = Micron.Builder<[() => void]>;
+//type Recap = Micron.Builder<[() => void]>;
+
+
+type GameResults = {
+	recap: Micron.Builder<[close: () => void]>
+	players: PlayerMap
+};
+
 export default class Room {
 	static joinCode = "";
+	static token = "";
 	static leaderId = 255;
-	static recap: Recap | undefined;
+	
+	//static recapView: Micron.Builder<[() => void]> | undefined;
+	//static recapScores
+	
+	static results: GameResults | undefined;
 	static readonly players = new PlayerMap();
 	
 	static readonly playerJoined = new Signal<[Player]>();
@@ -30,6 +43,7 @@ export default class Room {
 	
 	static reset() {
 		this.joinCode = "";
+		this.token = "";
 		this.leaderId = 255;
 		this.players.clear();
 	}
@@ -39,16 +53,33 @@ export default class Room {
 	static setJoinCode(newJoinCode: string) {
 		this.joinCode = newJoinCode;
 	}
+	static setToken(newToken: string) {
+		this.token = newToken;
+	}
 	static setLeaderId(newLeaderId: number) {
 		this.leaderId = newLeaderId;
 	}
-	static setRecap(newRecap: Recap) {
-		this.recap = newRecap;
+	static hasResults(): boolean {
+		return this.results !== undefined;
 	}
-	static clearRecap() {
-		this.recap = undefined;
+	static setResults(results: GameResults) {
+		this.results = results;
+	}
+	static clearResults() {
+		this.results = undefined;
+	}
+	static connectUrl() {
+		return `${Shared.wsRoot}/host/connect`;
+	}
+	static reconnectUrl() {
+		return `${Shared.wsRoot}/host/reconnect?code=${this.joinCode}&token=${this.token}`;
+	}
+	
+	static Recap(close: () => void) {
+		return this.results?.recap(close);
 	}
 	static mock(playerCount: number) {
+		this.players.clear();
 		for (let i = 0; i < playerCount; i++) {
 			const player = Player.mock(i);
 			this.players.add(player);

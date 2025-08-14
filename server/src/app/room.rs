@@ -6,13 +6,14 @@ use crate::globals::*;
 use tokio::sync::mpsc;
 use serde::{Deserialize, Deserializer};
 
-use super::{WebSocket, PlayerId, PlayerIcon, PlayerToken};
+use super::{WebSocket, ClientToken, PlayerId, PlayerIcon};
 
 pub type Sender = mpsc::Sender<Event>;
 pub type Receiver = mpsc::Receiver<Event>;
 pub enum Event {
+	HostReconnect { socket: WebSocket, token: ClientToken },
 	PlayerJoin { socket: WebSocket, name: String, icon: PlayerIcon },
-	PlayerReconnect { socket: WebSocket, player_id: PlayerId, token: PlayerToken, manual: bool }
+	PlayerReconnect { socket: WebSocket, player_id: PlayerId, token: ClientToken, manual: bool }
 }
 
 pub fn channel() -> (Sender, Receiver) {

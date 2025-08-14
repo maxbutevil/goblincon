@@ -12,7 +12,7 @@ export enum Connection {
 
 const HEARTBEAT_INTERVAL_MS = 45 * 1000;
 
-type Message = { type: string, data: any };
+type Message = { seq?: number, type: string, data: any };
 class Client {
 	
 	// exposed state
@@ -33,6 +33,7 @@ class Client {
 	
 	// internal state
 	private ws: WebSocket | undefined;
+	private ack = 0;
 	private heartbeatTimeout: number | undefined;
 	private readonly heartbeatCallback = () => this.send(""); // cached callback
 	
@@ -70,18 +71,46 @@ class Client {
 				let raw = ev.data, message;
 				try {
 					message = JSON.parse(raw);
-					if (typeof message.type !== "string")
-						return console.error("Unrecognized message:", raw);
 				} catch(err) {
 					console.error("Error parsing message:", raw, err);
 					return;
 				}
+				
+				const { type, seq } = message;
+				
+				if (typeof type !== "string") {
+					console.error("Invalid message type:", raw)
+					return;
+				}
+				if (typeof seq === "number") {
+					console.info("ack", message.seq);
+					
+					if (seq <= this.ack) {
+						console.info("message already acknowledged; discarding");
+						return;
+					}
+					if (seq > this.ack + 1) {
+						console.error("message sequencing error");
+						// close?
+					}
+					
+					this.ack = seq;
+					
+					this.ws?.send(JSON.stringify({
+						type: "ack",
+						data: seq
+					}))
+				}
+				
 				this.handle(message);
 			}
 		};
 	}
 	close(code?: number, reason?: string) {
 		this.ws?.close(code, reason);
+	}
+	resetAck() {
+		this.ack = 0;
 	}
 	protected handle(message: Message) {
 		let handled = this.incoming.handle(message);

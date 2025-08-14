@@ -11,15 +11,15 @@ import {
 import Room from "../room"
 import settings from "./settings"
 import { Player } from "../data"
-import { Game } from "./data"
+import { Game, Round } from "./data"
 import { Mode, Setting } from "../mode"
-import { Submission, SubmissionGrid, ReadyDisplay, VoteQueue } from "../components"
+import { Submission, SubmissionGrid, ReadyDisplay, VoteQueue, Recap } from "../components"
 import * as assets from "../../assets/testing"
 
 
 const INC = new ReceiveIndex({
-	"drawing": { endSecs: Val.NUM, goblinName: Val.STR },
-	"voting": { endSecs: Val.NUM },
+	"drawing": { endMillis: Val.NUM, goblinName: Val.STR },
+	"voting": { endMillis: Val.NUM },
 	"showingVotes": Val.NONE,
 	"showingScores": Val.NONE,
 	
@@ -40,45 +40,92 @@ export default function View() {
 	Game.init(Room.players);
 	
 	Micron.defer(
+		setRecap,
 		client.use(INC, OUT),
-		INC.subscribe("drawing", ({ goblinName, endSecs }) => {
+		INC.subscribe("drawing", ({ goblinName, endMillis }) => {
 			Game.pushRound(goblinName);
-			page.put(Drawing, endSecs);
+			page.put(Drawing, endMillis);
 		}),
-		INC.subscribe("voting", ({ endSecs }) => page.put(Voting, endSecs)),
+		INC.subscribe("voting", ({ endMillis }) => page.put(Voting, endMillis)),
 		INC.subscribe("showingScores", () => page.put(ShowingScores)),
 	);
 	
 	return h("div#drawblins.mode", s(page));
 }
 
+
+
+
+
 export const test = Micron.test("drawblins")
 	.add(Starting)
 	.add(Drawing, 120)
 	.add(Voting, 30)
+	//.add(Recap)
 	.create(() => {
-		//Room.mock(4);
+		//Room.mock(8);
 		Game.init(Room.players);
 		Game.pushRound("Test Goblin Name");
 		Game.handleDrawing(0, assets.legsLord);
 		Game.handleDrawing(1, assets.sadSack);
 		Game.handleDrawing(2, assets.licensedTherapist);
 		Game.handleDrawing(3, assets.topHatEnthusiast);
+		Game.handleDrawing(4, assets.legsLord);
+		Game.handleDrawing(5, assets.sadSack);
+		Game.handleDrawing(6, assets.licensedTherapist);
+		//Game.handleDrawing(7, assets.topHatEnthusiast);
 		Game.handleVote(0, 1);
 		Game.handleVote(1, 0);
 		Game.handleVote(2, 0);
 		Game.handleVote(3, 2);
+		setRecap();
 	});
-/*function setRecap() {
-	if (rounds.length === 0) {
-		return;
-	} else if (rounds.length === 1 && rounds[0].) {
-		
+function setRecap() {
+	if (needsRecap()) {
+		Room.setResults({
+			players: Game.players,
+			recap: DrawblinsRecap
+		});
+	} else {
+		Room.clearResults();
 	}
 }
-function recapView() {
-	return h("!");
-}*/
+function needsRecap() {
+	for (const round of Game.rounds) {
+		if (round.drawings.length > 0) {
+			return true;
+		}
+	}
+	return false;
+}
+function DrawblinsRecap(close: () => void) {
+	
+	const players = Game.players;
+	
+	function RoundRecap(round: Round, i: number) {
+		if (round.drawings.length === 0) {
+			return h("!");
+		}
+		
+		return h("div.drawblins-round", [
+			h("h2", `Round ${i + 1}: ${round.goblinName}`),
+			h("div.submissions", [
+				...round.drawings.map((drawing, id) => {
+					return Submission(
+						players.get(id)!,
+						{ drawing }
+					);
+				})
+			])
+		]);
+	}
+	
+	return Recap(
+		"Recap - Drawing Mode",
+		Game.rounds.map(RoundRecap),
+		close
+	);
+}
 
 function Starting() {
 	return h(
@@ -86,9 +133,9 @@ function Starting() {
 		h("h1", "Game Starting!")
 	);
 }
-function Drawing(endSecs: number) {
+function Drawing(endMillis: number) {
 	
-	const readyDisplay = new ReadyDisplay(Room.players.array(), endSecs, Shared.DRAWING_BUFFER_SECS);
+	const readyDisplay = new ReadyDisplay(Room.players.array(), endMillis, Shared.DRAWING_BUFFER_SECS);
 	
 	Micron.defer(INC.subscribe("drawingSubmitted", ({ playerId, drawing }) => {
 		Game.handleDrawing(playerId, drawing);
@@ -103,13 +150,13 @@ function Drawing(endSecs: number) {
 		readyDisplay.View()
 	]);
 }
-function Voting(endSecs: number) {
+function Voting(endMillis: number) {
 	
-	const DELAY_INITIAL = 0.2;
-	const DELAY_STAGGER = 0.6;
+	const DELAY_INITIAL = 0.4;
+	const DELAY_STAGGER = 1.0;
 	
 	const voteQueue = new VoteQueue();
-	const readyDisplay = new ReadyDisplay(Room.players.array(), endSecs, Shared.VOTING_BUFFER_SECS);
+	const readyDisplay = new ReadyDisplay(Room.players.array(), endMillis, Shared.VOTING_BUFFER_SECS);
 	const round = Game.currentRound();
 	//let showing = false;
 	

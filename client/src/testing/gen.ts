@@ -21,7 +21,7 @@ import Canvas from "../modules/canvas"
 
 function generate() {
 	
-	const canvas = Canvas.create(512, 512);
+	const canvas = Canvas.create(400, 400);
 	const bx = 0;
 	const by = -180;
 	

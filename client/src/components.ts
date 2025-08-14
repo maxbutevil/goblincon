@@ -5,17 +5,20 @@ import {
 	Shared, playerIcons,
 } from "./modules/"
 
-export function Logo() {
+export function LogoIcons() {
 	const icons = [];
 	for (let i = 0; i < playerIcons.count(); i++) {
 		icons.push(playerIcons.View(i, Shared.playerColor(i)));
 	}
-	
+	return h("div#logo-icons", icons);
+}
+export function Logo() {
 	return h("div#logo", [
 		h("h1", "GoblinCon"),
-		h("div#icon-row", icons)
+		LogoIcons(),
 	]);
 }
+
 
 type BarOptions = {
 	middle?: Micron.Children,
@@ -130,11 +133,11 @@ export class Countdown {
 	private interval: number;
 	private popupThresholds?: number[];
 
-	constructor(endTime: number) {
+	constructor(endMillis: number) {
 		const tick = () => {
-			let delta = endTime - Date.now() - 50;
+			let delta = endMillis - Date.now();
 			let newSeconds = Math.ceil(delta / 1000);
-
+			
 			if (newSeconds <= 0) {
 				newSeconds = 0;
 				clearInterval(this.interval);
@@ -164,11 +167,12 @@ export class Countdown {
 		if (secsLeft >= 12) return [10];
 		return [];
 	}
-	private static calculateEnd(secsLeft: number, secsBuffer = 0): number {
-		return Date.now() + 1000 * (secsLeft - secsBuffer);
+	static fromEnd(endMillis: number, bufferSecs = 0): Countdown {
+		return new Countdown(endMillis - bufferSecs * 1000);
 	}
-	static fromEnd(endSecs: number, bufferSecs = 0): Countdown {
-		return new Countdown((endSecs - bufferSecs) * 1000);
+	static fromSecs(remainingSecs: number, bufferSecs = 0): Countdown {
+		const endTime = Date.now() + 1000 * (remainingSecs - bufferSecs);
+		return new Countdown(endTime);
 	}
 	/*static fromSecs(secsLeft: number, secsBuffer = 0): Countdown {
 		return new Countdown(Countdown.calculateEnd(secsLeft, secsBuffer));
@@ -340,6 +344,7 @@ type AutoscrollOptions = {
 export class Autoscroll {
 	
 	interval?: number;
+	timeout?: number;
 	direction = 1;
 	elm?: HTMLElement;
 	
@@ -349,12 +354,20 @@ export class Autoscroll {
 	restartMs?: number;
 	
 	constructor(options: Partial<AutoscrollOptions> = {}) {
-		this.strength = options.strength ?? 25;
+		this.strength = options.strength ?? 22.5;
 		this.tickMs = options.tickMs ?? 100;
-		this.startMs = options.startMs ?? 600;
+		this.startMs = options.startMs ?? 800;
 		this.restartMs = options.restartMs;
 		
-		Micron.tryDefer(() => clearInterval(this.interval));
+		Micron.tryDefer(this.clear.bind(this));
+	}
+	private clear() {
+		clearTimeout(this.timeout);
+		clearInterval(this.interval);
+		this.timeout = this.interval = undefined;
+	}
+	private running() {
+		return this.interval !== undefined;
 	}
 	private tick() {
 		if (!this.elm || !document.contains(this.elm) || this.elm.clientHeight >= this.elm.scrollHeight) {
@@ -376,8 +389,8 @@ export class Autoscroll {
 		}
 	}
 	private next(delayMs = 0) {
-		clearInterval(this.interval);
-		setTimeout(() => {
+		this.clear();
+		this.timeout = setTimeout(() => {
 			this.interval = setInterval(
 				this.tick.bind(this),
 				this.tickMs
@@ -387,16 +400,46 @@ export class Autoscroll {
 	private restart() {
 		if (this.restartMs !== undefined) {
 			this.next(this.restartMs);
+		} else {
+			this.stop();
 		}
 	}
-	start(elm: HTMLElement) {
-		this.direction = 1;
-		this.elm = elm;
-		this.next(this.startMs);
+	start(elm = this.elm, delayMs = this.startMs) {
+		if ((this.elm = elm) === undefined) {
+			console.warn("attempted to start Autoscroll without an element");
+			return;
+		}
+		
+		//this.direction = 1;
+		this.next(delayMs);
 	}
 	stop() {
-		clearInterval(this.interval);
+		this.clear();
 		this.elm?.scrollBy(0, 0);
+	}
+	toggle(elm = this.elm) {
+		if (this.running()) {
+			this.stop();
+		} else {
+			this.start(elm, 0);
+		}
+	}
+	Wrap(sel: string, children: Micron.Children) {
+		return h(sel,
+			{
+				on: {
+					wheel: () => this.stop(),
+					click: () => this.stop(),
+				},
+				hook: {
+					insert: (vnode) => {
+						if (!vnode.elm) return;
+						this.start(vnode.elm as any);
+					}
+				},
+			},
+			children
+		);
 	}
 }
 

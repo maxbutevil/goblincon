@@ -51,18 +51,25 @@ export default class Val {
 			return false;
 		}
 	}
-	static array<T>(validator: ValidatorMethod<T>): ValidatorMethod<Array<T>> {
+	static array<T>(validator: Validator<T>): ValidatorMethod<Array<T>> {
 		return (value: any): value is Array<T> => {
-			if (Array.isArray(value)) {
-				for (const element of value)
-					if (!Val.is(validator, element))
-						return false;
-				return true;
+			if (!Array.isArray(value)) {
+				return false;
 			}
-			return false;
+			
+			if (validator === Val.ANY) {
+				return true; // Special case to prevent needless iteration
+			}
+				
+			for (const element of value) {
+				if (!Val.is(validator, element))
+					return false;
+			}
+			
+			return true;
 		}
 	}
-	static unchecked<T>(): ValidatorMethod<T> {
+	static unchecked<T>(): Validator<T> {
 		return this.ANY;
 	}
 	

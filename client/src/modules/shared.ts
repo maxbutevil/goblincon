@@ -10,6 +10,8 @@ export const PLAYER_KICKED = 4006;
 export const ALREADY_CONNECTED = 4007;
 export const CONNECTED_ELSEWHERE = 4008;
 
+export const INVALID_HOST_RECONNECT = 4099;
+
 export const MIN_PLAYER_COUNT = 3;
 export const MAX_PLAYER_COUNT = 16;
 

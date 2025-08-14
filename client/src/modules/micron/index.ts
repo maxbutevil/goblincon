@@ -174,7 +174,7 @@ export function testView(test: Test) {
   tryDefer(
     test.handleDestroy.bind(test),
     test.changed.subscribe(log),
-    Signal.keydown.subscribe(ev => {
+    Signal.documentEvent("keydown").subscribe(ev => {
       if (ev.key === "ArrowLeft") {
         test.prev();
       } else if (ev.key === "ArrowRight") {
