@@ -19,7 +19,6 @@ use app::App;
 //use std::sync::Arc;
 //use std::net::SocketAddr;
 use axum::{
-	http::StatusCode,
 	response::{
 		Response,
 		Redirect
@@ -66,6 +65,9 @@ async fn main() {
 		.route("/play/join", any(ws_upgrade_player_join))
 		.route("/play/rejoin", any(ws_upgrade_player_reconnect));
 	
+	let meta_router = Router::new()
+		//.route_service("/robots.txt", ServeFile::new(format!("{dist_path}/robots.txt")))
+		.route_service("/favicon.ico", ServeFile::new(format!("{dist_path}/favicon.ico")));
 	let page_router = Router::new()
 		.route_service("/host", ServeFile::new(format!("{dist_path}/host.html")))
 		.route_service("/play", ServeFile::new(format!("{dist_path}/play.html")));
@@ -78,9 +80,9 @@ async fn main() {
 	let router = Router::new()
 		.nest("/ws", ws_router)
 		.nest("/social", social_router)
-		.merge(page_router)
 		.nest_service("/static", static_service)
-		.route_service("/favicon.ico", ServeFile::new(format!("{dist_path}/favicon.ico")))
+		.merge(page_router)
+		.merge(meta_router)
 		.route("/", get(|| async { Redirect::to("/play") }))
 		.fallback(|| async { "Page Not Found" })
 		.with_state(App::new())
