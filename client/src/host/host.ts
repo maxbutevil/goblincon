@@ -48,6 +48,7 @@ const OUT = new SendIndex({
 	>(),
 });
 
+
 //const stack = Micron.stack
 const page = Micron.projector(Loading);
 const mode = new Setting<typeof Dating | typeof Drawblins>(
@@ -55,9 +56,23 @@ const mode = new Setting<typeof Dating | typeof Drawblins>(
 	[ Drawblins, Dating ],
 	{ key: "gameMode", initial: 1, stringifier: (m) => m.name }
 );
+const RECONNECT_DELAY_MS = [0, 1000, 3000, 6000];
+let reconnectAttempt = 0;
 let unloading = false; // not the most elegant solution, but this stops the error page from showing when we click a link
+let hasWakeLock = false;
 
-
+window.addEventListener("beforeunload", (ev) => {
+	if (ev.cancelable && Room.players.count > 0 && client.state.is(Connection.OPEN)) {
+		ev.preventDefault();
+		return true;
+	} else {
+		unloading = true;
+		client.close();
+	}
+});
+client.connected.listen((ev) => {
+	reconnectAttempt = 0;
+});
 client.closed.listen((ev) => {
 	
 	if (unloading) {
@@ -75,31 +90,36 @@ client.closed.listen((ev) => {
 			page.put(Error, "Connected elsewhere (somehow)");
 			break;
 		default:
-			reconnect();
-			//setTimeout(reconnect, 10000);
+			const delayMs = RECONNECT_DELAY_MS[reconnectAttempt++];
+			if (delayMs === undefined) {
+				page.put(Error, "Failed to reconnect to host");
+			} else {
+				setTimeout(reconnect, delayMs);
+			}
 	}
 });
 
+
+
+acquireWakeLock();
+document.addEventListener("visibilitychange", acquireWakeLock);
 async function acquireWakeLock() {
+	if (document.hidden || hasWakeLock) {
+		return;
+	}
 	try {
-		await navigator.wakeLock.request("screen");
+		const sentinel = await navigator.wakeLock.request("screen");
+		sentinel.onrelease = () => {
+			hasWakeLock = false;
+			console.info("wake lock lost");
+		}
+		hasWakeLock = true;
 		console.info("wake lock acquired");
 	} catch (err) {
 		console.error("error acquiring wake lock:", err);
 	}
 }
 
-acquireWakeLock();
-//window.addEventListener("load", acquireWakeLock);
-window.addEventListener("beforeunload", (event) => {
-	if (event.cancelable && Room.players.count > 0 && client.state.is(Connection.OPEN)) {
-		event.preventDefault();
-		return true;
-	}	else {
-		unloading = true;
-		client.close();
-	}
-});
 
 /*const lobbySettings = new Settings({
 	autoRecap
@@ -131,11 +151,6 @@ function qrBuilder(text: string): Micron.Builder {
 	return () => h("img#qr-code", { attrs: { src } });
 }
 function Lobby() {
-	
-	/*Room.setResults({
-		players: PlayerMap.mock(3),
-		recap: () => h("div")
-	})*/
 	
 	const QRCodeBuilder = qrBuilder(Room.joinLink);
 	const nav = new Nav();

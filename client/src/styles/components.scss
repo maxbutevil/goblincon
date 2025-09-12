@@ -7,8 +7,22 @@
 	min-width: 3ch;
 }
 
+
+svg {
+	stroke-width: 4;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+svg.player-icon {
+	fill: red;
+	stroke: black;
+	circle, ellipse {
+		stroke: none;
+		fill: black;
+	}
+}
 .player-icon {
-	$size: 1.6em;
+	$size: 1.75em;
 	width: $size;
 	height: $size;
 	flex: 0 0 $size;

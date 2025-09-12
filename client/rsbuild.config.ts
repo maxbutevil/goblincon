@@ -25,7 +25,7 @@ export default defineConfig(({ env }) => ({
 			"charset": { charset: 'UTF-8' },
 			"viewport": "width=device-width, initial-scale=1",
 			"theme-color": "#f7cab7",
-			"description": "A goblin-drawing party game for 3-16 players! One player hosts on a laptop or PC, then everyone joins from their mobile devices.",
+			"description": "Draw silly creatures with your friends, then vote for your favorites! GoblinCon is a drawing game for 3-16 players.",
 			//"theme-color": "#d2b48c",
 			//viewport: "width=device-width, initial-scale=1, maximum-scale=1"
 		},

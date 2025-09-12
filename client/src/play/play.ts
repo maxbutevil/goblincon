@@ -13,6 +13,7 @@ import {
 import Session from "./session"
 import * as Drawblins from "./drawblins"
 import * as Dating from "./dating"
+import * as flags from "../assets/flags"
 
 import {
 	Logo,
@@ -258,7 +259,6 @@ function Landing() {
 			
 			const disabled = (curr !== Connection.CLOSED);
 			
-			
 			return h("div#join-flow.section", [
 				h("div.header", "Join"),
 				h("div.join-section", [
@@ -372,45 +372,88 @@ function Landing() {
 	}
 	*/
 	
+	function Flags() {
+		return h("div#flags", [
+			h("img.flag", { attrs: { src: flags.lgbt } }),
+			h("img.flag", { attrs: { src: flags.trans } }),
+			h("img.flag", { attrs: { src: flags.palestine } }),
+		]);
+	}
 	function AboutCard() {
 		return h("div#about-card.info-card", [
 			h("div.header", "About"),
 			h("div.content", [
-				h("div", [
+				h("p", [
 					h("b", "GoblinCon is a silly drawing game for 3-16 players!"),
-					" One person hosts the game on a PC or similar device. Players may then join from their mobile devices."
+					" One person hosts the game on a PC or similar device.",
+					" Players may then join from their mobile devices."
 				]),
-				h("div", [h("b", "Make sure everybody can see the host device!"), " For a larger screen, you can connect a laptop to a TV. You can play together in person, or use a chat app that allows screen sharing." ]),
+				h("p", [
+					h("b", "Make sure everybody can see the host device!"),
+					" For a larger screen, you can connect a laptop to a TV.",
+					" You can play together in person, or use a chat app that allows screen sharing."
+				]),
 			]),
 		]);
 	}
 	function ModesCard() {
 		return h("div#drawing-card.info-card", [
-			h("div.header", "Game Modes"),
+			h("div.header", "Modes"),
 			h("div.content", [
-				h("div", [
-					"There are currently two modes: Drawing Mode and Dating Mode.",
+				h("p", [
+					"There are currently two game modes!",
 				]),
-				h("div", [
+				h("p", [
 					"In ",
 					h("b", "Drawing Mode"),
-					", a \"Goblin Name\" is randomly generated, and each player draws a creature inspired by that name. Then, everyone votes for their favorites drawings!",
+					", a \"Goblin Name\" is randomly generated, and each player draws a creature inspired by that name.",
+					" Then everyone's drawing is revealed, and you vote for your favorite!",
 					
 				]),
 				h("div", [
 					"In ",
 					h("b", "Dating Mode"),
-					", players draw \"bachelors\" and pair them with \"suitors\"! Then, everyone votes for their favorite couples.",
+					", players draw \"bachelors\" and pair them with \"suitors\", trying to create the best (or funniest) couple they can!",
 				])
 			]),
 		])
 	}
-	function DatingCard() {
-		return h("div#drawing-card.info-card", [
-			h("div.header", "Dating Mode"),
+	function SocialCard() {
+		return h("div#social-card.info-card", [
+			h("div.header", "Social"),
 			h("div.content", [
-				"In dating mode, players draw \"bachelors\" and pair them with \"suitors\"! Then, everyone votes for their favorite couples.",
-			]),
+				h("p", [
+					"To find people to play with, share your creations, stay up-to-date with changes, and report issues, you can join our official ",
+					h("a", {
+						attrs: {
+							href: "/social/discord",
+							target: "_blank"
+						}
+					}, "Discord Server"),
+					"!"
+				]),
+			])
+		]);
+	}
+	function UpdatesCard() {
+		return h("div#updates-card.info-card", [
+			h("div.header", "Updates"),
+			h("div.content", [
+				h("p", [
+					h("b", "Everything Overhaul (9/11/2025):"),
+					h("ul", [
+						h("li", "Major frontend overhaul"),
+						h("li", "Automatic host reconnecting!"),
+					]),
+				]),
+				h("p", [
+					h("b", "Coming Soon:"),
+					h("ul", [
+						h("li", "Choose your icon color"),
+						h("li", "New game mode..?"),
+					])
+				])
+			])
 		])
 	}
 	
@@ -418,19 +461,21 @@ function Landing() {
 		//TopBar({}),
 		h("div.page", [
 			Logo(),
-			
 			h("div#primary-card", [
 				HostFlow(),
 				JoinFlow(),
 			]),
 			h("div#info-cards", [
-				AboutCard(),
-				ModesCard(),
-				//DatingCard(),
+				h("div.card-ctr", [
+					AboutCard(),
+					ModesCard(),
+				]),
+				h("div.card-ctr", [
+					UpdatesCard(),
+					SocialCard()
+				])
 			]),
-			
-			
-			//s(nav),
+			Flags()
 		]),
 		/*TrayRight([
 			nav.IconBtn(icons.info, AboutOverlay),
@@ -451,10 +496,26 @@ function Lobby(playerCount: number | null | undefined) {
 		return s(rerender => {
 			
 			let icons: Micron.Node[] = [];
-			for (let i = 0; i < playerIcons.count(); i++) {
+			for (let i = 0; i < playerIcons.count; i++) {
 				let color = Session.playerIcon === i ? Session.playerColor : "#ffffff";
-				let src = playerIcons.get(i, color);
+				//let src = playerIcons.get(i, color);
 				icons.push(
+					h("span", 
+						{
+							on: {
+								click: () => {
+									if (Session.playerIcon !== i) {
+										Session.setPlayerIcon(i);
+										OUT.send("changeIcon", { icon: i });
+										rerender();
+									}
+								}
+							}
+						},
+						playerIcons.View(i, color)
+					)
+				);
+				/*icons.push(
 					h("img.player-icon", {
 						attrs: { src },
 						on: {
@@ -467,7 +528,7 @@ function Lobby(playerCount: number | null | undefined) {
 							}
 						}
 					}
-				));
+				));*/
 			}
 			
 			return h("div#icon-select-ctr", [

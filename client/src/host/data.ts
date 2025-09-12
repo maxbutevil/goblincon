@@ -27,7 +27,7 @@ export class Player {
   }
   
   IconView(disabled = false) {
-    return playerIcons.View(this.icon, this.color, disabled);
+    return playerIcons.View(this.icon, this.color, { disabled });
   }
   
   View(disabled = false) {

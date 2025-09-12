@@ -18,29 +18,36 @@ const BACKUP_MED_LAG = 10; // if we undo past the current backup, how far back t
 const BACKUP_MIN_LAG = 2; // leave this buffer when catching up, so that a few undos don't cause a full rebuild
 const THIN_LINE_WIDTH = 8;
 const THICK_LINE_WIDTH = 20;
+
+const BACKUP_CAPACITY = 8;
+const BACKUP_INTERVAL = 4;
 //const ERASER_WIDTH = 20;
 
 //type DrawMode = { type: "erase" | "draw", weight: "thick" | "thin", color: string };
 
 const erase = null;
-type DrawMode = { color: string | typeof erase, weight: "thick" | "thin" };
 
-type DrawOperation = {
-	path: Path,
-	mode: DrawMode
-};
 
-type Point = [number, number];
-type Segment = [number, number, number, number];
-type Operation = Mode & Path;
+type Color = string | null;
+
+type PenWeight = "thin" | "thick";
+type PenMode = { weight: PenWeight, color: Color };
+type PenOperation = PenMode & Path;
+
+type FloodWeight = "flood";
+type FloodMode = { weight: FloodWeight, color: Color };
+type FloodOperation = FloodMode & { x: number, y: number };
+
+type Weight = PenWeight | FloodWeight;
+type Mode = PenMode | FloodMode;
+type Operation = PenOperation | FloodOperation;
+
 //type Path = { x: number[], y: number[] };
-const a: Operation = { weight: "thick", x: [], y: [], color: null };
+//const a: Operation = { weight: "thick", x: [], y: [], color: null };
 
-enum Drawing {
-	//BLANK,
+enum DrawState {
 	IDLE,
 	DRAWING,
-	//LOCKED, // vestigial
 	SUBMITTED
 };
 
@@ -58,8 +65,17 @@ type DrawpadOptions = {
 	x: Val.array(Val.NUM),
 	y: Val.array(Val.NUM)
 });*/
+/*class Point {
+	x: number;
+	y: number;
+	constructor(x: number, y: number) {
+		this.x = x;
+		this.y = y;
+	}
+}*/
 
-
+type Point = [number, number];
+type Segment = [number, number, number, number];
 class Path {
 	
 	//style: CanvasColorStyle;
@@ -199,34 +215,39 @@ class Path {
 			this.y = y;
 		}
 	}
-		
 }
 
-type Mode = { color: string | null, weight: "thick" | "thin" };
-
+type Backup = {
+	index: number,
+	data: ImageData,
+	//background: ImageData,
+};
 
 export default class Drawpad {
 	
 	private static readonly defaultMode: Mode = { color: "#000000", weight: "thin" };
 	private static readonly storageKey = "savedDrawing";
 	
-	state = new State<Drawing>(Drawing.IDLE);
+	state = new State<DrawState>(DrawState.IDLE);
 	mode = new State<Mode>(
 		Drawpad.defaultMode,
 		(curr, from) => curr.color === from.color && curr.weight === from.weight
 	);
 	
 	submitted = new Signal<[string]>();
-	disabled = this.state.map(s => s === Drawing.SUBMITTED);
+	disabled = this.state.map(s => s === DrawState.SUBMITTED);
 	color = this.mode.map(m => m.color);
 	weight = this.mode.map(m => m.weight);
 	
 	options: DrawpadOptions;
-	canvas: Canvas | null = null;
+	//canvas: Canvas | null = null;
+	canvas: Canvas = null as any;
+	//background: Canvas = null as any;
 	undoStack: Operation[] = [];
 	redoStack: Operation[] = [];
-	backupIndex = 0;
-	backup?: ImageData;
+	op: Operation | undefined;
+	
+	backups: Backup[] = [];
 	
 	constructor(options: DrawpadOptions) {
 		this.options = options;
@@ -235,7 +256,6 @@ export default class Drawpad {
 		if (!ok) {
 			localStorage.removeItem(Drawpad.storageKey);
 		}
-		
 	}
 	
 	
@@ -291,7 +311,7 @@ export default class Drawpad {
 	saveDrawing() {
 		//console.log(ops)
 		
-		if (this.state.is(Drawing.SUBMITTED)) {
+		if (this.state.is(DrawState.SUBMITTED)) {
 			return;
 		}
 		
@@ -309,7 +329,7 @@ export default class Drawpad {
 	}
 	
 	
-	applyMode({ color, weight } = this.mode.get()) {
+	/*applyMode({ color, weight } = this.mode.get()) {
 		
 		const canvas = this.canvas;
 		if (!canvas) return;
@@ -330,9 +350,8 @@ export default class Drawpad {
 					"destination-over"
 			); // thin pen draws over existing content; thick pen draws under
 		}
-	}
+	}*/
 	setMode(mode: Mode) {
-		this.applyMode(mode);
 		this.mode.set(mode);
 	}
 	
@@ -353,7 +372,7 @@ export default class Drawpad {
 			this.setMode({ color, weight: prev.weight });
 		}
 	}
-	setWeight(weight: "thin" | "thick") {
+	setWeight(weight: Weight) {
 		const { color } = this.mode.get();
 		this.setMode({ color, weight });
 	}
@@ -362,9 +381,211 @@ export default class Drawpad {
 		this.setWeight(weight === "thin" ? "thick" : "thin");
 	}
 	
-	applyOperation(op: Operation) {
+	/*getLayer(wt: PenWeight): Canvas {
+		switch (wt) {
+			case "thin": return this.foreground;
+			case "thick": return this.background;
+		}
+	}*/
+	
+	/*applyColor(layer: Canvas, color: Color) {
+		if (color === erase) {
+			layer.setOperation("destination-out");
+			//layer.setStrokeStyle("#ffffff"); // for flood?
+		} else {
+			layer.setOperation("source-over");
+			layer.setStrokeStyle(color);
+		}
+	}*/
+	applyMode({ weight, color }: PenMode) {
+		//const layer = this.getLayer(weight);
+		//this.applyColor(color);
+		
+		const canvas = this.canvas;
+		canvas.setLineWidth(
+			weight === "thin" ?
+				THIN_LINE_WIDTH :
+				THICK_LINE_WIDTH
+		);
+		
+		if (color === erase) {
+			canvas.setOperation("destination-out");
+		} else {
+			canvas.setStrokeStyle(color);
+			canvas.setOperation(
+				weight === "thin" ?
+					"source-over" :
+					"destination-over"
+			); // thin pen draws over existing content; thick pen draws under
+		}
+		
+		//return layer;
+	}
+	
+	applyFloodOperation(op: FloodOperation): boolean {
+		
+		function hexToRgb(hex: string) {
+			var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+			return result ? {
+				r: parseInt(result[1], 16),
+				g: parseInt(result[2], 16),
+				b: parseInt(result[3], 16)
+			} : null;
+		}
+		function hexToRaw(hex: string): number {
+			const rgb = hexToRgb(hex);
+			if (rgb === null) {
+				console.error("invalid flood color:", hex);
+				return 0;
+			}
+			
+			const { r, g, b } = rgb;
+			return 16777216 * 255 + b * 65536 + g * 256 + r;
+		}
+		function colorToRaw(color: Color): number {
+			if (color === null) {
+				return 0;
+			} else {
+				return hexToRaw(color);
+			}
+		}
+		function rawToRgba(raw: number): [number, number, number, number] {
+			return [
+				0xFF & (raw),
+				0xFF & (raw / 256),
+				0xFF & (raw / 65536),
+				0xFF & (raw / 16777216)
+			];
+		}
+		function rgbaToRaw(r: number, g: number, b: number, a: number): number {
+			return r + g * 256 + b * 65536 + a * 16777216;
+		}
+		
+		function blendComponent(from: number, to: number, n: number): number {
+			return Math.floor(from + (to - from) * n);
+		}
+		function blendRaw(from: number, to: number, n: number): number {
+			const [rFrom, gFrom, bFrom, aFrom] = rawToRgba(from);
+			const [rTo, gTo, bTo, aTo] = rawToRgba(to);
+			return rgbaToRaw(
+				blendComponent(rFrom, rTo, n),
+				blendComponent(gFrom, gTo, n),
+				blendComponent(bFrom, bTo, n),
+				blendComponent(aFrom, aTo, n)
+			);
+		}
+		function rawToRgb(raw: number): [number, number, number] {
+			const [r, g, b, a] = rawToRgba(raw);
+			const n = 1 - a;
+			
+			return [
+				blendComponent(r, 0xFF, n),
+				blendComponent(g, 0xFF, n),
+				blendComponent(b, 0xFF, n)
+			];
+		}
+
+		const SIZE = Shared.SUBMISSION_SIZE;
+		const SIZE_SQ = SIZE * SIZE;
+		
+		
+		
+		// maybe worry about the case where it is exa
+		const { color, x, y } = op;
+		const fillColor = color === null ? 0 : hexToRaw(color);
+		
+		//const layer = fgPixelAlpha > 0 ? this.foreground : this.background;
+		const canvas = this.canvas;
+		const raw = canvas.getImageData();
+		const data = new Uint32Array(raw.data.buffer);
+		const start = x + y * SIZE;
+		const targetColor = data[start];
+		const [rTarget, gTarget, bTarget] = rawToRgb(targetColor);
+		function targetMatch(c: number, tolerance = 256 * 32) {
+			const [r, g, b] = rawToRgb(c);
+			const dr = rTarget - r;
+			const dg = gTarget - g;
+			const db = bTarget - b;
+			//const da = aTarget - a;
+			const d = dr * dr + dg * dg + db * db; // + da * da / 4;
+			return d <= tolerance;
+		}
+		
+		// Don't fill if the target color and the fill color are too similar
+		// ...could lead to infinite loops otherwise
+		if (targetMatch(fillColor)) {
+			return false;
+		}
+		
+		//console.log(layer === this.foreground);
+		//console.log("filling: ", targetColor, "=>", fillColor, `(${layer === this.foreground ? "foreground" : "background"})`);
+		
+		const stack = [start];
+		data[start] = fillColor;
+		
+		//const revisions: Set<number>[] = [new Set(), new Set()];
+		//const revisionFactors = [0.8, 0.4];
+		const revisions1: number[] = [];
+		const revisions2: number[] = [];
+		
+		enum Delta {
+			UP = -SIZE,
+			DOWN = +SIZE,
+			LEFT = -1,
+			RIGHT = 1
+		}
+		const deltas = [Delta.UP, Delta.DOWN, Delta.LEFT, Delta.RIGHT];
+
+		
+		
+		function isValidDelta(curr: number, delta: Delta): boolean {
+			switch(delta) {
+				case Delta.UP: return curr / SIZE >= 1;
+				case Delta.DOWN: return curr / SIZE < SIZE - 1;
+				case Delta.LEFT: return curr % SIZE >= 1;
+				case Delta.RIGHT: return curr % SIZE < SIZE - 1;
+			}
+		}
+		
+		while (stack.length > 0) {
+			const curr = stack.pop()!;
+			for (const delta of deltas) {
+				if (!isValidDelta(curr, delta)) continue;
+				
+				const next = curr + delta;
+				if (targetMatch(data[next])) {
+					data[next] = fillColor;
+					stack.push(next);
+				} else {
+					revisions1.push(next);
+					if (isValidDelta(next, delta)) {
+						revisions2.push(next + delta);
+					}
+				}
+			}
+		}
+		
+		
+		
+		for (const next of revisions1) {
+			data[next] = blendRaw(data[next], fillColor, 0.4);
+		}
+		for (const next of revisions2) {
+			data[next] = blendRaw(data[next], fillColor, 0.2);
+		}
+		
+		canvas.putImageData(raw);
+		return true;
+	}
+	applyPenOperation(op: PenOperation): boolean {
 		this.applyMode(op);
-		this.canvas?.path(op);
+		this.canvas.path(op);
+		return true;
+	}
+	applyOperation(op: Operation): boolean {
+		return op.weight === "flood" ?
+			this.applyFloodOperation(op) :
+			this.applyPenOperation(op);
 	}
 	applyOperationRange(start = 0, end = Infinity) {
 		end = Math.min(end, this.undoStack.length);
@@ -372,20 +593,75 @@ export default class Drawpad {
 			this.applyOperation(this.undoStack[i]);
 	}
 	
-	
-	storeBackup(index: number) {
-		this.backupIndex = index;
-		this.backup = this.canvas?.getImageData();
+	index() {
+		return this.undoStack.length;
 	}
-	restoreBackup() {
-		if (!this.canvas) return;
+	backupIndex() {
+		const latest = this.backups.at(-1);
+		return latest === undefined ? 0 : latest.index;
+	}
+	storeBackup() {
+		console.log(`storing backup (${this.index()})`);
+		this.backups.push({
+			index: this.index(),
+			data: this.canvas.getImageData()
+		});
 		
-		this.canvas.clear();
-		if (this.backup) {
-			this.canvas.putImageData(this.backup);
+		if (this.backups.length > BACKUP_CAPACITY) {
+			this.backups.splice(0, this.backups.length - BACKUP_CAPACITY);
 		}
 	}
-	rebuildBackup(index: number) {
+	checkBackup() {
+		const backup = this.backups.at(-1);
+		const backupIndex = backup ? backup.index : 0;
+		if (this.index() - backupIndex >= BACKUP_INTERVAL) {
+			this.storeBackup();
+		}
+	}
+	restoreBackup({ data }: Backup) {
+		//this.canvas.clear(); // unsure if necessary
+		this.canvas.putImageData(data);
+		//this.background.clear();
+		//this.background.putImageData(background);
+	}
+	rebuild() {
+		const index = this.index();
+		
+		while (this.backups.length > 0 && this.backups.at(-1)!.index > index) {
+			this.backups.pop();
+		}
+		
+		const backup = this.backups.at(-1);
+		//const backupIndex = backup ? backup.index : 0;
+		
+		if (backup) {
+			// we have a usable backup
+			// restore backup, then restore recent operations not included in the backup
+			this.restoreBackup(backup);
+			this.applyOperationRange(backup.index, index);
+		} else {
+			// we have to rebuild everything
+			this.canvas.clear();
+			this.applyOperationRange(0, index);
+		}
+	}
+	handleOperation(op: Operation) {
+		this.undoStack.push(op);
+		this.redoStack = [];
+	}
+	handlePenOperation(op: PenOperation) {
+		this.handleOperation(op);
+		this.rebuild();
+		this.checkBackup();
+	}
+	handleFloodOperation(op: FloodOperation) {
+		this.handleOperation(op);
+		this.applyFloodOperation(op);
+		this.checkBackup();
+	}
+	
+	
+	/*rebuildBackup(index: number) {
 		if (!this.canvas) return;
 		
 		if (index < 0)
@@ -423,11 +699,11 @@ export default class Drawpad {
 		this.applyOperationRange(this.backupIndex);
 		this.applyMode(); // keep the same user settings
 
-	}
+	}*/
 	
 	private pop(redoable = false) {
-		if (!this.canvas || this.undoStack.length === 0) return;
-		if (!this.state.is(Drawing.IDLE)) return; // ?????
+		if (this.undoStack.length === 0) return;
+		//if (!this.state.is(DrawState.IDLE)) return; // ?????
 		
 		const op = this.undoStack.pop()!;
 		if (redoable) this.redoStack.push(op);
@@ -441,199 +717,182 @@ export default class Drawpad {
 		this.pop(true);
 	}
 	redo() {
-		if (!this.canvas || this.redoStack.length === 0)
-			return;
-		if (!this.state.is(Drawing.IDLE))
-			return;
+		if (this.redoStack.length === 0) return;
+		
+		// if (!this.state.is(DrawState.IDLE)) return; // ?????		
 		
 		const op = this.redoStack.pop()!;
 		this.undoStack.push(op);
 		this.applyOperation(op); // don't really need to mess with the backup here
-		this.applyMode();
 	}
 	
+	map(x: number, y: number): [number, number] {
+		const mapped = this.canvas.map(x, y);
+		return [Math.floor(mapped[0]), Math.floor(mapped[1])];
+	}
 	draw({ offsetX, offsetY }: PointerEvent) {
+		const op = this.op;
+		if (op === undefined || op.weight === "flood") return;
 		
-		if (!this.canvas) return;
-		
-		const op = this.undoStack.at(-1)!;
+		//const layer = this.getLayer(op.weight);
+		const canvas = this.canvas;
 		const prev = Path.end(op);
-		const curr = this.canvas.map(offsetX, offsetY);
-		curr[0] = Math.round(curr[0]);
-		curr[1] = Math.round(curr[1]);
+		const curr = this.map(offsetX, offsetY);
 		const [x, y] = curr;
 		
 		const inBounds = (
-			x >= 0 && x <= this.canvas.sourceWidth &&
-			y >= 0 && y <= this.canvas.sourceHeight
+			x >= 0 && x < Shared.SUBMISSION_SIZE &&
+			y >= 0 && y < Shared.SUBMISSION_SIZE
 		);
 		
 		if (!prev) {
+			// this is the first point in the path
 			if (!inBounds) {
 				this.endDraw();
 				return;
 			}
 			
-			// some platforms won't draw a path at all without this fuzzing
-			this.canvas.line(x + 0.001, y + 0.001, x, y);
+			// some platforms won't draw the initial point without this fuzzing
+			canvas.line(x + 0.001, y + 0.001, x, y);
 			Path.push(op, curr);
 		} else {
 			
 			const [px, py] = prev;
-			this.canvas.line(px, py, x, y);
+			canvas.line(px, py, x, y);
 			Path.push(op, curr);
 			
 			if (!inBounds) {
 				this.endDraw();
 			}
 		}
-		
-		/*if (!prev) {
-			
-		} else {
-			const [px, py] = prev;
-			if (px === x && py === y) {
-				return;
-			}
-			this.canvas.line(px, py, x, y);
-			
-		}
-		
-		Path.push(op, [x, y]);
-		
-		// if we go out of bounds, finish and end the current operation
-		if (x < 0 || y < 0 || x > this.canvas.sourceWidth || y > this.canvas.sourceHeight) {
-			this.endDraw();
-		}
-			
-		
-		
-		
-		if (prev) {
-			const [px, py] = prev;
-			
-		} else {
-			
-		}
-		
-		//const [x, y] = this.canvas.map(offsetX, offsetY);
-		//x = Math.round(x);
-		//y = Math.round(y);
-		
-		
-		//const [x, y] = this.canvas.map(offsetX, offsetY);
-		const [px, py] = Path.end(op) ?? [x + 0.01, y + 0.01]; // if this is the first point, just draw a dot at x, y
-		
-		this.canvas!.line(px, py, x, y);
-		Path.push(op, [x, y]);*/
-
-		
 	}
-	startDraw() {
-		const { color, weight } = this.mode.get();
+	
+	startDraw(mode: PenMode) {
+		const { color, weight } = mode;
 		
 		if (this.isBlank() && color === erase)
 			return;
 		
-		this.state.set(Drawing.DRAWING);
-		this.redoStack = [];
-		this.undoStack.push({ x: [], y: [], color, weight });
+		this.applyMode(mode);
+		this.state.set(DrawState.DRAWING);
+		this.op = { weight, color, x: [], y: [] };
 	}
 	endDraw() {
-		this.state.set(Drawing.IDLE);
-		const op = this.undoStack.at(-1)!;
-		if (Path.length(op) === 0) {
-			this.undoStack.pop();
+		
+		if (!this.state.is(DrawState.DRAWING) || this.op === undefined) {
+			return;
+		}
+		
+		this.state.set(DrawState.IDLE);
+		const op = this.op;
+		this.op = undefined;
+		
+		if (op.weight === "flood") {
+			console.warn("Drawpad.endDraw() called after flood operation");
+			return;
+		} else if (Path.length(op) === 0) {
 			return;
 		} else if (op.weight === "thick") {
 			Path.smooth(op, 1, 1);
 		} else {
 			Path.smooth(op, 4, 2);
 		}
-		this.rebuild();
+		
+		this.handlePenOperation(op);
 	}
 	handleDraw(ev: PointerEvent) {
-		if (!ev.isPrimary || !this.canvas)
+		if (!ev.isPrimary)
 			return;
-		if (!this.state.is(Drawing.DRAWING))
+		if (!this.state.is(DrawState.DRAWING))
 			return;
 		this.draw(ev);
 	}
 	handleStartDraw(ev: PointerEvent) {
-		if (this.state.is(Drawing.DRAWING)) {
+		if (this.state.is(DrawState.DRAWING)) {
 			this.endDraw();
 			
 			// this is so you can pinch zoom without leaving a point or short line under the first finger to touch the canvas
 			const op = this.undoStack.at(-1);
-			if (op && Path.length(op) <= 3) {
+			if (op && op.weight !== "flood" && Path.length(op) <= 5) {
 				this.abort();
 			}
 			
 			return;
 		}
 		
-		if (!ev.isPrimary || !this.canvas)
+		if (!ev.isPrimary)
 			return;
-		if (this.state.is(Drawing.SUBMITTED))
+		if (this.state.is(DrawState.SUBMITTED))
 			return;
 		
-		this.startDraw();
-		this.draw(ev);
+		const mode = this.mode.get();
+		const { weight, color } = mode;
+		if (weight === "flood") {
+			const { offsetX, offsetY } = ev;
+			const [x, y] = this.map(offsetX, offsetY);
+			this.handleFloodOperation({ weight, color, x, y });
+		} else {
+			this.startDraw(mode);
+			this.draw(ev);
+		}
 	}
 	handleEndDraw(ev: PointerEvent) {
-		if (!ev.isPrimary || !this.state.is(Drawing.DRAWING))
+		if (!ev.isPrimary || !this.state.is(DrawState.DRAWING))
 			return;
 		this.draw(ev);
 		this.endDraw();
 	}
 	
 	submit() {
-		if (this.isBlank() || this.state.is(Drawing.SUBMITTED))
+		if (this.isBlank() || this.state.is(DrawState.SUBMITTED))
 			return;
 		if (this.canvas === null)
 			return console.error("Couldn't get canvas data");
 		
-		this.state.set(Drawing.SUBMITTED);
-		const drawingData = this.canvas.element.toDataURL("image/png");
+		//const drawingData = this.canvas.element.toDataURL("image/png");
+		
+		this.state.set(DrawState.SUBMITTED);
+		const drawingData = this.canvas.getDataUrl();
+		/*const output = Canvas.create(400, 400);
+		output.putCanvas(this.background);
+		output.putCanvas(this.foreground);
+		const drawingData = output.getDataUrl();*/
 		this.submitted.emit(drawingData);
 	}
 	
-	init(vnode: Micron.Node) {
-		if (this.canvas) {
-			console.warn("Drawpad.init() called multiple times");
+	initLayer(): Canvas {
+		const elm = document.querySelector<HTMLCanvasElement>("canvas#drawpad-canvas");
+		if (!elm) {
+			console.warn("Drawpad couldn't find DrawPad canvas");
+			return null as any;
 		}
 		
-		const ctx = (vnode.elm as HTMLCanvasElement).getContext("2d");
-		if (!ctx) throw new Error("Couldn't get canvas context.");
-		
-		const canvas = this.canvas = new Canvas(ctx);
+		const canvas = Canvas.fromElement(elm);
 		canvas.clear();
 		canvas.setLineCap("round");
 		canvas.setLineJoin("round");
+		return canvas;
+	}
+	init() {
+		this.canvas = this.initLayer();
 		
 		try {
 			this.applyOperationRange(0, Infinity);
-		} catch(err) {
+		} catch (err) {
 			console.error("error with loaded canvas data", err)
 			this.undoStack = [];
 			this.mode.set(Drawpad.defaultMode);
 		}
-		
-		this.applyMode();
-		
-		//this.applyMode();
-		//canvas.setStrokeStyle("black");
-		//canvas.setLineWidth(THIN_LINE_WIDTH);
 	}
 	
 	isBlank() {
 		return this.undoStack.length === 0;
 	}
 	isIdle() {
-		//return this.state.is(Drawing.IDLE);
+		//return this.state.is(DrawState.IDLE);
 	}
 	isSubmitted() {
-		return this.state.is(Drawing.SUBMITTED);
+		return this.state.is(DrawState.SUBMITTED);
 	}
 	
 	Icon(src: string) {
@@ -647,7 +906,7 @@ export default class Drawpad {
 				const Btn = (color: string | null) => {
 
 					const click = () => {
-						if (this.state.is(Drawing.IDLE)) {
+						if (this.state.is(DrawState.IDLE)) {
 							this.selectColor(color);
 						}
 					};
@@ -689,7 +948,7 @@ export default class Drawpad {
 		
 		const submit = this.submit.bind(this);
 		const startSubmit = () => {
-			if (this.isBlank() || !this.state.is(Drawing.IDLE))
+			if (this.isBlank() || !this.state.is(DrawState.IDLE))
 				return;
 			
 			const { onStartSubmit } = this.options;
@@ -711,39 +970,41 @@ export default class Drawpad {
 			const undo = this.undo.bind(this);
 			const redo = this.redo.bind(this);
 			
-			const weightBtn = s(this.mode, ({ color, weight }) => {
-				
-				let iconSrc;
-				if (color === erase) {
-					iconSrc = weight === "thin" ? icons.eraseThin : icons.eraseThick;
-				} else {
-					penIcon.clear();
-					penIcon.setFillStyle(color);
-					penIcon.fillEllipse(64, 64, weight === "thin" ? 24 : 44);
-					iconSrc = penIcon.element.toDataURL();
+			const WeightIcon = (wt: Weight) => {
+				switch (wt) {
+					case "thin": return icons.thin;
+					case "thick": return icons.thick;
+					case "flood": return icons.flood;
 				}
-
-				return h(
-					"button#weight-btn",
-					{
+			}
+			const WeightBtn = (wt: Weight) => {
+				return s(this.mode, ({ weight, color }) => {
+					
+					const attrs = { disabled } ;
+					const style = wt !== weight ? undefined : { filter: "brightness(0.8)" };
+					
+					return h("button", {
+						attrs,
+						style,
 						on: {
 							click: () => {
-								if (this.state.is(Drawing.IDLE)) {
-									this.toggleWeight();
+								if (this.state.is(DrawState.IDLE)) {
+									this.setWeight(wt);
 								}
-							}
-						},
-						attrs: { disabled }
-					},
-					this.Icon(iconSrc)
-				);
-			});
+							},
+						}
+					}, this.Icon(WeightIcon(wt)))
+				});
+			}
 			
 			return h("div#action-btn-row", [
 				//h("button.spacer", { attrs: { disabled: true } }),
 				h("button#undo-btn", { on: { click: undo }, attrs: { disabled } }, this.Icon(icons.undo)),
 				h("button#redo-btn", { on: { click: redo }, attrs: { disabled } }, this.Icon(icons.redo)),
-				weightBtn,
+				WeightBtn("thin"),
+				WeightBtn("thick"),
+				//floodBtn,
+				//weightBtn,
 				h("button.spacer", { attrs: { disabled: true } }),
 				h("button#submit-btn",
 					{
@@ -760,10 +1021,10 @@ export default class Drawpad {
 		});
 	}
 	View() {
-		
 		const handleStartDraw = this.handleStartDraw.bind(this);
 		const handleEndDraw = this.handleEndDraw.bind(this);
 		const handleDraw = this.handleDraw.bind(this);
+		const init = this.init.bind(this);
 		
 		Micron.tryDefer(
 			//submitted.subscribe(submit),
@@ -784,24 +1045,33 @@ export default class Drawpad {
 			})
 		);
 		
-		return h("div#drawpad", [
-			this.ColorSelect(),
-			h("canvas#canvas", {
+		function Layer(id: string) {
+			return h(`canvas#${id}`, {
 				attrs: {
 					width: Shared.SUBMISSION_SIZE,
 					height: Shared.SUBMISSION_SIZE
-				},
-				on: {
-					pointerdown: handleStartDraw,
-					pointerup: handleEndDraw,
-					pointerleave: handleEndDraw,
-					pointermove: handleDraw
-				},
-				hook: {
-					create: (_emptyNode, vnode) => this.init(vnode),
-					update: (_oldNode, vnode) => this.init(vnode)
 				}
-			}, "You don't have canvas support!"),
+			}, "You don't have canvas support!");
+		}
+		
+		return h("div#drawpad", [
+			this.ColorSelect(),
+			h("div#canvas-ctr",
+				{
+					on: {
+						pointerdown: handleStartDraw,
+						pointerup: handleEndDraw,
+						pointerleave: handleEndDraw,
+						pointermove: handleDraw
+					},
+					hook: {
+						insert: init,
+					},
+				},
+				[
+					Layer("drawpad-canvas"),
+				]
+			),
 			this.ActionSelect()
 		]);
 	}
@@ -1074,11 +1344,17 @@ class Canvas {
 	getImageData(x = 0, y = 0, w = this.sourceWidth, h = this.sourceHeight): ImageData {
 		return this.ctx.getImageData(x, y, w, h);
 	}
+	getDataUrl(type?: string, quality?: number) {
+		return this.element.toDataURL(type, quality);
+	}
 	putImageData(data: ImageData, x = 0, y = 0): void {
 		this.ctx.putImageData(data, x, y);
 	}
 	putImage(image: CanvasImageSource, x = 0, y = 0) {
 		this.ctx.drawImage(image, x, y);
+	}
+	putCanvas(canvas: Canvas, x = 0, y = 0) {
+		this.putImage(canvas.element, x, y);
 	}
 }
 

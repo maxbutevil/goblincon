@@ -95,9 +95,6 @@ function Drawing(endMillis: number, goblinName: string) {
 	}
 	
 	return h("div#draw.scaffold", [
-		/*TopBar({
-			middle: h("div.title", "Draw!"),
-		}),*/
 		h("div.primary-flow", [
 			h("div#drawpad-ctr.flow", [
 				h("div#info", [

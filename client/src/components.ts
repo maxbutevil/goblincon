@@ -7,7 +7,7 @@ import {
 
 export function LogoIcons() {
 	const icons = [];
-	for (let i = 0; i < playerIcons.count(); i++) {
+	for (let i = 0; i < playerIcons.count; i++) {
 		icons.push(playerIcons.View(i, Shared.playerColor(i)));
 	}
 	return h("div#logo-icons", icons);

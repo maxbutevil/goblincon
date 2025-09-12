@@ -1,10 +1,20 @@
 export { default as erase } from "./erase.png"
-export { default as undo } from "./undo.png"
+/*export { default as undo } from "./undo.png"
 export { default as redo } from "./redo.png"
 export { default as thin } from "./thin.png"
 export { default as thick } from "./thick.png"
 export { default as eraseThin } from "./erase_thin.png"
+export { default as eraseThick } from "./erase_thick.png"*/
+
+export { default as undo } from "./undo.svg"
+export { default as redo } from "./redo.svg"
+export { default as thin } from "./thin.svg"
+export { default as thick } from "./thick.svg"
+export { default as eraseThin } from "./erase_thin.png"
 export { default as eraseThick } from "./erase_thick.png"
+export { default as flood } from "./flood.svg"
+
+
 
 export { default as info } from "./info.png"
 export { default as help } from "./help.png"

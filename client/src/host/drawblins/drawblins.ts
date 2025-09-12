@@ -152,8 +152,9 @@ function Drawing(endMillis: number) {
 }
 function Voting(endMillis: number) {
 	
-	const DELAY_INITIAL = 0.4;
-	const DELAY_STAGGER = 1.0;
+	// Maybe skip animations if something goes wrong and only a small amount of time is left
+	const DELAY_INITIAL = 0.2;
+	const DELAY_STAGGER = 1.5;
 	
 	const voteQueue = new VoteQueue();
 	const readyDisplay = new ReadyDisplay(Room.players.array(), endMillis, Shared.VOTING_BUFFER_SECS);
