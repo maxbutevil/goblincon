@@ -71,7 +71,10 @@ export default class Room {
 	static connectUrl() {
 		return `${Shared.wsRoot}/host/connect`;
 	}
-	static reconnectUrl() {
+	static reconnectUrl(): string | undefined {
+		if (this.joinCode === "" || this.token === "") {
+			return undefined;
+		}
 		return `${Shared.wsRoot}/host/reconnect?code=${this.joinCode}&token=${this.token}`;
 	}
 	

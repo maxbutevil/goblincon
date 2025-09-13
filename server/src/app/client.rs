@@ -222,6 +222,7 @@ impl HostBuffer {
 	fn handle_send(&mut self, msg: &impl Serialize) -> Result<Utf8Bytes, ()> {
 		
 		if self.is_full() {
+			tracing::debug!("host buffer full, failed to send message");
 			return Err(());
 		}
 		

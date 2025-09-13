@@ -74,7 +74,7 @@ impl App {
 			};
 			
 			let result = match settings {
-				lobby::Settings::Drawblins(settings) => {
+				lobby::Settings::Drawing(settings) => {
 					let (game, handle) = drawblins::Game::new(&mut clients, settings);
 					self.rooms.insert(id, handle);
 					game.run().await

@@ -19,6 +19,9 @@ pub use futures_util::{
 
 pub type PlayerId = u8;
 pub type PlayerIcon = u8;
+/*pub type PlayerColor = u8;
+pub const NUM_PLAYER_ICONS: PlayerIcon = 8;
+pub const NUM_PLAYER_COLORS: PlayerColor = 16;*/
 
 pub use rand::prelude::*;
 pub use axum::extract::ws::{WebSocket, Message, Utf8Bytes};

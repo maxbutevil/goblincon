@@ -15,6 +15,7 @@ enum HostMsgOut {
 	GameStarting,
 	//LobbyCreated,
 	PlayerIconChanged { player_id: PlayerId, icon: PlayerIcon },
+	//PlayerColorChanged { player_id: PlayerId, color: PlayerColor }
 }
 
 #[derive(Deserialize)]
@@ -38,7 +39,7 @@ enum PlayerMsgOut {
 #[serde(rename_all = "camelCase")]
 pub enum Settings {
 	//None,
-	Drawblins(drawblins::Settings),
+	Drawing(drawblins::Settings),
 	Dating(dating::Settings),
 }
 enum State {
@@ -180,13 +181,15 @@ impl<'a> Lobby<'a> {
 		
 	}
 	async fn handle_player_reconnect(&mut self, socket: WebSocket, player_id: PlayerId, token: ClientToken, manual: bool) {
-		let State::Open { leader_id } = self.state else {
-			tracing::warn!("player attempted to reconnect to lobby while not open");
-			return;
-		};
 		
 		let result = self.clients.reconnect_player(socket, player_id, token, manual).await;
 		let Ok(()) = result else { return; };
+		
+		let State::Open { leader_id } = self.state else {
+			//tracing::debug!("player attempted to reconnect to lobby while not open");
+			//ClientIndex::reject_invalid_rejoin(socket, manual);
+			return;
+		};
 		
 		if leader_id == player_id {
 			self.sync_leader(player_id).await;

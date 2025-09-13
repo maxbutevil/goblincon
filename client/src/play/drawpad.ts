@@ -853,11 +853,12 @@ export default class Drawpad {
 		
 		this.state.set(DrawState.SUBMITTED);
 		const drawingData = this.canvas.getDataUrl();
+		this.options.onSubmit(drawingData);
 		/*const output = Canvas.create(400, 400);
 		output.putCanvas(this.background);
 		output.putCanvas(this.foreground);
 		const drawingData = output.getDataUrl();*/
-		this.submitted.emit(drawingData);
+		//this.submitted.emit(drawingData);
 	}
 	
 	initLayer(): Canvas {
@@ -944,7 +945,6 @@ export default class Drawpad {
 		let submittingTimeout: number;
 		
 		const penIcon = Canvas.create(128, 128);
-		
 		
 		const submit = this.submit.bind(this);
 		const startSubmit = () => {

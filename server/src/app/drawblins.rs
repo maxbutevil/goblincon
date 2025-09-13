@@ -165,6 +165,8 @@ impl<'a> Game<'a> {
 			&GlobalHostMsgOut::InDrawblins,
 			&GlobalPlayerMsgOut::InDrawblins
 		).await;*/
+	
+		tracing::info!("hi!!");
 		let msg = &GlobalPlayerMsgOut::InDrawblins;
 		self.clients.players.send_all(msg).await;
 		

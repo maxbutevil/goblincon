@@ -348,7 +348,7 @@ function Lobby() {
 		h("div#top-bar", [
 			h("div#description", [
 				h("div.title", "GoblinCon - Lobby"),
-				h("div.subtitle", "Players can join now from their phones!")
+				h("div.subtitle", "Players can join now from their mobile devices!")
 			]),
 			LogoIcons(),
 		]),
@@ -482,7 +482,8 @@ function connect() {
 	client.connect(Room.connectUrl());
 }
 function reconnect() {
-	client.connect(Room.reconnectUrl());
+	const url = Room.reconnectUrl();
+	if (url) client.connect(url);
 }
 function close() {
 	OUT.send("close");
