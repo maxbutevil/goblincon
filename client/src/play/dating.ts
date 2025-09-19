@@ -370,7 +370,7 @@ function Voting(endMillis: number, choices: string[]) {
 		h("div.primary-page", [
 			h("div.flow.gapped", [
 				h("h2", "Voting"),
-				h("div", "Vote for your favorite suitor for the bachelor (at the top)!"),
+				h("div", "Vote for your favorite suitor (below) for the bachelor (above)!"),
 				...VoteButtons(choices, submitVote)
 			]),
 		]),

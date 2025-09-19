@@ -167,7 +167,6 @@ const PREFIX: StrTable = Table::new(&[
 	]),
 	(2, &[
 		"Professor",
-		"Senator",
 		"Captain",
 		"Mayor",
 		"Coach",
@@ -184,12 +183,12 @@ const PREFIX: StrTable = Table::new(&[
 		"Princess",
 	]),
 	(1, &[
+		"Senator",
 		"Major",
 		"Colonel",
 		"General",
 		"Admiral",
 		"Old Man",
-		"Madame",
 	])
 ]);
 
@@ -230,6 +229,13 @@ const ROOT: StrTable = Table::new(&[
 		"Snakelegs",
 		"Horsehead",
 		"Divorceo",
+		"Electronaut",
+		"Boglurch",
+		"Cyberwolf",
+		"Kittycat",
+		"Karate",
+		"Wingding",
+		"Eaglet",
 		
 		/* Adjective-ish */
 		"Baldo",
@@ -344,6 +350,7 @@ const ROOT: StrTable = Table::new(&[
 		"Gug",
 		"Foofles",
 		"Orbo",
+		"Dumpette",
 		
 		/* C's Contributions */
 		//"Jorm",

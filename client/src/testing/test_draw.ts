@@ -3,7 +3,8 @@ import { h, Micron } from "../modules/index"
 import Drawpad from "../play/drawpad";
 
 const drawpad = new Drawpad({
-  onSubmit: () => {}
+  key: "testing-testing",
+  onSubmit: () => {},
 });
 
 Micron.mount(h("div#drawpad-ctr", [

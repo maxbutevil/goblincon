@@ -240,9 +240,9 @@ export default class Drawpad {
 	weight = this.mode.map(m => m.weight);
 	
 	options: DrawpadOptions;
-	//canvas: Canvas | null = null;
+	readonly key = Symbol("drawpad-key"); // used to force rerender when switching from one drawpad to another
+	
 	canvas: Canvas = null as any;
-	//background: Canvas = null as any;
 	undoStack: Operation[] = [];
 	redoStack: Operation[] = [];
 	op: Operation | undefined;
@@ -1027,7 +1027,6 @@ export default class Drawpad {
 		const init = this.init.bind(this);
 		
 		Micron.tryDefer(
-			//submitted.subscribe(submit),
 			Signal.documentEvent("keydown").subscribe((ev) => {
 				if (ev.ctrlKey) {
 					const key = ev.key.toLowerCase();
@@ -1042,7 +1041,10 @@ export default class Drawpad {
 				if (document.hidden) {
 					this.saveDrawing();
 				}
-			})
+			}),
+			() => {
+				this.saveDrawing();
+			}
 		);
 		
 		function Layer(id: string) {
@@ -1054,7 +1056,7 @@ export default class Drawpad {
 			}, "You don't have canvas support!");
 		}
 		
-		return h("div#drawpad", [
+		return h("div#drawpad", { key: this.key }, [
 			this.ColorSelect(),
 			h("div#canvas-ctr",
 				{

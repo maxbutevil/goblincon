@@ -35,7 +35,7 @@ export default class Session {
 			this.playerId = parseInt(localStorage.getItem("rejoinId") ?? this.DEFAULT_ID.toString());
 			this.playerIcon = parseInt(localStorage.getItem("playerIcon") ?? this.DEFAULT_ICON.toString());
 			this.playerName = localStorage.getItem("playerName") ?? "";
-			this.joinCode = new URLSearchParams(window.location.search).get("code") ?? "";
+			this.joinCode = new URLSearchParams(window.location.search).get("code") ?? (localStorage.getItem("rejoinCode") ?? "");
 		} catch(err) {
 			console.error("error retrieving rejoin info:", err)
 		} finally {
