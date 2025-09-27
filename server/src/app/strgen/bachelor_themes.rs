@@ -25,6 +25,7 @@ const THEMES: &[&str] = &[
 	"Unpleasant",
 	
 	"Cute", // 'Cute Little Guy' Descriptors
+	"Weak",
 	"Round",
 	"Silly",
 	"Clumsy",
@@ -34,8 +35,10 @@ const THEMES: &[&str] = &[
 	"Playful",
 	"Adorable",
 	
-	"Scary", // 'Scary Big Guy' Descriptors
+	"Scary", // 'Scary Big Guy' Descriptors'
+	"Tough",
 	"Spooky",
+	"Strong",
 	"Sinister",
 	"Muscular",
 	"Powerful",
@@ -79,7 +82,8 @@ const THEMES: &[&str] = &[
 	"Heroes",
 	"Villains",
 	
-	/* Supernatural */
+	/* Supernatural / Fictional */
+	"Aliens",
 	"Wizards",
 	"Witches",
 	

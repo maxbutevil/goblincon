@@ -52,28 +52,6 @@ const LEGENDARY: StrTable = Table::new(&[
 	]),
 ]);
 
-//const COMPOUND: 
-/*const COMPOUND_PRE: StrTable = StrTable::new(&[
-	(1, &[
-		"Hel",
-		"Bal",
-		"Ar",
-		"Com",
-		"Wolf",
-		"Crug",
-		"Lar"
-	]),
-]);
-const COMPOUND_POST: StrTable = StrTable::new(&[
-	(1, &[
-		"bolge",
-		"grug",
-		"puter",
-		"lord",
-		"crug"
-	]),
-]);*/
-
 const ADJECTIVE: StrTable = Table::new(&[
 	(4, &[
 		"Hairy",
@@ -107,6 +85,9 @@ const ADJECTIVE: StrTable = Table::new(&[
 		"Muscular",
 		"Cruel",
 	]),
+	(2, &[
+		"Draconic",
+	]),
 	(1, &[
 		"Pompous",
 		"Goblinistic",
@@ -124,7 +105,7 @@ const POST_TITLES: StrTable = Table::new(&[
 	]),
 ]);*/
 const SUFFIX: FnTable = Table::new(&[
-	(4, &[
+	(3, &[
 		|| format!(" {STANDARD_SUFFIX}")
 	]),
 	(1, &[
@@ -221,7 +202,7 @@ const ROOT: StrTable = Table::new(&[
 		"Moneylaunder",
 		"Bankrob",
 		"Dumpsterdive",
-		"Leg Lord",
+		//"Leg Lord",
 		"Legs Lord",
 		"Butterlord",
 		"Megadog",
@@ -236,6 +217,8 @@ const ROOT: StrTable = Table::new(&[
 		"Karate",
 		"Wingding",
 		"Eaglet",
+		"Hoddog",
+		"Explosion",
 		
 		/* Adjective-ish */
 		"Baldo",
@@ -351,6 +334,11 @@ const ROOT: StrTable = Table::new(&[
 		"Foofles",
 		"Orbo",
 		"Dumpette",
+		"Hogbo",
+		"Gurgle",
+		"Gubgub",
+		"Troglet",
+		"Bricklet",
 		
 		/* C's Contributions */
 		//"Jorm",
