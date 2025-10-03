@@ -67,7 +67,8 @@ window.addEventListener("beforeunload", (ev) => {
 		return true;
 	} else {
 		unloading = true;
-		client.close();
+		client.close(1001);
+		//console.log("closing room on way out...");
 	}
 });
 client.connected.listen((ev) => {
