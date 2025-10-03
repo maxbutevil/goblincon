@@ -147,7 +147,7 @@ impl<'a> Lobby<'a> {
 					let Some(event) = client_event else { break Err(()) };
 					match event {
 						ClientEvent::Close => break Err(()),
-						ClientEvent::Disconnect(client_id) => {},
+						ClientEvent::Disconnect(client_id, _) => {},
 						ClientEvent::Message(client_id, msg) =>
 							self.handle_client_message(client_id, msg).await
 					}

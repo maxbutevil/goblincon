@@ -10,6 +10,7 @@ use slab::Slab;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use async_scoped::TokioScope;
+use axum::extract::ws::CloseFrame;
 //use axum::extract::ws::Utf8Bytes;
 
 pub use serde::{Serialize, Deserialize};
@@ -58,7 +59,7 @@ pub enum ClientId {
 
 pub enum ClientEvent {
 	Close,
-	Disconnect(ClientId),
+	Disconnect(ClientId, Option<CloseFrame>),
 	Message(ClientId, Utf8Bytes)
 }
 
@@ -91,7 +92,43 @@ impl Presence {
 	pub fn create(sender: Sender, socket: WebSocket, client_id: ClientId) -> Presence {
 		let (tx, mut rx) = socket.split();
 		let handle = tokio::spawn(async move {
-			while let Some(content) = next_bytes(&mut rx).await {
+			while let Some(msg) = rx.next().await {
+				let event = match msg {
+					Err(err) => {
+						tracing::debug!("websocket receive: {err}");
+						continue;
+						//ClientEvent::Disconnect(client_id, None)
+					},
+					Ok(Message::Close(close_frame)) => {
+						//tracing::debug!("websocket closed");
+						ClientEvent::Disconnect(client_id, close_frame)
+						// DON'T break here - we need to keep polling to finish the closing handshake properly
+					},
+					Ok(Message::Text(bytes)) => {
+						if bytes.is_empty() {
+							// This is an empty keep-alive message; ignore
+							continue;
+						}
+						ClientEvent::Message(client_id, bytes)
+					},
+					Ok(Message::Pong(_) | Message::Ping(_)) => {
+						continue; // ignore these, tungstenite handles them
+					}, 
+					Ok(Message::Binary(_)) => {
+						tracing::debug!("binary websocket message received (expected text)");
+						continue;
+					},
+				};
+				
+				let result = sender.send(event).await;
+				if result.is_err() {
+					break;
+				}
+			}
+			
+			
+			
+			/*while let Some(content) = next_bytes(&mut rx).await {
 				if content.is_empty() {
 					/* This is an empty keep-alive msg, ignore */
 					continue;
@@ -102,10 +139,10 @@ impl Presence {
 				if result.is_err() {
 					break;
 				}
-			}
+			}*/
 			
-			let event = ClientEvent::Disconnect(client_id);
-			let _ = sender.send(event).await;
+			//let event = ClientEvent::Disconnect(client_id);
+			//let _ = sender.send(event).await;
 		});
 		Presence::new(tx, handle)
 	}
@@ -437,8 +474,36 @@ impl ClientIndex {
 					return Some(ClientEvent::Close);
 				},
 				event = self.receiver.recv() => {
+					
+					match event {
+						Some(ClientEvent::Disconnect(ClientId::Host, Some(ref close_frame))) => {
+							if close_frame.code == 1001 {
+								return Some(ClientEvent::Close);
+							}
+						},
+						Some(ClientEvent::Message(ClientId::Host, ref msg)) => {
+							if let Ok(msg) = deserialize::<HostMsgIn>(&msg) {
+								match msg {
+									HostMsgIn::Close => {
+										return Some(ClientEvent::Close);
+									},
+									HostMsgIn::Ack(idx) => {
+										self.host.acknowledge(idx);
+										continue; // Ack messages are NOT passed on - wait for the next event
+									}
+								}
+							}
+						},
+						_ => {}
+					}
+					
+					return event;
+					
 					/* Handle Ack from host */
-					if let Some(ClientEvent::Message(ClientId::Host, ref msg)) = event {
+					
+					
+					
+					/*if let Some(ClientEvent::Message(ClientId::Host, ref msg)) = event {
 						if let Ok(msg) = deserialize::<HostMsgIn>(&msg) {
 							match msg {
 								HostMsgIn::Close => {
@@ -450,9 +515,9 @@ impl ClientIndex {
 								}
 							}
 						}
-					}
+					}*/
 					
-					return event;
+					
 				}
 			}
 			
@@ -646,7 +711,7 @@ pub fn deserialize<'a, T: Deserialize<'a>>(str: &'a str) -> Result<T, ()> {
 		Err(_err) => Err(())
 	}
 }
-async fn next_bytes<'a>(receiver: &'a mut WebSocketReceiver) -> Option<Utf8Bytes> {
+/*async fn next_bytes<'a>(receiver: &'a mut WebSocketReceiver) -> Option<Utf8Bytes> {
 	while let Some(msg) = receiver.next().await {
 		match msg {
 			Ok(Message::Text(content)) => return Some(content),
@@ -665,7 +730,7 @@ async fn next_bytes<'a>(receiver: &'a mut WebSocketReceiver) -> Option<Utf8Bytes
 		}
 	}
 	None
-}
+}*/
 async fn send_raw(sender: &mut WebSocketSender, msg: Message) -> Result<(), ()> {
 	match sender.send(msg).await {
 		Ok(()) => Ok(()),

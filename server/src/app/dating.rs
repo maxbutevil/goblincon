@@ -436,9 +436,9 @@ impl<'a> Game<'a> {
 		match event {
 			ClientEvent::Close =>
 				{ return Err(()) }
-			ClientEvent::Disconnect(ClientId::Host) =>
+			ClientEvent::Disconnect(ClientId::Host, _) =>
 				{ /* return Err(()) */ },
-			ClientEvent::Disconnect(ClientId::Player(_)) =>
+			ClientEvent::Disconnect(ClientId::Player(_), _) =>
 				{ /* ClientIndex handles disconnects for us */ },
 			ClientEvent::Message(ClientId::Host, msg) =>
 				{ tracing::debug!("invalid host message: {msg}"); },
