@@ -10,10 +10,13 @@ import {
 	h, s, defer, Micron
 } from "../modules/"
 
+
 import Session from "./session"
 import * as Drawblins from "./drawblins"
 import * as Dating from "./dating"
 import * as flags from "../assets/flags"
+
+import hostDiagram from "../assets/misc/host_diagram.svg"
 
 import {
 	Logo,
@@ -388,10 +391,12 @@ function Landing() {
 					" One person hosts the game on a PC or similar device.",
 					" Players may then join from their mobile devices."
 				]),
+				h("img.host-diagram", { attrs: { src: hostDiagram } }),
 				h("p", [
 					h("b", "Make sure everybody can see the host device!"),
+					" You can use a chat app that allows screen sharing, or just play together in person!",
 					" For a larger screen, you can connect a laptop to a TV.",
-					" You can play together in person, or use a chat app that allows screen sharing."
+					//" You can play together in person, or use a chat app that allows screen sharing."
 				]),
 			]),
 		]);
@@ -414,7 +419,10 @@ function Landing() {
 					"In ",
 					h("b", "Dating Mode"),
 					", players draw \"bachelors\" and pair them with \"suitors\", trying to create the best (or funniest) couple they can!",
-				])
+				]),
+				h("div", [
+					"Remember that the themes are just for inspiration! You do not have to follow them perfectly."
+				]),
 			]),
 		])
 	}
@@ -423,7 +431,7 @@ function Landing() {
 			h("div.header", "Social"),
 			h("div.content", [
 				h("p", [
-					"To find people to play with, share your creations, stay up-to-date with changes, and report issues, you can join our official ",
+					"If you have any suggestions, or want to find people to play with, feel free to join the official ",
 					h("a", {
 						attrs: {
 							href: "/social/discord",
@@ -440,10 +448,10 @@ function Landing() {
 			h("div.header", "Updates"),
 			h("div.content", [
 				h("p", [
-					h("b", "Everything Overhaul (9/11/2025):"),
+					h("b", "Touch Ups (6/14/2026):"),
 					h("ul", [
-						h("li", "Major frontend overhaul"),
-						h("li", "Automatic host reconnecting!"),
+						h("li", "Various gameplay tweaks"),
+						h("li", "Improved landing page"),
 					]),
 				]),
 				h("p", [

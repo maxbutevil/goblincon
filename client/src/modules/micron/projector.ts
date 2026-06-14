@@ -45,10 +45,6 @@ export class Projector {
 }
 
 export class Anchor {
-  
-  
-  
-  
   readonly changed = new Signal<[Blueprint]>();
   curr: Blueprint;
   

@@ -254,7 +254,7 @@ export default class Drawpad {
 		
 		const ok = this.loadDrawing();
 		if (!ok) {
-			localStorage.removeItem(Drawpad.storageKey);
+			sessionStorage.removeItem(Drawpad.storageKey);
 		}
 	}
 	
@@ -281,7 +281,7 @@ export default class Drawpad {
 		
 		try {
 			console.log(`loading drawing (${key})`);
-			const encoded = localStorage.getItem(Drawpad.storageKey);
+			const encoded = sessionStorage.getItem(Drawpad.storageKey);
 			if (!encoded) return false;
 			
 			const data = JSON.parse(encoded);
@@ -322,7 +322,7 @@ export default class Drawpad {
 		
 		try {
 			console.log(`saving drawing (${key})`);
-			localStorage.setItem(Drawpad.storageKey, JSON.stringify(data));
+			sessionStorage.setItem(Drawpad.storageKey, JSON.stringify(data));
 		} catch (err) {
 			console.error("error saving drawing: ", err);
 		}

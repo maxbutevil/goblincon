@@ -121,13 +121,18 @@ body {
 		background-color: primary(3);
 		border: 2px solid primary(7);
 		border-radius: 6px;
+		
 	}
 	.content {
-		@include column(6px);
+		@include column(flex-start, flex-start, 6px);
 		font-size: 0.9rem;
 		text-align: left;
+		
+		.host-diagram {
+			align-self: center;
+			flex: 0 1 240px;
+		}
 	}
-	
 	
 	.info-card {
 		@extend .card;

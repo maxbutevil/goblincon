@@ -85,7 +85,7 @@ client.closed.listen((ev) => {
 			page.put(Error, "Fatal connection error");
 			break;
 		case Shared.ROOM_CLOSED:
-			page.put(Error, "Room timed out");
+			page.put(Error, "Room timed out due to inactivity");
 			break;
 		case Shared.CONNECTED_ELSEWHERE:
 			page.put(Error, "Connected elsewhere (somehow)");
